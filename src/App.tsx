@@ -6,6 +6,7 @@ import Dashboard from "./Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PostAuth from "./PostAuth";
 import Onboarding from "./Onboarding";
+import NotFound from "./components/NotFound";
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
