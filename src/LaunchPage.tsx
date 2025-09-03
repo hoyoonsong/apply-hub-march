@@ -1,8 +1,13 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import LoginModal from "./components/LoginModal";
+import { useAuth } from "./auth/AuthProvider";
+import SignOutButton from "./components/SignOutButton";
 
 function LaunchPage() {
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <div className="w-full h-full">
@@ -22,14 +27,26 @@ function LaunchPage() {
             {/* Spacer for logo */}
             <div className="w-20 sm:w-28 md:w-40"></div>
 
-            {/* Right side - Login button */}
+            {/* Right side - Login button or Sign out */}
             <div className="flex items-center">
-              <button
-                onClick={() => setOpen(true)}
-                className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors shadow-lg"
-              >
-                Sign up / Log in
-              </button>
+              {user ? (
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Welcome back,</p>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {user.email}
+                    </p>
+                  </div>
+                  <SignOutButton />
+                </div>
+              ) : (
+                <button
+                  onClick={() => setOpen(true)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors shadow-lg"
+                >
+                  Sign up / Log in
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -61,12 +78,12 @@ function LaunchPage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            {/* Show explore button for now */}
+            {/* Get Started button - different behavior based on auth state */}
             <button
-              onClick={() => setOpen(true)}
+              onClick={() => (user ? navigate("/dashboard") : setOpen(true))}
               className="bg-white hover:bg-gray-50 text-blue-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
             >
-              Get Started
+              {user ? "Go to Dashboard" : "Get Started"}
             </button>
             <button className="bg-transparent hover:bg-white hover:text-blue-600 text-white font-bold py-4 px-8 rounded-xl text-lg border-2 border-white transition-all duration-200 transform hover:scale-105">
               Learn More
@@ -171,7 +188,7 @@ function LaunchPage() {
           </p>
         </div>
       </footer>
-      <LoginModal open={open} onClose={() => setOpen(false)} />
+      {!user && <LoginModal open={open} onClose={() => setOpen(false)} />}
     </div>
   );
 }
