@@ -1,19 +1,30 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Dashboard from "./Dashboard.tsx";
-import LaunchPage from "./LaunchPage.tsx";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./auth/AuthProvider";
+import LaunchPage from "./LaunchPage";
+import Dashboard from "./Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
+import PostAuth from "./PostAuth";
+import Onboarding from "./Onboarding";
 
-const App = () => {
+export default function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
+    <AuthProvider>
+      <BrowserRouter>
         <Routes>
           <Route path="/" element={<LaunchPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/post-auth" element={<PostAuth />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
-      </div>
-    </Router>
+      </BrowserRouter>
+    </AuthProvider>
   );
-};
-
-export default App;
+}

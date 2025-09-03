@@ -1,7 +1,8 @@
 import React, { useState } from "react";
+import LoginModal from "./components/LoginModal";
 
 function LaunchPage() {
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="w-full h-full">
@@ -24,10 +25,10 @@ function LaunchPage() {
             {/* Right side - Login button */}
             <div className="flex items-center">
               <button
-                onClick={() => setIsLoginModalOpen(true)}
+                onClick={() => setOpen(true)}
                 className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors shadow-lg"
               >
-                Login
+                Sign up / Log in
               </button>
             </div>
           </div>
@@ -62,7 +63,7 @@ function LaunchPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             {/* Show explore button for now */}
             <button
-              onClick={() => setIsLoginModalOpen(true)}
+              onClick={() => setOpen(true)}
               className="bg-white hover:bg-gray-50 text-blue-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
             >
               Get Started
@@ -170,6 +171,7 @@ function LaunchPage() {
           </p>
         </div>
       </footer>
+      <LoginModal open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }

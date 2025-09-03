@@ -1,64 +1,28 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { GoogleLoginButton, GoogleSignupButton } from "./GoogleButtons";
 
-interface LoginModalProps {
-  isOpen: boolean;
+export default function LoginModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
   onClose: () => void;
-}
-
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
-  if (!isOpen) return null;
-
+}) {
+  if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Sign in</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Applicant Login Section */}
-        <div className="mb-6">
-          <h3 className="font-semibold text-gray-900 mb-3">Applicants</h3>
-          <Link
-            to="/login/applicant"
-            onClick={onClose}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors block text-center"
-          >
-            Applicant
-          </Link>
-        </div>
-
-        {/* Admin Login Section */}
-        <div className="mb-6">
-          <Link
-            to="/login/admin"
-            onClick={onClose}
-            className="text-blue-600 hover:text-blue-700 font-medium text-sm"
-          >
-            Member admin login →
-          </Link>
-        </div>
-
-        {/* Account Creation */}
-        <div className="text-center">
-          <p className="text-sm text-gray-600 mb-2">
-            Don't have an account yet?
-          </p>
-          <Link
-            to="/create-account"
-            onClick={onClose}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Create an account →
-          </Link>
-        </div>
+    <div className="fixed inset-0 z-50 grid place-items-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <h2 className="mb-3 text-xl font-semibold">Welcome to Apply Hub</h2>
+        <GoogleSignupButton />
+        <div className="my-2 text-center text-xs text-gray-500">or</div>
+        <GoogleLoginButton />
+        <button
+          onClick={onClose}
+          className="absolute right-3 top-3 rounded p-1 text-gray-400 hover:bg-gray-100"
+        >
+          ✕
+        </button>
       </div>
     </div>
   );
