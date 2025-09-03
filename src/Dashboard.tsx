@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import DashboardHeader from "./components/DashboardHeader.tsx";
 import DashboardNavigation from "./components/DashboardNavigation.tsx";
-import SignOutButton from "./components/SignOutButton.tsx";
 
 // Expanded corps data
 const allCorps = [
@@ -456,13 +455,6 @@ function Dashboard() {
         ]}
       />
       <DashboardNavigation />
-
-      {/* Sign Out Button for Testing */}
-      <div className="max-w-6xl mx-auto px-8 py-4">
-        <div className="flex justify-end">
-          <SignOutButton />
-        </div>
-      </div>
 
       <div className="max-w-6xl mx-auto px-8 py-8">
         {/* Page Content */}

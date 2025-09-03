@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import UserInfo from "./UserInfo";
 
 interface DashboardHeaderProps {
   title?: string;
@@ -53,14 +54,9 @@ export default function DashboardHeader({
             </div>
           )}
 
-          {/* Right side - Back to Home button with responsive sizing */}
+          {/* Right side - User info */}
           <div className="flex items-center">
-            <Link
-              to="/"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-4 sm:py-2 sm:px-5 md:py-2 md:px-6 rounded-lg transition-colors shadow-lg text-sm sm:text-base"
-            >
-              Back to Home
-            </Link>
+            <UserInfo />
           </div>
         </div>
       </div>

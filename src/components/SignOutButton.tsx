@@ -15,7 +15,7 @@ export default function SignOutButton({
         await supabase.auth.signOut();
         nav("/", { replace: true });
       }}
-      className={`rounded-lg border px-3 py-2 hover:bg-gray-50 ${className}`}
+      className={`bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-4 sm:py-2 sm:px-5 md:py-2 md:px-6 rounded-lg transition-colors shadow-lg text-sm sm:text-base ${className}`}
     >
       Sign out
     </button>
