@@ -5,6 +5,9 @@ import LaunchPage from "./LaunchPage";
 import Dashboard from "./Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedSuperRoute from "./components/ProtectedSuperRoute";
+import ProtectedCMRoute from "./components/ProtectedCMRoute";
+import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
+import ProtectedReviewerRoute from "./components/ProtectedReviewerRoute";
 import PostAuth from "./PostAuth";
 import Onboarding from "./Onboarding";
 import NotFound from "./components/NotFound";
@@ -67,25 +70,25 @@ export default function App() {
           <Route
             path="/cm"
             element={
-              <ProtectedRoute>
+              <ProtectedCMRoute>
                 <CoalitionManagerHome />
-              </ProtectedRoute>
+              </ProtectedCMRoute>
             }
           />
           <Route
             path="/admin"
             element={
-              <ProtectedRoute>
+              <ProtectedAdminRoute>
                 <OrgAdminHome />
-              </ProtectedRoute>
+              </ProtectedAdminRoute>
             }
           />
           <Route
             path="/reviewer"
             element={
-              <ProtectedRoute>
+              <ProtectedReviewerRoute>
                 <ReviewerHome />
-              </ProtectedRoute>
+              </ProtectedReviewerRoute>
             }
           />
           <Route path="*" element={<NotFound />} />
