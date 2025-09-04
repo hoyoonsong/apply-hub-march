@@ -25,6 +25,7 @@ interface Organization {
   id: string;
   name: string;
   slug: string;
+  description?: string;
 }
 
 export default function Programs() {
@@ -36,6 +37,7 @@ export default function Programs() {
 
   // Form state
   const [organizationId, setOrganizationId] = useState("");
+  const [orgSearchTerm, setOrgSearchTerm] = useState("");
   const [name, setName] = useState("");
   const [type, setType] = useState<"audition" | "scholarship">("audition");
   const [description, setDescription] = useState("");
@@ -86,6 +88,7 @@ export default function Programs() {
       });
       setSuccess("Program created successfully");
       setOrganizationId("");
+      setOrgSearchTerm("");
       setName("");
       setType("audition");
       setDescription("");
@@ -105,6 +108,10 @@ export default function Programs() {
       setSubmitting(false);
     }
   };
+
+  const filteredOrgs = orgs.filter((org) =>
+    org.name.toLowerCase().includes(orgSearchTerm.toLowerCase())
+  );
 
   const isOpen = (program: Program) => {
     if (!program.open_at || !program.close_at) return false;
@@ -208,19 +215,63 @@ export default function Programs() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Organization *
                 </label>
-                <select
-                  value={organizationId}
-                  onChange={(e) => setOrganizationId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select organization</option>
-                  {orgs.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Search organizations..."
+                    value={orgSearchTerm}
+                    onChange={(e) => setOrgSearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+
+                  {orgSearchTerm && filteredOrgs.length > 0 ? (
+                    <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-md">
+                      {filteredOrgs.slice(0, 3).map((org) => (
+                        <div
+                          key={org.id}
+                          className={`px-3 py-2 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 ${
+                            organizationId === org.id
+                              ? "bg-blue-50 border-blue-200"
+                              : ""
+                          }`}
+                          onClick={() => setOrganizationId(org.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="text-sm font-medium text-gray-900">
+                                {org.name}
+                              </h3>
+                              {org.description && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {org.description}
+                                </p>
+                              )}
+                            </div>
+                            {organizationId === org.id && (
+                              <div className="text-blue-600">
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : orgSearchTerm ? (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                      No organizations found matching your search
+                    </div>
+                  ) : null}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

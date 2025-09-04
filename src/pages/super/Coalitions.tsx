@@ -25,6 +25,7 @@ interface Organization {
   id: string;
   name: string;
   slug: string;
+  description?: string;
 }
 
 interface CoalitionMember {
@@ -55,6 +56,7 @@ export default function Coalitions() {
 
   // Add member state
   const [selectedOrgId, setSelectedOrgId] = useState("");
+  const [orgSearchTerm, setOrgSearchTerm] = useState("");
 
   const loadData = async () => {
     try {
@@ -210,7 +212,9 @@ export default function Coalitions() {
   };
 
   const availableOrgs = orgs.filter(
-    (org) => !members.some((member) => member.organization_id === org.id)
+    (org) =>
+      !members.some((member) => member.organization_id === org.id) &&
+      org.name.toLowerCase().includes(orgSearchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -517,32 +521,75 @@ export default function Coalitions() {
                     </h2>
                   </div>
                   <div className="p-6">
-                    <div className="flex space-x-2">
-                      <select
-                        value={selectedOrgId}
-                        onChange={(e) => setSelectedOrgId(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Select organization</option>
-                        {availableOrgs.map((org) => (
-                          <option key={org.id} value={org.id}>
-                            {org.name}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="space-y-4">
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Search organizations..."
+                          value={orgSearchTerm}
+                          onChange={(e) => setOrgSearchTerm(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      {availableOrgs.length > 0 ? (
+                        <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+                          {availableOrgs.slice(0, 3).map((org) => (
+                            <div
+                              key={org.id}
+                              className={`px-4 py-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 ${
+                                selectedOrgId === org.id
+                                  ? "bg-blue-50 border-blue-200"
+                                  : ""
+                              }`}
+                              onClick={() => setSelectedOrgId(org.id)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h3 className="text-sm font-medium text-gray-900">
+                                    {org.name}
+                                  </h3>
+                                  {org.description && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {org.description}
+                                    </p>
+                                  )}
+                                </div>
+                                {selectedOrgId === org.id && (
+                                  <div className="text-blue-600">
+                                    <svg
+                                      className="w-5 h-5"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          {orgSearchTerm
+                            ? "No organizations found matching your search"
+                            : "All organizations are already members"}
+                        </div>
+                      )}
+
                       <button
                         onClick={handleAddMember}
                         disabled={!selectedOrgId}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                       >
-                        Add
+                        Add Selected Organization
                       </button>
                     </div>
-                    {availableOrgs.length === 0 && (
-                      <p className="text-sm text-gray-500 mt-2">
-                        All organizations are already members
-                      </p>
-                    )}
                   </div>
                 </div>
               </>
