@@ -89,7 +89,7 @@ export default function SuperHome() {
                   Programs
                 </h3>
                 <p className="text-sm text-gray-500">
-                  Manage auditions and scholarships
+                  Review, approve & publish programs
                 </p>
               </div>
             </div>

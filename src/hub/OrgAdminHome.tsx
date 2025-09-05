@@ -29,7 +29,14 @@ export default function OrgAdminHome() {
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <HubTile title="Create Program" subtitle="Auditions & scholarships" />
+          <Link to="/admin/programs" className="block">
+            <HubTile
+              title="Programs"
+              subtitle="Create, edit, and manage programs"
+              disabled={false}
+              onClick={() => {}}
+            />
+          </Link>
           <HubTile
             title="Manage Reviewers"
             subtitle="Assign reviewers to org/program scopes"

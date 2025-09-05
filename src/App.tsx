@@ -16,6 +16,8 @@ import Orgs from "./pages/super/Orgs";
 import Programs from "./pages/super/Programs";
 import Coalitions from "./pages/super/Coalitions";
 import Users from "./pages/super/Users";
+import SuperProgramsReview from "./pages/super/SuperProgramsReview";
+import AdminPrograms from "./pages/admin/AdminPrograms";
 import CoalitionManagerHome from "./hub/CoalitionManagerHome";
 import OrgAdminHome from "./hub/OrgAdminHome";
 import ReviewerHome from "./hub/ReviewerHome";
@@ -56,7 +58,7 @@ export default function App() {
             path="/super/programs"
             element={
               <ProtectedSuperRoute>
-                <Programs />
+                <SuperProgramsReview />
               </ProtectedSuperRoute>
             }
           />
@@ -89,6 +91,14 @@ export default function App() {
             element={
               <ProtectedAdminRoute>
                 <OrgAdminHome />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/programs"
+            element={
+              <ProtectedAdminRoute>
+                <AdminPrograms />
               </ProtectedAdminRoute>
             }
           />
