@@ -18,6 +18,10 @@ import Coalitions from "./pages/super/Coalitions";
 import Users from "./pages/super/Users";
 import SuperProgramsReview from "./pages/super/SuperProgramsReview";
 import AdminPrograms from "./pages/admin/AdminPrograms";
+import OrgHome from "./pages/public/OrgHome";
+import CoalitionHome from "./pages/public/CoalitionHome";
+import ProgramDetail from "./pages/public/ProgramDetail";
+import PublicRouteGuard from "./components/PublicRouteGuard";
 import CoalitionManagerHome from "./hub/CoalitionManagerHome";
 import OrgAdminHome from "./hub/OrgAdminHome";
 import ReviewerHome from "./hub/ReviewerHome";
@@ -108,6 +112,31 @@ export default function App() {
               <ProtectedReviewerRoute>
                 <ReviewerHome />
               </ProtectedReviewerRoute>
+            }
+          />
+          {/* Public routes */}
+          <Route
+            path="/orgs/:slug"
+            element={
+              <PublicRouteGuard type="org">
+                <OrgHome />
+              </PublicRouteGuard>
+            }
+          />
+          <Route
+            path="/coalitions/:slug"
+            element={
+              <PublicRouteGuard type="coalition">
+                <CoalitionHome />
+              </PublicRouteGuard>
+            }
+          />
+          <Route
+            path="/programs/:id"
+            element={
+              <PublicRouteGuard type="program">
+                <ProgramDetail />
+              </PublicRouteGuard>
             }
           />
           <Route path="*" element={<NotFound />} />
