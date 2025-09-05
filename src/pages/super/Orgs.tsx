@@ -211,7 +211,7 @@ export default function Orgs() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Organization name"
                   required
                 />
@@ -224,7 +224,7 @@ export default function Orgs() {
                   type="text"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="organization-slug"
                   required
                 />
@@ -246,7 +246,7 @@ export default function Orgs() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-md transition-colors h-10"
               >
                 {submitting ? "Creating..." : "Create Organization"}
               </button>
@@ -262,22 +262,22 @@ export default function Orgs() {
             </h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="w-full min-w-[600px] divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[150px]">
                     Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
                     Slug
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
                     Description
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px] hidden sm:table-cell">
                     Created
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[80px]">
                     Actions
                   </th>
                 </tr>
@@ -285,19 +285,19 @@ export default function Orgs() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {orgs.map((org) => (
                   <tr key={org.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {org.name}
+                    <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900 w-[150px]">
+                      <div className="truncate">{org.name}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {org.slug}
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 w-[120px]">
+                      <div className="truncate">{org.slug}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {org.description || "-"}
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 min-w-[200px]">
+                      <div className="truncate">{org.description || "-"}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 w-[100px] hidden sm:table-cell">
                       {new Date(org.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-4 text-right text-sm font-medium w-[80px]">
                       <button
                         onClick={() => handleSoftDelete(org.id)}
                         className="text-red-600 hover:text-red-900"

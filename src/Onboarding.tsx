@@ -27,29 +27,34 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="mx-auto mt-16 max-w-md rounded-2xl border p-6">
-      <h1 className="mb-2 text-2xl font-semibold">Create your account</h1>
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Full name"
-        className="mb-4 w-full rounded-lg border px-3 py-2"
-      />
-      <label className="mb-6 flex items-center gap-2 text-sm">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+        <h1 className="mb-4 text-2xl sm:text-3xl font-semibold text-gray-900">
+          Create your account
+        </h1>
         <input
-          type="checkbox"
-          checked={agree}
-          onChange={(e) => setAgree(e.target.checked)}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Full name"
+          className="mb-4 w-full h-10 rounded-lg border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
-        I agree to the Terms & Privacy Policy
-      </label>
-      <button
-        disabled={!agree || busy}
-        onClick={submit}
-        className="w-full rounded-lg bg-black px-4 py-2 text-white disabled:opacity-60"
-      >
-        {busy ? "Saving…" : "Finish sign up"}
-      </button>
+        <label className="mb-6 flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={agree}
+            onChange={(e) => setAgree(e.target.checked)}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          I agree to the Terms & Privacy Policy
+        </label>
+        <button
+          disabled={!agree || busy}
+          onClick={submit}
+          className="w-full h-10 rounded-lg bg-black hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed px-4 text-white font-medium transition-colors"
+        >
+          {busy ? "Saving…" : "Finish sign up"}
+        </button>
+      </div>
     </div>
   );
 }

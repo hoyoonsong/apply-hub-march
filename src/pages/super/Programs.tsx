@@ -221,7 +221,7 @@ export default function Programs() {
                     placeholder="Search organizations..."
                     value={orgSearchTerm}
                     onChange={(e) => setOrgSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
 
                   {orgSearchTerm && filteredOrgs.length > 0 ? (
@@ -281,7 +281,7 @@ export default function Programs() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Program name"
                   required
                 />
@@ -295,7 +295,7 @@ export default function Programs() {
                   onChange={(e) =>
                     setType(e.target.value as "audition" | "scholarship")
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="audition">Audition</option>
                   <option value="scholarship">Scholarship</option>
@@ -309,7 +309,7 @@ export default function Programs() {
                   type="date"
                   value={openAt}
                   onChange={(e) => setOpenAt(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -320,7 +320,7 @@ export default function Programs() {
                   type="date"
                   value={closeAt}
                   onChange={(e) => setCloseAt(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="flex items-center">
@@ -355,7 +355,7 @@ export default function Programs() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-md transition-colors h-10"
               >
                 {submitting ? "Creating..." : "Create Program"}
               </button>
@@ -371,28 +371,28 @@ export default function Programs() {
             </h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="w-full min-w-[800px] divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
                     Org
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[150px]">
                     Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">
                     Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">
                     Published
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px] hidden sm:table-cell">
                     Open Window
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[80px]">
                     Is Open
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px] hidden sm:table-cell">
                     Created
                   </th>
                 </tr>
@@ -400,13 +400,15 @@ export default function Programs() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {programs.map((program) => (
                   <tr key={program.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {program.organization_name}
+                    <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900 w-[120px]">
+                      <div className="truncate">
+                        {program.organization_name}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {program.name}
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 w-[150px]">
+                      <div className="truncate">{program.name}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 w-[100px]">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           program.type === "audition"
@@ -417,7 +419,7 @@ export default function Programs() {
                         {program.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 w-[100px]">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           program.published
@@ -428,7 +430,7 @@ export default function Programs() {
                         {program.published ? "Yes" : "No"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 w-[140px] hidden sm:table-cell">
                       <div className="text-xs">
                         {program.open_at
                           ? new Date(program.open_at).toLocaleDateString()
@@ -439,7 +441,7 @@ export default function Programs() {
                           : ""}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 w-[80px]">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           isOpen(program)
@@ -450,7 +452,7 @@ export default function Programs() {
                         {isOpen(program) ? "Yes" : "No"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 w-[100px] hidden sm:table-cell">
                       {new Date(program.created_at).toLocaleDateString()}
                     </td>
                   </tr>

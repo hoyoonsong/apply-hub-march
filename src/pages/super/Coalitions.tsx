@@ -318,7 +318,7 @@ export default function Coalitions() {
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Coalition name"
                       required
                     />
@@ -331,7 +331,7 @@ export default function Coalitions() {
                       type="text"
                       value={slug}
                       onChange={(e) => setSlug(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="coalition-slug"
                       required
                     />
@@ -353,7 +353,7 @@ export default function Coalitions() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-md transition-colors h-10"
                   >
                     {submitting ? "Creating..." : "Create Coalition"}
                   </button>
@@ -528,7 +528,7 @@ export default function Coalitions() {
                           placeholder="Search organizations..."
                           value={orgSearchTerm}
                           onChange={(e) => setOrgSearchTerm(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
 
@@ -585,7 +585,7 @@ export default function Coalitions() {
                       <button
                         onClick={handleAddMember}
                         disabled={!selectedOrgId}
-                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                        className="w-full h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                       >
                         Add Selected Organization
                       </button>

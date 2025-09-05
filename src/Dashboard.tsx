@@ -270,9 +270,9 @@ function FeaturedCorps() {
             placeholder="Search for a drum corps..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-6 py-3 text-base border-2 border-gray-200 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 transition-all duration-200 hover:shadow-xl focus:shadow-xl"
+            className="w-full h-12 px-6 text-base border-2 border-gray-200 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 transition-all duration-200 hover:shadow-xl focus:shadow-xl"
           />
-          <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition-colors text-sm font-medium">
+          <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition-colors text-sm font-medium h-8">
             Search
           </button>
         </div>
@@ -352,9 +352,9 @@ function FeaturedScholarships() {
             placeholder="Search for scholarships..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-6 py-3 text-base border-2 border-gray-200 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 transition-all duration-200 hover:shadow-xl focus:shadow-xl"
+            className="w-full h-12 px-6 text-base border-2 border-gray-200 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 transition-all duration-200 hover:shadow-xl focus:shadow-xl"
           />
-          <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition-colors text-sm font-medium">
+          <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition-colors text-sm font-medium h-8">
             Search
           </button>
         </div>
