@@ -1,46 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { loadCapabilities } from "../lib/capabilities";
 
 export default function ProtectedCMRoute({
   children,
 }: {
   children: JSX.Element;
 }) {
-  const [loading, setLoading] = useState(true);
-  const [isCoalitionManager, setIsCoalitionManager] = useState(false);
+  const [ok, setOk] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const checkCoalitionManager = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session?.user) {
-          setIsCoalitionManager(false);
-          setLoading(false);
-          return;
-        }
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-
-        setIsCoalitionManager(profile?.role === "coalition_manager");
-      } catch (error) {
-        console.error("Error checking coalition manager status:", error);
-        setIsCoalitionManager(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkCoalitionManager();
+    loadCapabilities()
+      .then((caps) => {
+        const hasCoalitions = caps.coalitions.length > 0;
+        const isSuper = localStorage.getItem("isSuper") === "1";
+        setOk(hasCoalitions || isSuper);
+      })
+      .catch(() => setOk(false));
   }, []);
 
-  if (loading) {
+  if (ok === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -51,5 +30,5 @@ export default function ProtectedCMRoute({
     );
   }
 
-  return isCoalitionManager ? children : <Navigate to="/" replace />;
+  return ok ? children : <Navigate to="/" replace />;
 }

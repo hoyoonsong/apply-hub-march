@@ -1,46 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { loadCapabilities } from "../lib/capabilities";
 
 export default function ProtectedAdminRoute({
   children,
 }: {
   children: JSX.Element;
 }) {
-  const [loading, setLoading] = useState(true);
-  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+  const [ok, setOk] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const checkOrgAdmin = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session?.user) {
-          setIsOrgAdmin(false);
-          setLoading(false);
-          return;
-        }
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-
-        setIsOrgAdmin(profile?.role === "admin");
-      } catch (error) {
-        console.error("Error checking organization admin status:", error);
-        setIsOrgAdmin(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkOrgAdmin();
+    loadCapabilities()
+      .then((caps) => {
+        const hasAdminOrgs = caps.adminOrgs.length > 0;
+        const isSuper = localStorage.getItem("isSuper") === "1";
+        setOk(hasAdminOrgs || isSuper);
+      })
+      .catch(() => setOk(false));
   }, []);
 
-  if (loading) {
+  if (ok === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -51,5 +30,5 @@ export default function ProtectedAdminRoute({
     );
   }
 
-  return isOrgAdmin ? children : <Navigate to="/" replace />;
+  return ok ? children : <Navigate to="/" replace />;
 }

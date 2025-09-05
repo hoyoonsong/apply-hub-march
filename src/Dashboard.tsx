@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import DashboardHeader from "./components/DashboardHeader.tsx";
 import DashboardNavigation from "./components/DashboardNavigation.tsx";
+import CapabilityHub from "./components/CapabilityHub.tsx";
+import { loadCapabilities, hasAnyCapabilities } from "./lib/capabilities";
 
 // Expanded corps data
 const allCorps = [
@@ -465,4 +468,80 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+function SmartDashboard() {
+  const [capabilities, setCapabilities] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+
+  const refreshCapabilities = async () => {
+    try {
+      const caps = await loadCapabilities();
+      console.log("SmartDashboard - loaded capabilities:", caps);
+      setCapabilities(caps);
+    } catch (error) {
+      console.error("Failed to load capabilities:", error);
+    }
+  };
+
+  useEffect(() => {
+    refreshCapabilities().finally(() => setLoading(false));
+  }, []);
+
+  // Refresh capabilities when navigating to dashboard
+  useEffect(() => {
+    if (location.pathname === "/dashboard") {
+      refreshCapabilities();
+    }
+  }, [location.pathname]);
+
+  // Periodically refresh capabilities to handle demotion
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshCapabilities();
+    }, 10000); // Check every 10 seconds for more responsive updates
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Also refresh when the page becomes visible (user switches back to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshCapabilities();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user has any capabilities, show the capability hub
+  const hasCapabilities = capabilities && hasAnyCapabilities(capabilities);
+  console.log(
+    "SmartDashboard - hasCapabilities:",
+    hasCapabilities,
+    "capabilities:",
+    capabilities
+  );
+
+  if (hasCapabilities) {
+    return <CapabilityHub />;
+  }
+
+  // Otherwise, show the regular dashboard for applicants
+  return <Dashboard />;
+}
+
+export default SmartDashboard;

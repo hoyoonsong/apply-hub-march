@@ -15,12 +15,15 @@ export default function PostAuth() {
       // Ensure profile exists (no DB trigger needed)
       const { data } = await supabase
         .from("profiles")
-        .select("id, onboarded_at")
+        .select("id, onboarded_at, role")
         .eq("id", session.user.id)
         .maybeSingle();
       if (!data) {
         await supabase.from("profiles").insert({ id: session.user.id });
       }
+
+      // Set isSuper flag for convenience
+      localStorage.setItem("isSuper", data?.role === "superadmin" ? "1" : "0");
 
       const intent = (sessionStorage.getItem("authIntent") || "") as
         | "signup"

@@ -1,46 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { loadCapabilities } from "../lib/capabilities";
 
 export default function ProtectedReviewerRoute({
   children,
 }: {
   children: JSX.Element;
 }) {
-  const [loading, setLoading] = useState(true);
-  const [isReviewer, setIsReviewer] = useState(false);
+  const [ok, setOk] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const checkReviewer = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session?.user) {
-          setIsReviewer(false);
-          setLoading(false);
-          return;
-        }
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-
-        setIsReviewer(profile?.role === "reviewer");
-      } catch (error) {
-        console.error("Error checking reviewer status:", error);
-        setIsReviewer(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkReviewer();
+    loadCapabilities()
+      .then((caps) => {
+        const hasReviewerOrgs = caps.reviewerOrgs.length > 0;
+        const isSuper = localStorage.getItem("isSuper") === "1";
+        setOk(hasReviewerOrgs || isSuper);
+      })
+      .catch(() => setOk(false));
   }, []);
 
-  if (loading) {
+  if (ok === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -51,5 +30,5 @@ export default function ProtectedReviewerRoute({
     );
   }
 
-  return isReviewer ? children : <Navigate to="/" replace />;
+  return ok ? children : <Navigate to="/" replace />;
 }

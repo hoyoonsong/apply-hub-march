@@ -160,6 +160,40 @@ export default function SuperHome() {
               </div>
             </div>
           </Link>
+
+          {/* Assignments Card */}
+          <Link
+            to="/super/assignments"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-orange-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Assignments
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Assign roles and permissions
+                </p>
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
     </div>
