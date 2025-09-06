@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Navigate } from "react-router-dom";
 import DashboardHeader from "./components/DashboardHeader.tsx";
 import DashboardNavigation from "./components/DashboardNavigation.tsx";
 import CapabilityHub from "./components/CapabilityHub.tsx";
@@ -525,6 +525,11 @@ function SmartDashboard() {
         </div>
       </div>
     );
+  }
+
+  // If user is superadmin, redirect to /super
+  if (capabilities?.userRole === "superadmin") {
+    return <Navigate to="/super" replace />;
   }
 
   // If user has any capabilities, show the capability hub

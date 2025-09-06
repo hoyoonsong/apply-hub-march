@@ -786,9 +786,9 @@ function AdminBlock({
           onRevoke={() => revoke(r.scope_id)}
         />
       ))}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <select
-          className="border rounded px-2 py-1 flex-1"
+          className="border rounded px-2 py-1 flex-1 min-w-0"
           value={orgId}
           onChange={(e) => setOrgId(e.target.value)}
         >
@@ -801,7 +801,7 @@ function AdminBlock({
         </select>
         <button
           onClick={add}
-          className="bg-blue-600 text-white px-3 py-1 rounded"
+          className="bg-blue-600 text-white px-3 py-1 rounded flex-shrink-0 w-full sm:w-auto"
         >
           Add
         </button>
@@ -867,62 +867,64 @@ function ReviewerBlock({
           onRevoke={() => revoke(r.scope_type, r.scope_id)}
         />
       ))}
-      <div className="flex flex-wrap gap-2">
-        <select
-          className="border rounded px-2 py-1"
-          value={scopeType}
-          onChange={(e) => setScopeType(e.target.value as any)}
-        >
-          <option value="org">Org</option>
-          <option value="program">Program</option>
-        </select>
-
-        {scopeType === "org" ? (
+      <div className="space-y-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <select
-            className="border rounded px-2 py-1 flex-1"
-            value={orgId}
-            onChange={(e) => setOrgId(e.target.value)}
+            className="border rounded px-2 py-1 flex-shrink-0 w-full sm:w-auto"
+            value={scopeType}
+            onChange={(e) => setScopeType(e.target.value as any)}
           >
-            <option value="">Select organization…</option>
-            {orgs.map((o: any) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
+            <option value="org">Org</option>
+            <option value="program">Program</option>
           </select>
-        ) : (
-          <>
+
+          {scopeType === "org" ? (
             <select
-              className="border rounded px-2 py-1"
+              className="border rounded px-2 py-1 flex-1 min-w-0"
               value={orgId}
               onChange={(e) => setOrgId(e.target.value)}
             >
-              <option value="">Org…</option>
+              <option value="">Select organization…</option>
               {orgs.map((o: any) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
                 </option>
               ))}
             </select>
-            <select
-              className="border rounded px-2 py-1 flex-1"
-              value={programId}
-              onChange={(e) => setProgramId(e.target.value)}
-              disabled={!orgId}
-            >
-              <option value="">Program…</option>
-              {programs.map((p: any) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-2 flex-1">
+              <select
+                className="border rounded px-2 py-1 flex-1 min-w-0"
+                value={orgId}
+                onChange={(e) => setOrgId(e.target.value)}
+              >
+                <option value="">Org…</option>
+                {orgs.map((o: any) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="border rounded px-2 py-1 flex-1 min-w-0"
+                value={programId}
+                onChange={(e) => setProgramId(e.target.value)}
+                disabled={!orgId}
+              >
+                <option value="">Program…</option>
+                {programs.map((p: any) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
 
         <button
           onClick={add}
-          className="bg-blue-600 text-white px-3 py-1 rounded"
+          className="bg-blue-600 text-white px-3 py-1 rounded w-full sm:w-auto"
         >
           Add
         </button>
@@ -977,9 +979,9 @@ function CoalitionBlock({
           onRevoke={() => revoke(r.coalition_id)}
         />
       ))}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <select
-          className="border rounded px-2 py-1 flex-1"
+          className="border rounded px-2 py-1 flex-1 min-w-0"
           value={coalitionId}
           onChange={(e) => setCoalitionId(e.target.value)}
         >
@@ -992,7 +994,7 @@ function CoalitionBlock({
         </select>
         <button
           onClick={add}
-          className="bg-blue-600 text-white px-3 py-1 rounded"
+          className="bg-blue-600 text-white px-3 py-1 rounded flex-shrink-0 w-full sm:w-auto"
         >
           Add
         </button>

@@ -14,12 +14,6 @@ export default function SuperHome() {
                 Manage organizations, programs, and coalitions
               </p>
             </div>
-            <Link
-              to="/dashboard"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-            >
-              Back to Dashboard
-            </Link>
           </div>
         </div>
       </div>
