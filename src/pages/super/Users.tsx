@@ -179,7 +179,7 @@ export default function Users() {
 
     const { data, error } = await supabase.rpc("super_list_users_v1", {
       p_search: search === "" ? null : search,
-      p_role_filter: roleFilter === "" ? null : roleFilter,
+      p_role_filter: null, // Don't filter by role on backend - we'll do it client-side
       p_limit: 1000, // Large limit instead of pagination
       p_offset: 0,
     });
@@ -198,7 +198,7 @@ export default function Users() {
     // reset selection when filters change
     setSelected({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, roleFilter]);
+  }, [search]); // Only refetch when search changes, not roleFilter
 
   // Load effective roles for all users when users data changes
   useEffect(() => {
@@ -220,6 +220,46 @@ export default function Users() {
     }
   }, [users]);
 
+  // Filter users based on effective roles
+  function filterUsersByEffectiveRole(
+    users: Profile[],
+    roleFilter: UserRole | ""
+  ): Profile[] {
+    if (roleFilter === "") return users;
+
+    return users.filter((user) => {
+      const effective = effectiveCache[user.id];
+      if (!effective) return false; // Don't show users whose effective roles haven't loaded yet
+
+      switch (roleFilter) {
+        case "superadmin":
+          return (
+            user.role === "superadmin" || effective.superadmin_from_profile
+          );
+        case "admin":
+          return effective.has_admin;
+        case "reviewer":
+          return effective.has_reviewer;
+        case "coalition_manager":
+          return effective.has_co_manager;
+        case "applicant":
+          // Show users who have no effective roles (only applicant)
+          return (
+            !effective.has_admin &&
+            !effective.has_reviewer &&
+            !effective.has_co_manager &&
+            user.role !== "superadmin" &&
+            !effective.superadmin_from_profile
+          );
+        default:
+          return true;
+      }
+    });
+  }
+
+  // Get filtered users based on role filter
+  const filteredUsers = filterUsersByEffectiveRole(users, roleFilter);
+
   // helpers
   function toggleSelectAll(check: boolean) {
     if (!check) {
@@ -227,7 +267,7 @@ export default function Users() {
       return;
     }
     const map: Record<string, boolean> = {};
-    users.forEach((u) => (map[u.id] = true));
+    filteredUsers.forEach((u) => (map[u.id] = true));
     setSelected(map);
   }
 
@@ -399,6 +439,7 @@ export default function Users() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-700">
                     {Object.values(selected).filter(Boolean).length} selected
+                    {roleFilter !== "" && ` (filtered by ${roleFilter})`}
                   </span>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -460,7 +501,7 @@ export default function Users() {
                 <span className="text-gray-600">Loading users...</span>
               </div>
             </div>
-          ) : users.length === 0 ? (
+          ) : filteredUsers.length === 0 ? (
             <div className="p-12 text-center">
               <svg
                 className="mx-auto h-12 w-12 text-gray-400 mb-4"
@@ -508,7 +549,7 @@ export default function Users() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((u) => (
+                  {filteredUsers.map((u) => (
                     <React.Fragment key={u.id}>
                       <tr
                         className={`hover:bg-gray-50 ${
