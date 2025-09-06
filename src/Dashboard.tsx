@@ -532,16 +532,21 @@ function SmartDashboard() {
     return <Navigate to="/super" replace />;
   }
 
-  // If user has any capabilities, show the capability hub
-  const hasCapabilities = capabilities && hasAnyCapabilities(capabilities);
+  // If user has actual assignments (not just role-based capabilities), show the capability hub
+  const hasActualAssignments =
+    capabilities &&
+    (capabilities.adminOrgs.length > 0 ||
+      capabilities.reviewerOrgs.length > 0 ||
+      capabilities.coalitions.length > 0);
+
   console.log(
-    "SmartDashboard - hasCapabilities:",
-    hasCapabilities,
+    "SmartDashboard - hasActualAssignments:",
+    hasActualAssignments,
     "capabilities:",
     capabilities
   );
 
-  if (hasCapabilities) {
+  if (hasActualAssignments) {
     return <CapabilityHub />;
   }
 
