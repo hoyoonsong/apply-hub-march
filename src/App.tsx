@@ -6,8 +6,6 @@ import LaunchPage from "./LaunchPage";
 import Dashboard from "./Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedSuperRoute from "./components/ProtectedSuperRoute";
-import ProtectedCMRoute from "./components/ProtectedCMRoute";
-import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import PostAuth from "./PostAuth";
 import Onboarding from "./Onboarding";
 import NotFound from "./components/NotFound";
@@ -18,11 +16,6 @@ import Programs from "./pages/super/Programs";
 import Coalitions from "./pages/super/Coalitions";
 import Users from "./pages/super/Users";
 import SuperProgramsReview from "./pages/super/SuperProgramsReview";
-import AdminPrograms from "./pages/admin/AdminPrograms";
-import AdminHome from "./pages/admin/AdminHome";
-import AdminScopePicker from "./pages/admin/AdminScopePicker";
-import CmHome from "./pages/cm/CmHome";
-import CoalitionScopePicker from "./pages/cm/CoalitionScopePicker";
 import ReviewerHome from "./pages/reviewer/ReviewerHome";
 import ReviewerScopePicker from "./pages/reviewer/ReviewerScopePicker";
 import Assignments from "./pages/super/Assignments";
@@ -102,14 +95,6 @@ export default function App() {
               }
             />
             <Route
-              path="/cm"
-              element={
-                <ProtectedCMRoute>
-                  <CoalitionScopePicker />
-                </ProtectedCMRoute>
-              }
-            />
-            <Route
               path="/coalition/:slug/cm"
               element={
                 <ProtectedRoute>
@@ -117,22 +102,6 @@ export default function App() {
                     <CoalitionManagerHome />
                   </ProtectedCoalitionRoute>
                 </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedAdminRoute>
-                  <AdminScopePicker />
-                </ProtectedAdminRoute>
-              }
-            />
-            <Route
-              path="/admin/programs"
-              element={
-                <ProtectedAdminRoute>
-                  <AdminPrograms />
-                </ProtectedAdminRoute>
               }
             />
             <Route

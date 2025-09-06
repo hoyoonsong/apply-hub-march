@@ -62,27 +62,41 @@ export type Capabilities = {
 };
 
 export async function loadCapabilities(): Promise<Capabilities> {
-  const [adminOrgs, reviewerOrgs, coalitions, userRole] = await Promise.all([
-    fetchAdminOrgs().catch(() => []),
-    fetchReviewerOrgs().catch(() => []),
-    fetchCoalitions().catch(() => []),
-    getUserRole().catch(() => null),
-  ]);
+  let adminOrgs: OrgMini[] = [];
+  let reviewerOrgs: OrgMini[] = [];
+  let coalitions: CoalitionMini[] = [];
+  let userRole: string | null = null;
+  let rpcsWorking = true;
+
+  try {
+    const [adminResult, reviewerResult, coalitionResult, roleResult] =
+      await Promise.all([
+        fetchAdminOrgs(),
+        fetchReviewerOrgs(),
+        fetchCoalitions(),
+        getUserRole(),
+      ]);
+
+    adminOrgs = adminResult;
+    reviewerOrgs = reviewerResult;
+    coalitions = coalitionResult;
+    userRole = roleResult;
+  } catch (error) {
+    console.error("Error loading capabilities:", error);
+    rpcsWorking = false;
+  }
 
   console.log("loadCapabilities - final result:", {
     adminOrgs,
     reviewerOrgs,
     coalitions,
     userRole,
+    rpcsWorking,
   });
 
-  // If RPCs are not working but user has a role, create fallback data for testing
-  if (
-    userRole &&
-    adminOrgs.length === 0 &&
-    reviewerOrgs.length === 0 &&
-    coalitions.length === 0
-  ) {
+  // Only use fallback data if RPCs are actually not working (error occurred)
+  // Don't use fallback when RPCs work but return empty arrays (which is correct when no assignments)
+  if (!rpcsWorking && userRole) {
     console.log("RPCs not working, using role-based fallback for testing");
 
     if (userRole === "admin" || userRole === "superadmin") {
