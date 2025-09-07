@@ -1,7 +1,8 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import HubTile from "../components/HubTile";
 
 export default function OrgAdminHome() {
+  const { orgSlug } = useParams<{ orgSlug: string }>();
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -29,7 +30,7 @@ export default function OrgAdminHome() {
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Link to="/admin/programs" className="block">
+          <Link to={`/org/${orgSlug}/admin/programs`} className="block">
             <HubTile
               title="Programs"
               subtitle="Create, edit, and manage programs"

@@ -7,17 +7,17 @@ export default function ProtectedOrgAdminRoute({
 }: {
   children: JSX.Element;
 }) {
-  const { slug } = useParams();
+  const { orgSlug } = useParams();
   const [ok, setOk] = useState<null | boolean>(null);
 
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase.rpc("my_admin_orgs_v1");
       if (error) return setOk(false);
-      const allowed = (data ?? []).some((o: any) => o.slug === slug);
+      const allowed = (data ?? []).some((o: any) => o.slug === orgSlug);
       setOk(allowed);
     })();
-  }, [slug]);
+  }, [orgSlug]);
 
   if (ok === null)
     return <div className="p-6 text-gray-500">Checking access…</div>;

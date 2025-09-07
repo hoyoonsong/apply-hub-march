@@ -44,10 +44,32 @@ export function getReviewStatus(p?: Program | null): ReviewStatus {
 
 /* ========== Admin-side RPCs ========== */
 
+export type ProgramRow = {
+  id: string;
+  name: string;
+  type: "audition" | "scholarship" | string;
+  description: string | null;
+  open_at: string | null;
+  close_at: string | null;
+  published: boolean;
+  published_scope: "org" | "coalition" | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export async function adminListMyPrograms(): Promise<Program[]> {
   const { data, error } = await supabase.rpc("admin_list_my_programs_v1");
   if (error) throw new Error(error.message);
   return (data ?? []) as Program[];
+}
+
+export async function listOrgPrograms(orgId: string): Promise<ProgramRow[]> {
+  const { data, error } = await supabase.rpc("admin_list_org_programs_v1", {
+    p_org_id: orgId,
+  });
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function orgCreateProgramDraft(args: {

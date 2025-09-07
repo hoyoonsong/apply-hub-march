@@ -28,6 +28,7 @@ import ProtectedCoalitionRoute from "./components/scopes/ProtectedCoalitionRoute
 import ProtectedReviewerRoute from "./components/scopes/ProtectedReviewerRoute";
 import CoalitionManagerHome from "./hub/CoalitionManagerHome";
 import OrgAdminHome from "./hub/OrgAdminHome";
+import OrgAdminPrograms from "./pages/org-admin/OrgAdminPrograms";
 
 export default function App() {
   return (
@@ -105,11 +106,21 @@ export default function App() {
               }
             />
             <Route
-              path="/org/:slug/admin"
+              path="/org/:orgSlug/admin"
               element={
                 <ProtectedRoute>
                   <ProtectedOrgAdminRoute>
                     <OrgAdminHome />
+                  </ProtectedOrgAdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/:orgSlug/admin/programs"
+              element={
+                <ProtectedRoute>
+                  <ProtectedOrgAdminRoute>
+                    <OrgAdminPrograms />
                   </ProtectedOrgAdminRoute>
                 </ProtectedRoute>
               }
@@ -123,7 +134,7 @@ export default function App() {
               }
             />
             <Route
-              path="/org/:slug/reviewer"
+              path="/org/:orgSlug/reviewer"
               element={
                 <ProtectedRoute>
                   <ProtectedReviewerRoute>
@@ -134,7 +145,7 @@ export default function App() {
             />
             {/* Public routes */}
             <Route
-              path="/orgs/:slug"
+              path="/org/:orgSlug"
               element={
                 <PublicRouteGuard type="org">
                   <OrgHome />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { getOrgBySlug } from "../../lib/orgs";
 import ProgramCard from "../../components/ProgramCard";
 import type { Program } from "../../types/programs";
 
@@ -15,7 +16,7 @@ type Org = {
 };
 
 export default function OrgHome() {
-  const { slug } = useParams();
+  const { orgSlug } = useParams();
   const [org, setOrg] = useState<Org | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [search, setSearch] = useState("");
@@ -26,28 +27,13 @@ export default function OrgHome() {
     let mounted = true;
 
     async function load() {
-      if (!slug) return;
+      if (!orgSlug) return;
       setLoading(true);
       setError(null);
 
       try {
-        // First, try to get all organizations and find the one with matching slug
-        const { data: orgsData, error: orgsErr } = await supabase.rpc(
-          "super_list_orgs_v1",
-          { include_deleted: false }
-        );
-
-        if (orgsErr) {
-          if (!mounted) return;
-          setError("Failed to load organizations.");
-          setLoading(false);
-          return;
-        }
-
-        if (!mounted) return;
-
-        // Find organization by slug
-        const foundOrg = orgsData?.find((org: Org) => org.slug === slug);
+        // Get organization by slug using public table access
+        const foundOrg = await getOrgBySlug(orgSlug);
 
         if (!foundOrg) {
           if (!mounted) return;
@@ -101,7 +87,7 @@ export default function OrgHome() {
     return () => {
       mounted = false;
     };
-  }, [slug, search]);
+  }, [orgSlug, search]);
 
   if (loading)
     return (
@@ -146,7 +132,7 @@ export default function OrgHome() {
                 {org.name}
               </h1>
               {org.slug && (
-                <p className="mt-1 text-sm text-gray-500">/orgs/{org.slug}</p>
+                <p className="mt-1 text-sm text-gray-500">/org/{org.slug}</p>
               )}
               {org.description && (
                 <p className="mt-2 text-gray-600">{org.description}</p>

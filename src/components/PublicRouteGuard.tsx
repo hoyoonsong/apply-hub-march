@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { getOrgBySlug } from "../lib/orgs";
 
 type PublicRouteGuardProps = {
   children: React.ReactNode;
@@ -11,7 +12,7 @@ export default function PublicRouteGuard({
   children,
   type,
 }: PublicRouteGuardProps) {
-  const { slug, id } = useParams();
+  const { orgSlug, slug, id } = useParams();
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,21 +24,10 @@ export default function PublicRouteGuard({
       setLoading(true);
 
       try {
-        if (type === "org" && slug) {
-          const { data, error } = await supabase.rpc("super_list_orgs_v1", {
-            include_deleted: false,
-          });
-
-          if (error || !data) {
-            if (!mounted) return;
-            setIsValid(false);
-            setLoading(false);
-            return;
-          }
-
-          const exists = data.some((org: any) => org.slug === slug);
+        if (type === "org" && orgSlug) {
+          const org = await getOrgBySlug(orgSlug);
           if (!mounted) return;
-          setIsValid(exists);
+          setIsValid(!!org);
           setLoading(false);
         } else if (type === "coalition" && slug) {
           const { data, error } = await supabase.rpc(
@@ -90,7 +80,7 @@ export default function PublicRouteGuard({
     return () => {
       mounted = false;
     };
-  }, [type, slug, id]);
+  }, [type, orgSlug, slug, id]);
 
   if (loading) {
     return (
