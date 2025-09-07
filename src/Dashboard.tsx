@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, Navigate } from "react-router-dom";
+import { useLocation, Navigate, useNavigate } from "react-router-dom";
 import DashboardHeader from "./components/DashboardHeader.tsx";
 import DashboardNavigation from "./components/DashboardNavigation.tsx";
 import CapabilityHub from "./components/CapabilityHub.tsx";
@@ -251,6 +251,7 @@ const allScholarships = [
 function FeaturedCorps() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredCorps, setFilteredCorps] = useState(allCorps);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const filtered = allCorps.filter((corps) =>
@@ -315,6 +316,9 @@ function FeaturedCorps() {
                 </span>
                 <button
                   className={`${corps.buttonColor} text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors`}
+                  onClick={() => {
+                    navigate(`/org/${corps.slug}`);
+                  }}
                 >
                   Learn More
                 </button>
