@@ -536,7 +536,7 @@ function SmartDashboard() {
   const hasActualAssignments =
     capabilities &&
     (capabilities.adminOrgs.length > 0 ||
-      capabilities.reviewerOrgs.length > 0 ||
+      capabilities.reviewerPrograms.length > 0 ||
       capabilities.coalitions.length > 0);
 
   console.log(

@@ -12,6 +12,9 @@ import {
   updateUserRoleV2,
   getEffectiveRoles,
 } from "../../lib/assignments";
+import ProgramPicker from "../../components/ProgramPicker";
+import OrganizationPicker from "../../components/OrganizationPicker";
+import CoalitionPicker from "../../components/CoalitionPicker";
 
 type UserRole =
   | "applicant"
@@ -799,56 +802,96 @@ function AdminBlock({
   onChange: () => void;
   bumpIfNeeded: boolean;
 }) {
-  const [orgs, setOrgs] = useState<any[]>([]);
   const [orgId, setOrgId] = useState("");
-
-  useEffect(() => {
-    listAllOrgs().then(setOrgs);
-  }, []);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function add() {
     if (!orgId) return;
-    await upsertOrgAdmin(orgId, userId, "active");
-    if (bumpIfNeeded) await updateUserRoleV2(userId, "admin", false, "all");
-    setOrgId("");
-    await onChange();
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await upsertOrgAdmin(orgId, userId, "active");
+      if (bumpIfNeeded) await updateUserRoleV2(userId, "admin", false, "all");
+      setOrgId("");
+      await onChange();
+    } catch (err: any) {
+      console.error("Failed to add org admin:", err);
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   }
+
   async function revoke(scopeId: string) {
-    await upsertOrgAdmin(scopeId, userId, "revoked");
-    await onChange();
+    try {
+      await upsertOrgAdmin(scopeId, userId, "revoked");
+      await onChange();
+    } catch (err: any) {
+      console.error("Failed to revoke org admin:", err);
+      setError(err.message);
+    }
   }
 
   return (
     <Card title="Org Admin">
-      {rows.length === 0 && (
-        <div className="text-sm text-gray-500">No org admin assignments.</div>
+      {error && (
+        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+          {error}
+        </div>
       )}
-      {rows.map((r) => (
-        <RowItem
-          key={r.scope_id}
-          name={r.org_name || r.scope_name}
-          meta={`${r.scope_type} • ${r.status}`}
-          onRevoke={() => revoke(r.scope_id)}
-        />
-      ))}
+
+      {rows.length === 0 && (
+        <div className="text-sm text-gray-500 mb-3">
+          No org admin assignments.
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <div className="mb-3">
+          <div className="text-sm font-medium text-gray-700 mb-2">
+            Current admin assignments:
+          </div>
+          <div className="space-y-1">
+            {rows.map((r) => (
+              <div
+                key={r.scope_id}
+                className="flex items-center justify-between bg-gray-50 p-2 rounded"
+              >
+                <div>
+                  <div className="font-medium text-sm">
+                    {r.org_name || r.scope_name}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {r.scope_type} • {r.status}
+                  </div>
+                </div>
+                <button
+                  onClick={() => revoke(r.scope_id)}
+                  className="text-red-600 text-sm hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-2">
-        <select
-          className="border rounded px-2 py-1 flex-1 min-w-0"
+        <OrganizationPicker
           value={orgId}
-          onChange={(e) => setOrgId(e.target.value)}
-        >
-          <option value="">Select organization…</option>
-          {orgs.map((o: any) => (
-            <option key={o.id} value={o.id}>
-              {o.name}
-            </option>
-          ))}
-        </select>
+          onChange={setOrgId}
+          placeholder="Search organizations..."
+        />
         <button
           onClick={add}
-          className="bg-blue-600 text-white px-3 py-1 rounded flex-shrink-0 w-full sm:w-auto"
+          disabled={!orgId || saving}
+          className="bg-blue-600 text-white px-3 py-1 rounded flex-shrink-0 w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Add
+          {saving ? "Adding..." : "Add"}
         </button>
       </div>
     </Card>
@@ -866,112 +909,111 @@ function ReviewerBlock({
   onChange: () => void;
   bumpIfNeeded: boolean;
 }) {
-  const [orgs, setOrgs] = useState<any[]>([]);
-  const [scopeType, setScopeType] = useState<"org" | "program">("org");
-  const [orgId, setOrgId] = useState("");
-  const [programs, setPrograms] = useState<any[]>([]);
-  const [programId, setProgramId] = useState("");
+  const [programId, setProgramId] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    listAllOrgs().then(setOrgs);
-  }, []);
-  useEffect(() => {
-    if (scopeType === "program" && orgId)
-      listProgramsByOrg(orgId).then(setPrograms);
-    else setPrograms([]);
-  }, [scopeType, orgId]);
+  // Filter rows to only show program-scoped reviewer assignments
+  const programReviewerRows = rows.filter((r) => r.scope_type === "program");
 
-  async function add() {
-    if (scopeType === "org" && orgId) {
-      await upsertReviewer("org", orgId, userId, "active");
-    } else if (scopeType === "program" && programId) {
-      await upsertReviewer("program", programId, userId, "active");
-    } else {
-      return;
+  async function addReviewer() {
+    if (!programId) return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const { error } = await supabase.rpc("super_add_program_reviewer_v1", {
+        p_program_id: programId,
+        p_user_id: userId,
+        p_status: "active",
+      });
+
+      if (error) throw error;
+
+      if (bumpIfNeeded)
+        await updateUserRoleV2(userId, "reviewer", false, "all");
+      setProgramId("");
+      await onChange();
+    } catch (err: any) {
+      console.error("Failed to add reviewer:", err);
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
-    if (bumpIfNeeded) await updateUserRoleV2(userId, "reviewer", false, "all");
-    setOrgId("");
-    setProgramId("");
-    await onChange();
   }
-  async function revoke(scopeType: "org" | "program", scopeId: string) {
-    await upsertReviewer(scopeType, scopeId, userId, "revoked");
-    await onChange();
+
+  async function removeReviewer(programId: string) {
+    try {
+      const { error } = await supabase.rpc("super_remove_program_reviewer_v1", {
+        p_program_id: programId,
+        p_user_id: userId,
+      });
+
+      if (error) throw error;
+      await onChange();
+    } catch (err: any) {
+      console.error("Failed to remove reviewer:", err);
+      setError(err.message);
+    }
   }
 
   return (
     <Card title="Reviewer">
-      {rows.length === 0 && (
-        <div className="text-sm text-gray-500">No reviewer assignments.</div>
-      )}
-      {rows.map((r) => (
-        <RowItem
-          key={`${r.scope_type}:${r.scope_id}`}
-          name={r.scope_name}
-          meta={`${r.scope_type} • ${r.status}`}
-          onRevoke={() => revoke(r.scope_type, r.scope_id)}
-        />
-      ))}
-      <div className="space-y-2">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <select
-            className="border rounded px-2 py-1 flex-shrink-0 w-full sm:w-auto"
-            value={scopeType}
-            onChange={(e) => setScopeType(e.target.value as any)}
-          >
-            <option value="org">Org</option>
-            <option value="program">Program</option>
-          </select>
-
-          {scopeType === "org" ? (
-            <select
-              className="border rounded px-2 py-1 flex-1 min-w-0"
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
-            >
-              <option value="">Select organization…</option>
-              {orgs.map((o: any) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="flex flex-col sm:flex-row gap-2 flex-1">
-              <select
-                className="border rounded px-2 py-1 flex-1 min-w-0"
-                value={orgId}
-                onChange={(e) => setOrgId(e.target.value)}
-              >
-                <option value="">Org…</option>
-                {orgs.map((o: any) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="border rounded px-2 py-1 flex-1 min-w-0"
-                value={programId}
-                onChange={(e) => setProgramId(e.target.value)}
-                disabled={!orgId}
-              >
-                <option value="">Program…</option>
-                {programs.map((p: any) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+      {error && (
+        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+          {error}
         </div>
+      )}
+
+      {programReviewerRows.length === 0 && (
+        <div className="text-sm text-gray-500 mb-3">
+          No reviewer assignments.
+        </div>
+      )}
+
+      {programReviewerRows.length > 0 && (
+        <div className="mb-3">
+          <div className="text-sm font-medium text-gray-700 mb-2">
+            Current reviewer assignments:
+          </div>
+          <div className="space-y-1">
+            {programReviewerRows.map((r) => (
+              <div
+                key={`${r.scope_type}:${r.scope_id}`}
+                className="flex items-center justify-between bg-gray-50 p-2 rounded"
+              >
+                <div>
+                  <div className="font-medium text-sm">{r.scope_name}</div>
+                  <div className="text-xs text-gray-500">
+                    {r.scope_type} • {r.status}
+                  </div>
+                </div>
+                <button
+                  onClick={() => removeReviewer(r.scope_id)}
+                  className="text-red-600 text-sm hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        <ProgramPicker
+          value={programId}
+          onChange={setProgramId}
+          placeholder="Search programs..."
+        />
 
         <button
-          onClick={add}
-          className="bg-blue-600 text-white px-3 py-1 rounded w-full sm:w-auto"
+          onClick={addReviewer}
+          disabled={!programId || saving}
+          className="bg-blue-600 text-white px-3 py-1 rounded flex-shrink-0 w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Add
+          {saving ? "Adding..." : "Add"}
         </button>
       </div>
     </Card>
@@ -989,59 +1031,93 @@ function CoalitionBlock({
   onChange: () => void;
   bumpIfNeeded: boolean;
 }) {
-  const [cos, setCos] = useState<any[]>([]);
   const [coalitionId, setCoalitionId] = useState("");
-
-  useEffect(() => {
-    listAllCoalitions().then(setCos);
-  }, []);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function add() {
     if (!coalitionId) return;
-    await upsertCoalitionManager(coalitionId, userId, "active");
-    if (bumpIfNeeded)
-      await updateUserRoleV2(userId, "coalition_manager", false, "all");
-    setCoalitionId("");
-    await onChange();
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await upsertCoalitionManager(coalitionId, userId, "active");
+      if (bumpIfNeeded)
+        await updateUserRoleV2(userId, "coalition_manager", false, "all");
+      setCoalitionId("");
+      await onChange();
+    } catch (err: any) {
+      console.error("Failed to add coalition manager:", err);
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   }
+
   async function revoke(id: string) {
-    await upsertCoalitionManager(id, userId, "revoked");
-    await onChange();
+    try {
+      await upsertCoalitionManager(id, userId, "revoked");
+      await onChange();
+    } catch (err: any) {
+      console.error("Failed to revoke coalition manager:", err);
+      setError(err.message);
+    }
   }
 
   return (
     <Card title="Coalition Manager">
+      {error && (
+        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
       {rows.length === 0 && (
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-500 mb-3">
           No coalition manager assignments.
         </div>
       )}
-      {rows.map((r) => (
-        <RowItem
-          key={r.coalition_id}
-          name={r.coalition_name}
-          meta={`${r.status}`}
-          onRevoke={() => revoke(r.coalition_id)}
-        />
-      ))}
+
+      {rows.length > 0 && (
+        <div className="mb-3">
+          <div className="text-sm font-medium text-gray-700 mb-2">
+            Current coalition assignments:
+          </div>
+          <div className="space-y-1">
+            {rows.map((r) => (
+              <div
+                key={r.coalition_id}
+                className="flex items-center justify-between bg-gray-50 p-2 rounded"
+              >
+                <div>
+                  <div className="font-medium text-sm">{r.coalition_name}</div>
+                  <div className="text-xs text-gray-500">{r.status}</div>
+                </div>
+                <button
+                  onClick={() => revoke(r.coalition_id)}
+                  className="text-red-600 text-sm hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-2">
-        <select
-          className="border rounded px-2 py-1 flex-1 min-w-0"
+        <CoalitionPicker
           value={coalitionId}
-          onChange={(e) => setCoalitionId(e.target.value)}
-        >
-          <option value="">Select coalition…</option>
-          {cos.map((c: any) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onChange={setCoalitionId}
+          placeholder="Search coalitions..."
+        />
         <button
           onClick={add}
-          className="bg-blue-600 text-white px-3 py-1 rounded flex-shrink-0 w-full sm:w-auto"
+          disabled={!coalitionId || saving}
+          className="bg-blue-600 text-white px-3 py-1 rounded flex-shrink-0 w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Add
+          {saving ? "Adding..." : "Add"}
         </button>
       </div>
     </Card>

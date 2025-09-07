@@ -1,19 +1,7 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { fetchReviewerOrgs } from "../../lib/capabilities";
 
 export default function ReviewerScopePicker() {
-  const [orgs, setOrgs] = React.useState<
-    { id: string; name: string; slug: string }[]
-  >([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    fetchReviewerOrgs()
-      .then(setOrgs)
-      .finally(() => setLoading(false));
-  }, []);
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -21,7 +9,8 @@ export default function ReviewerScopePicker() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Reviewer</h1>
             <p className="text-sm text-gray-500">
-              Choose the organization you're reviewing for.
+              Reviewers are now assigned to specific programs, not
+              organizations.
             </p>
           </div>
           <Link
@@ -32,28 +21,23 @@ export default function ReviewerScopePicker() {
           </Link>
         </div>
 
-        {loading && (
-          <div className="p-6 bg-white rounded-lg border">Loading…</div>
-        )}
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {orgs.map((o) => (
-            <Link
-              key={o.id}
-              to={`/org/${o.slug}/reviewer`}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md"
-            >
-              <h3 className="text-lg font-semibold text-gray-900">{o.name}</h3>
-              <p className="text-sm text-gray-500">/{o.slug}</p>
-            </Link>
-          ))}
-        </div>
-
-        {!loading && orgs.length === 0 && (
-          <div className="p-6 bg-white rounded-lg border text-gray-600">
-            No reviewer assignments yet.
+        <div className="p-6 bg-white rounded-lg border text-center">
+          <div className="text-gray-600 mb-4">
+            <p className="text-lg mb-2">
+              Reviewer assignments are now program-scoped.
+            </p>
+            <p className="text-sm">
+              Your reviewer assignments will appear in the main dashboard under
+              "Reviewer for Programs".
+            </p>
           </div>
-        )}
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go to Dashboard
+          </Link>
+        </div>
       </div>
     </div>
   );

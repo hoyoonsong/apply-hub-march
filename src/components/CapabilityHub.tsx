@@ -45,7 +45,7 @@ export default function CapabilityHub() {
 
   const hasAnyCapability =
     capabilities.adminOrgs.length > 0 ||
-    capabilities.reviewerOrgs.length > 0 ||
+    capabilities.reviewerPrograms.length > 0 ||
     capabilities.coalitions.length > 0;
 
   if (!hasAnyCapability) {
@@ -166,17 +166,17 @@ export default function CapabilityHub() {
             </div>
           )}
 
-          {/* Reviewer Organizations */}
-          {capabilities.reviewerOrgs.length > 0 && (
+          {/* Reviewer Programs */}
+          {capabilities.reviewerPrograms.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Reviewer for Organizations
+                Reviewer for Programs
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {capabilities.reviewerOrgs.map((org) => (
+                {capabilities.reviewerPrograms.map((program) => (
                   <Link
-                    key={org.id}
-                    to={`/org/${org.slug}/reviewer`}
+                    key={program.id}
+                    to={`/org/${program.organization_slug}/reviewer/${program.id}`}
                     className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-center">
@@ -199,9 +199,11 @@ export default function CapabilityHub() {
                       </div>
                       <div className="ml-4">
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {org.name}
+                          {program.name}
                         </h3>
-                        <p className="text-sm text-gray-500">/{org.slug}</p>
+                        <p className="text-sm text-gray-500">
+                          {program.organization_name}
+                        </p>
                       </div>
                     </div>
                   </Link>
