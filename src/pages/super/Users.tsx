@@ -44,6 +44,12 @@ const ROLE_OPTIONS: UserRole[] = [
   "superadmin",
 ];
 
+// Simplified options for bulk role changes
+const BULK_ROLE_OPTIONS = [
+  { value: "superadmin", label: "Superadmin" },
+  { value: "applicant", label: "User" },
+];
+
 function RolePills({
   profileRole,
   effective,
@@ -455,11 +461,9 @@ export default function Users() {
                     className="w-full sm:w-auto px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Bulk change role...</option>
-                    {ROLE_OPTIONS.map((r) => (
-                      <option key={r} value={r}>
-                        Change to{" "}
-                        {r.charAt(0).toUpperCase() +
-                          r.slice(1).replace("_", " ")}
+                    {BULK_ROLE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        Change to {option.label}
                       </option>
                     ))}
                   </select>
