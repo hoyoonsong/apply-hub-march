@@ -23,7 +23,7 @@ export default function ReviewerHome() {
       setLoading(true);
       const [o, p] = await Promise.all([
         supabase.rpc("my_reviewer_orgs_v1"),
-        supabase.rpc("my_reviewer_programs_v1"),
+        supabase.rpc("my_reviewer_programs_v2"),
       ]);
       if (!o.error) setOrgs(o.data ?? []);
       if (!p.error) setPrograms(p.data ?? []);

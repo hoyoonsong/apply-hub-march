@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import ReviewerNavLink from "./ReviewerNavLink";
 
 export default function DashboardNavigation() {
   return (
@@ -20,6 +21,8 @@ export default function DashboardNavigation() {
         >
           Dashboard
         </Link>
+
+        <ReviewerNavLink />
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 
 // Fallback function to check user role from profiles table
@@ -52,15 +53,10 @@ export async function fetchCoalitions(): Promise<CoalitionMini[]> {
 }
 
 export async function fetchReviewerPrograms(): Promise<ProgramMini[]> {
-  const { data, error } = await supabase.rpc(
-    "app_list_my_reviewer_programs_v1"
-  );
+  const { data, error } = await supabase.rpc("my_reviewer_programs_v2");
   console.log("fetchReviewerPrograms result:", { data, error });
   if (error) {
-    console.warn(
-      "app_list_my_reviewer_programs_v1 RPC not available:",
-      error.message
-    );
+    console.warn("my_reviewer_programs_v2 RPC not available:", error.message);
     return [];
   }
   return data ?? [];
@@ -72,6 +68,57 @@ export type Capabilities = {
   coalitions: CoalitionMini[];
   userRole: string | null;
 };
+
+export function hasReviewerAssignments(caps: Capabilities | null | undefined) {
+  if (!caps) return false;
+  return (caps.reviewerPrograms?.length ?? 0) > 0;
+}
+
+export function isAdmin(caps: Capabilities | null | undefined) {
+  if (!caps) return false;
+  return (caps.adminOrgs?.length ?? 0) > 0;
+}
+
+export function useCapabilities() {
+  const [adminOrgs, setAdminOrgs] = useState<OrgMini[]>([]);
+  const [reviewerPrograms, setReviewerPrograms] = useState<ProgramMini[]>([]);
+  const [coalitions, setCoalitions] = useState<CoalitionMini[]>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCaps = async () => {
+      try {
+        const caps = await loadCapabilities();
+        setAdminOrgs(caps.adminOrgs);
+        setReviewerPrograms(caps.reviewerPrograms);
+        setCoalitions(caps.coalitions);
+        setUserRole(caps.userRole);
+      } catch (error) {
+        console.error("Failed to load capabilities:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCaps();
+  }, []);
+
+  const hasReviewerAssignments = (reviewerPrograms?.length ?? 0) > 0;
+  const isOrgAdmin = (adminOrgs?.length ?? 0) > 0;
+  const isSuperAdmin = userRole === "admin" || userRole === "superadmin";
+
+  return {
+    adminOrgs,
+    reviewerPrograms,
+    coalitions,
+    userRole,
+    hasReviewerAssignments,
+    isOrgAdmin,
+    isSuperAdmin,
+    loading,
+  };
+}
 
 export async function loadCapabilities(): Promise<Capabilities> {
   let adminOrgs: OrgMini[] = [];

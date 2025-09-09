@@ -14,7 +14,7 @@ export default function ProtectedReviewerRoute({
     (async () => {
       const [orgs, programs] = await Promise.all([
         supabase.rpc("my_reviewer_orgs_v1"),
-        supabase.rpc("my_reviewer_programs_v1"),
+        supabase.rpc("my_reviewer_programs_v2"),
       ]);
 
       if (orgs.error || programs.error) return setOk(false);

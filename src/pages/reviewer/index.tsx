@@ -20,7 +20,7 @@ export default function ReviewerIndex() {
       try {
         setLoading(true);
         const { data: progs, error } = await supabase.rpc(
-          "app_my_reviewer_programs_v1"
+          "my_reviewer_programs_v2"
         );
         if (error) {
           if (error.code === "42501") {

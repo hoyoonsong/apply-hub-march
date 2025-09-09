@@ -43,6 +43,9 @@ import CoalitionProgramBuilder from "./pages/coalition-manager/CoalitionProgramB
 import ApplicationForm from "./pages/apply/ApplicationForm";
 import ApplyProgramPage from "./pages/programs/ApplyProgramPage";
 import ApplicationPage from "./pages/applications/ApplicationPage";
+import QueuePage from "./pages/review/QueuePage";
+import ReviewPage from "./pages/review/ReviewPage";
+import ReviewHome from "./pages/review/ReviewHome";
 
 export default function App() {
   return (
@@ -169,98 +172,6 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/review/:programId"
-              element={
-                <ProtectedRoute>
-                  <ProtectedReviewerRoute>
-                    <ReviewerInbox />
-                  </ProtectedReviewerRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/review/app/:applicationId"
-              element={
-                <ProtectedRoute>
-                  <ProtectedReviewerRoute>
-                    <ReviewWorkspace />
-                  </ProtectedReviewerRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/review/:programId/queue"
-              element={
-                <ProtectedRoute>
-                  <ProtectedReviewerRoute>
-                    <ReviewQueue />
-                  </ProtectedReviewerRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/review/:programId/app/:applicationId"
-              element={
-                <ProtectedRoute>
-                  <ProtectedReviewerRoute>
-                    <ReviewWorkspaceNew />
-                  </ProtectedReviewerRoute>
-                </ProtectedRoute>
-              }
-            />
-            {/* New reviewer routes */}
-            <Route
-              path="/reviewer"
-              element={
-                <ProtectedRoute>
-                  <ProtectedReviewerRoute>
-                    <ReviewerIndex />
-                  </ProtectedReviewerRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/reviewer/programs/:programId/queue"
-              element={
-                <ProtectedRoute>
-                  <ProtectedReviewerRoute>
-                    <ReviewerQueue />
-                  </ProtectedReviewerRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/reviewer/applications/:applicationId"
-              element={
-                <ProtectedRoute>
-                  <ProtectedReviewerRoute>
-                    <ReviewerApplication />
-                  </ProtectedReviewerRoute>
-                </ProtectedRoute>
-              }
-            />
-            {/* New simplified reviewer routes */}
-            <Route
-              path="/review/programs/:programId"
-              element={
-                <ProtectedRoute>
-                  <ProtectedReviewerRoute>
-                    <ProgramQueue />
-                  </ProtectedReviewerRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/review/applications/:applicationId"
-              element={
-                <ProtectedRoute>
-                  <ProtectedReviewerRoute>
-                    <ApplicationReview />
-                  </ProtectedReviewerRoute>
-                </ProtectedRoute>
-              }
-            />
             {/* Public routes */}
             <Route
               path="/org/:orgSlug"
@@ -296,6 +207,31 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <ApplicationForm />
+                </ProtectedRoute>
+              }
+            />
+            {/* New simplified reviewer routes */}
+            <Route
+              path="/review"
+              element={
+                <ProtectedRoute needsReviewer>
+                  <ReviewHome />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/review/:programId"
+              element={
+                <ProtectedRoute needsReviewer>
+                  <QueuePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/review/app/:applicationId"
+              element={
+                <ProtectedRoute needsReviewer>
+                  <ReviewPage />
                 </ProtectedRoute>
               }
             />

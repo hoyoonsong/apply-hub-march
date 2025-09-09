@@ -176,7 +176,7 @@ export default function CapabilityHub() {
                 {capabilities.reviewerPrograms.map((program) => (
                   <Link
                     key={program.id}
-                    to={`/review/programs/${program.id}`}
+                    to={`/review/${program.id}`}
                     className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-center">
