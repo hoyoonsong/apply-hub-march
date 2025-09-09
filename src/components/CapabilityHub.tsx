@@ -125,9 +125,22 @@ export default function CapabilityHub() {
           {/* Admin Organizations */}
           {capabilities.adminOrgs.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Admin for Organizations
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Admin for Organizations
+                </h2>
+                <div className="flex gap-2">
+                  {capabilities.adminOrgs.map((org) => (
+                    <Link
+                      key={`reviews-${org.id}`}
+                      to={`/org/${org.slug}/admin/reviews`}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      {org.name} Reviews
+                    </Link>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {capabilities.adminOrgs.map((org) => (
                   <Link
@@ -169,9 +182,17 @@ export default function CapabilityHub() {
           {/* Reviewer Programs */}
           {capabilities.reviewerPrograms.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Reviewer for Programs
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Reviewer for Programs
+                </h2>
+                <Link
+                  to="/review/my"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                >
+                  My Reviews
+                </Link>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {capabilities.reviewerPrograms.map((program) => (
                   <Link

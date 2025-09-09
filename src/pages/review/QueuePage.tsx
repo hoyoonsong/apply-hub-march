@@ -1,69 +1,92 @@
-import { useParams, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { listReviewQueue } from "../../lib/reviewApi";
+import { Link, useParams } from "react-router-dom";
 
-type Row = {
-  application_id: string;
-  applicant_id: string;
-  submitted_at: string | null;
-  my_review_status: string;
-  my_score: number | null;
-};
-
-export default function ReviewQueue() {
-  const { programId } = useParams();
-  const [rows, setRows] = useState<Row[] | null>(null);
+export default function ReviewQueuePage() {
+  const { programId } = useParams<{ programId: string }>();
+  const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<
+    "draft" | "submitted" | null
+  >(null);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    let ignore = false;
-    async function load() {
+    let cancelled = false;
+    async function run() {
+      if (!programId) return;
       setLoading(true);
-      setError(null);
-      const { data, error } = await supabase.rpc("app_list_review_queue_v1", {
-        p_program_id: programId,
-        p_status_filter: null,
-      });
-      if (!ignore) {
-        if (error) setError(error.message);
-        else setRows(data || []);
-        setLoading(false);
+      setErr(null);
+      try {
+        const data = await listReviewQueue(programId, statusFilter);
+        if (!cancelled) setRows(data);
+      } catch (e: any) {
+        if (!cancelled) setErr(e?.message ?? "Failed to load queue");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
-    if (programId) load();
+    run();
     return () => {
-      ignore = true;
+      cancelled = true;
     };
-  }, [programId]);
+  }, [programId, statusFilter]);
 
-  if (loading) return <div className="p-6">Loading…</div>;
-  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
+  if (!programId) return <div>Missing programId</div>;
+  if (loading) return <div>Loading…</div>;
+  if (err) return <div className="text-red-600">{err}</div>;
 
   return (
-    <div className="container">
-      <h1 className="mb-4">Review Queue</h1>
-      <div className="space-y-2">
-        {rows?.map((r) => (
-          <Link
-            key={r.application_id}
-            className="block p-3 border rounded hover:bg-gray-50"
-            to={`/review/app/${r.application_id}`}
-          >
-            <div className="text-sm text-gray-500">{r.applicant_id}</div>
-            <div className="text-xs text-gray-400">
-              {r.submitted_at ? new Date(r.submitted_at).toLocaleString() : "—"}
-            </div>
-            <div className="text-xs">
-              My status: {r.my_review_status}{" "}
-              {r.my_score != null ? `(${r.my_score})` : ""}
-            </div>
-          </Link>
-        ))}
-        {(!rows || rows.length === 0) && (
-          <div className="text-gray-500">No submitted applications.</div>
-        )}
+    <div className="max-w-4xl mx-auto p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Review Queue</h1>
+        <select
+          value={statusFilter ?? ""}
+          onChange={(e) => setStatusFilter((e.target.value as any) || null)}
+          className="border rounded px-2 py-1"
+        >
+          <option value="">All</option>
+          <option value="draft">Draft</option>
+          <option value="submitted">Submitted</option>
+        </select>
       </div>
+
+      {rows.length === 0 ? (
+        <div>No applications to review.</div>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((r: any) => (
+            <li
+              key={r.application_id ?? r.id}
+              className="border rounded p-3 flex items-center justify-between"
+            >
+              <div className="text-sm">
+                <div className="font-medium">Application</div>
+                <div className="text-gray-600">
+                  {r.application_id ?? r.id} · {r.status ?? "—"}
+                </div>
+                {r.submitted_at && (
+                  <div className="text-xs text-gray-400">
+                    {new Date(r.submitted_at).toLocaleString()}
+                  </div>
+                )}
+                {r.my_review_status && (
+                  <div className="text-xs">
+                    My status: {r.my_review_status}{" "}
+                    {r.my_score != null ? `(${r.my_score})` : ""}
+                  </div>
+                )}
+              </div>
+              <Link
+                className="text-blue-600 underline"
+                to={`/review/app/${r.application_id ?? r.id}`}
+              >
+                Open
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

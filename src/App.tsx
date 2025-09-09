@@ -46,6 +46,9 @@ import ApplicationPage from "./pages/applications/ApplicationPage";
 import QueuePage from "./pages/review/QueuePage";
 import ReviewPage from "./pages/review/ReviewPage";
 import ReviewHome from "./pages/review/ReviewHome";
+import ReviewAppPage from "./pages/review/ReviewAppPage";
+import MyReviewsPage from "./pages/review/MyReviewsPage";
+import OrgReviewsPage from "./pages/org/admin/OrgReviewsPage";
 
 export default function App() {
   return (
@@ -163,6 +166,16 @@ export default function App() {
               }
             />
             <Route
+              path="/org/:orgSlug/admin/reviews"
+              element={
+                <ProtectedRoute>
+                  <ProtectedOrgAdminRoute>
+                    <OrgReviewsPage />
+                  </ProtectedOrgAdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/org/:orgSlug/reviewer"
               element={
                 <ProtectedRoute>
@@ -231,7 +244,15 @@ export default function App() {
               path="/review/app/:applicationId"
               element={
                 <ProtectedRoute needsReviewer>
-                  <ReviewPage />
+                  <ReviewAppPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/review/my"
+              element={
+                <ProtectedRoute needsReviewer>
+                  <MyReviewsPage />
                 </ProtectedRoute>
               }
             />
