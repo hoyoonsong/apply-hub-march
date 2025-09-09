@@ -52,10 +52,15 @@ export async function fetchCoalitions(): Promise<CoalitionMini[]> {
 }
 
 export async function fetchReviewerPrograms(): Promise<ProgramMini[]> {
-  const { data, error } = await supabase.rpc("my_reviewer_programs_v2");
+  const { data, error } = await supabase.rpc(
+    "app_list_my_reviewer_programs_v1"
+  );
   console.log("fetchReviewerPrograms result:", { data, error });
   if (error) {
-    console.warn("my_reviewer_programs_v2 RPC not available:", error.message);
+    console.warn(
+      "app_list_my_reviewer_programs_v1 RPC not available:",
+      error.message
+    );
     return [];
   }
   return data ?? [];

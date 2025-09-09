@@ -42,7 +42,14 @@ export default function SuperProgramsReview() {
     setError(null);
     setSuccess(null);
     try {
-      await superReviewProgram({ program_id: p.id, action });
+      const note =
+        action === "request_changes"
+          ? (
+              prompt("Add a note for the org admin (what needs fixing)?") || ""
+            ).trim()
+          : null;
+
+      await superReviewProgram({ program_id: p.id, action, note });
       setSuccess(action === "approve" ? "Approved" : "Requested changes");
       await refresh();
     } catch (e: any) {
@@ -274,10 +281,7 @@ export default function SuperProgramsReview() {
                                 </button>
                                 <button
                                   onClick={() => {
-                                    const id = prompt(
-                                      "Coalition ID to publish under:"
-                                    );
-                                    if (id) handlePublish(p, "coalition", id);
+                                    handlePublish(p, "coalition");
                                   }}
                                   className="bg-indigo-700 hover:bg-indigo-800 text-white text-xs px-3 py-1.5 rounded"
                                   title="Publish to coalition"

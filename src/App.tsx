@@ -18,6 +18,15 @@ import Users from "./pages/super/Users";
 import SuperProgramsReview from "./pages/super/SuperProgramsReview";
 import ReviewerHome from "./pages/reviewer/ReviewerHome";
 import ReviewerScopePicker from "./pages/reviewer/ReviewerScopePicker";
+import ReviewerInbox from "./pages/review/ReviewerInbox";
+import ReviewWorkspace from "./pages/review/ReviewWorkspace";
+import ReviewQueue from "./pages/review/ReviewQueue";
+import ReviewWorkspaceNew from "./pages/review/ReviewWorkspaceNew";
+import ReviewerIndex from "./pages/reviewer/index";
+import ReviewerQueue from "./pages/reviewer/programs/[programId]/queue";
+import ReviewerApplication from "./pages/reviewer/applications/[applicationId]";
+import ProgramQueue from "./pages/review/ProgramQueue";
+import ApplicationReview from "./pages/review/ApplicationReview";
 import Assignments from "./pages/super/Assignments";
 import OrgHome from "./pages/public/OrgHome";
 import CoalitionHome from "./pages/public/CoalitionHome";
@@ -29,6 +38,11 @@ import ProtectedReviewerRoute from "./components/scopes/ProtectedReviewerRoute";
 import CoalitionManagerHome from "./hub/CoalitionManagerHome";
 import OrgAdminHome from "./hub/OrgAdminHome";
 import OrgAdminPrograms from "./pages/org-admin/OrgAdminPrograms";
+import OrgProgramBuilder from "./pages/org-admin/OrgProgramBuilder";
+import CoalitionProgramBuilder from "./pages/coalition-manager/CoalitionProgramBuilder";
+import ApplicationForm from "./pages/apply/ApplicationForm";
+import ApplyProgramPage from "./pages/programs/ApplyProgramPage";
+import ApplicationPage from "./pages/applications/ApplicationPage";
 
 export default function App() {
   return (
@@ -106,6 +120,16 @@ export default function App() {
               }
             />
             <Route
+              path="/coalition/:coalitionSlug/cm/programs/:programId/builder"
+              element={
+                <ProtectedRoute>
+                  <ProtectedCoalitionRoute>
+                    <CoalitionProgramBuilder />
+                  </ProtectedCoalitionRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/org/:orgSlug/admin"
               element={
                 <ProtectedRoute>
@@ -126,11 +150,13 @@ export default function App() {
               }
             />
             <Route
-              path="/reviewer"
+              path="/org/:orgSlug/admin/programs/:programId/builder"
               element={
-                <ProtectedReviewerRoute>
-                  <ReviewerScopePicker />
-                </ProtectedReviewerRoute>
+                <ProtectedRoute>
+                  <ProtectedOrgAdminRoute>
+                    <OrgProgramBuilder />
+                  </ProtectedOrgAdminRoute>
+                </ProtectedRoute>
               }
             />
             <Route
@@ -139,6 +165,98 @@ export default function App() {
                 <ProtectedRoute>
                   <ProtectedReviewerRoute>
                     <ReviewerHome />
+                  </ProtectedReviewerRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/review/:programId"
+              element={
+                <ProtectedRoute>
+                  <ProtectedReviewerRoute>
+                    <ReviewerInbox />
+                  </ProtectedReviewerRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/review/app/:applicationId"
+              element={
+                <ProtectedRoute>
+                  <ProtectedReviewerRoute>
+                    <ReviewWorkspace />
+                  </ProtectedReviewerRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/review/:programId/queue"
+              element={
+                <ProtectedRoute>
+                  <ProtectedReviewerRoute>
+                    <ReviewQueue />
+                  </ProtectedReviewerRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/review/:programId/app/:applicationId"
+              element={
+                <ProtectedRoute>
+                  <ProtectedReviewerRoute>
+                    <ReviewWorkspaceNew />
+                  </ProtectedReviewerRoute>
+                </ProtectedRoute>
+              }
+            />
+            {/* New reviewer routes */}
+            <Route
+              path="/reviewer"
+              element={
+                <ProtectedRoute>
+                  <ProtectedReviewerRoute>
+                    <ReviewerIndex />
+                  </ProtectedReviewerRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reviewer/programs/:programId/queue"
+              element={
+                <ProtectedRoute>
+                  <ProtectedReviewerRoute>
+                    <ReviewerQueue />
+                  </ProtectedReviewerRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reviewer/applications/:applicationId"
+              element={
+                <ProtectedRoute>
+                  <ProtectedReviewerRoute>
+                    <ReviewerApplication />
+                  </ProtectedReviewerRoute>
+                </ProtectedRoute>
+              }
+            />
+            {/* New simplified reviewer routes */}
+            <Route
+              path="/review/programs/:programId"
+              element={
+                <ProtectedRoute>
+                  <ProtectedReviewerRoute>
+                    <ProgramQueue />
+                  </ProtectedReviewerRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/review/applications/:applicationId"
+              element={
+                <ProtectedRoute>
+                  <ProtectedReviewerRoute>
+                    <ApplicationReview />
                   </ProtectedReviewerRoute>
                 </ProtectedRoute>
               }
@@ -166,6 +284,19 @@ export default function App() {
                 <PublicRouteGuard type="program">
                   <ProgramDetail />
                 </PublicRouteGuard>
+              }
+            />
+            <Route
+              path="/programs/:programId/apply"
+              element={<ApplyProgramPage />}
+            />
+            <Route path="/applications/:appId" element={<ApplicationPage />} />
+            <Route
+              path="/applications/:id"
+              element={
+                <ProtectedRoute>
+                  <ApplicationForm />
+                </ProtectedRoute>
               }
             />
             <Route path="/unauthorized" element={<Unauthorized />} />

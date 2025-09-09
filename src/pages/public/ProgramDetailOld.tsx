@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getProgramSchema, startOrGetApplication } from "../../lib/rpc";
+import type { ApplicationSchema } from "../../types/application";
 
 type ProgramPublic = {
   id: string;
-  application_schema: any;
+  application_schema: ApplicationSchema | null;
 };
 
 function Row({ label, value }: { label: string; value?: string | null }) {
@@ -39,7 +40,7 @@ export default function ProgramDetail() {
       setError(null);
       try {
         const data = await getProgramSchema(programId);
-        setProgram(data);
+        setProgram(data as any);
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -48,7 +49,7 @@ export default function ProgramDetail() {
     })();
   }, [programId]);
 
-  const handleStart = async () => {
+  const startOrContinue = async () => {
     if (!programId) return;
     setStarting(true);
     try {
@@ -62,6 +63,9 @@ export default function ProgramDetail() {
   };
 
   if (!programId) return null;
+  if (loading) return <div className="p-6">Loading…</div>;
+  if (error) return <div className="p-6" style={{ color: "red" }}>{error}</div>;
+  if (!program) return <div className="p-6">Program not found.</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -70,9 +74,9 @@ export default function ProgramDetail() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 sm:py-6 gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                {program.name}
+                Program
               </h1>
-              <p className="mt-1 text-sm text-gray-500">Type: {program.type}</p>
+              <p className="mt-1 text-sm text-gray-500">Application Form</p>
             </div>
             <Link
               to="/"
@@ -122,7 +126,7 @@ export default function ProgramDetail() {
                 Click below to start or continue your application.
               </p>
               <button
-                onClick={handleStart}
+                onClick={onStart}
                 disabled={starting}
                 className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50"
               >

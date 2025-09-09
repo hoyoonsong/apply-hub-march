@@ -1,5 +1,6 @@
 // src/lib/programs.ts
 import { supabase } from "../lib/supabase";
+import type { ProgramApplicationSchema } from "../types/application";
 
 export type ReviewStatus =
   | "draft"
@@ -151,7 +152,7 @@ export async function superReviewProgram(args: {
   action: "approve" | "request_changes";
   note?: string | null;
 }): Promise<Program> {
-  const { data, error } = await supabase.rpc("super_review_program_v1", {
+  const { data, error } = await supabase.rpc("super_review_program_v3", {
     p_program_id: args.program_id,
     p_action: args.action,
     p_note: args.note ?? null,
@@ -165,7 +166,7 @@ export async function superPublishProgram(args: {
   scope: "org" | "coalition";
   coalition_id?: string | null;
 }): Promise<Program> {
-  const { data, error } = await supabase.rpc("super_publish_program_v1", {
+  const { data, error } = await supabase.rpc("super_publish_program_v2", {
     p_program_id: args.program_id,
     p_scope: args.scope,
     p_coalition_id:
@@ -205,4 +206,186 @@ export async function publicListPrograms(params?: {
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as Program[];
+}
+
+/* ========== Application Builder Types and RPCs ========== */
+
+export type BuilderField = {
+  id: string;
+  type: "short_text" | "long_text" | "date" | "select" | "checkbox" | "file";
+  label: string;
+  required?: boolean;
+  options?: string[];
+  max?: number;
+};
+
+export type ProgramApplicationDraft = {
+  builderVersion: 1;
+  fields: BuilderField[];
+};
+
+export async function orgSaveProgramForm(params: {
+  programId: string;
+  draft: ProgramApplicationDraft;
+  includeHub: boolean;
+  includeCoalition: boolean;
+  coalitionId?: string | null;
+}) {
+  const { data, error } = await supabase.rpc("org_save_program_form_v1", {
+    p_program_id: params.programId,
+    p_application_draft: params.draft as any,
+    p_include_hub_common: params.includeHub,
+    p_include_coal_common: params.includeCoalition,
+    p_coalition_id: params.coalitionId ?? null,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function cmSaveProgramForm(params: {
+  programId: string;
+  draft: ProgramApplicationDraft;
+  includeHub: boolean;
+  includeCoalition: boolean;
+}) {
+  const { data, error } = await supabase.rpc("cm_save_program_form_v1", {
+    p_program_id: params.programId,
+    p_application_draft: params.draft as any,
+    p_include_hub_common: params.includeHub,
+    p_include_coal_common: params.includeCoalition,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function requestProgramPublish(params: {
+  programId: string;
+  scope: "org" | "coalition";
+  coalitionId?: string | null;
+  note?: string | null;
+}) {
+  const { data, error } = await supabase.rpc("request_program_publish_v1", {
+    p_program_id: params.programId,
+    p_publish_scope: params.scope,
+    p_coalition_id: params.coalitionId ?? null,
+    p_note: params.note ?? null,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function getHubCommonTemplate() {
+  const { data, error } = await supabase.rpc("hub_common_app_template_v1");
+  if (error) throw error;
+  return data as any;
+}
+
+export async function getCoalitionTemplate(coalitionId: string) {
+  const { data, error } = await supabase.rpc(
+    "cm_get_coalition_app_template_v1",
+    {
+      p_coalition_id: coalitionId,
+    }
+  );
+  if (error) throw error;
+  return data as any;
+}
+
+/* ========== New Application Builder RPCs ========== */
+
+export async function saveBuilder(
+  programId: string,
+  schema: ProgramApplicationSchema
+) {
+  const { data, error } = await supabase.rpc("app_builder_save_v1", {
+    p_program_id: programId,
+    p_schema: schema as any,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function saveBuilderSchema(programId: string, schema: any) {
+  const { data, error } = await supabase.rpc("app_builder_save_v1", {
+    p_program_id: programId,
+    p_schema: schema,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function submitForReview(
+  programId: string,
+  scope: "org" | "coalition",
+  coalitionId?: string,
+  note?: string
+) {
+  const { data, error } = await supabase.rpc("request_program_publish_v1", {
+    p_program_id: programId,
+    p_publish_scope: scope,
+    p_coalition_id: coalitionId ?? null,
+    p_note: note ?? null,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchPublicProgram(programId: string) {
+  const { data, error } = await supabase
+    .from("programs_public")
+    .select(
+      "id,name,type,description,open_at,close_at,published,published_scope,published_at,published_coalition_id,organization_id,organization_name,organization_slug,coalition_name,coalition_slug,application_schema"
+    )
+    .eq("id", programId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Keep the old function for backward compatibility
+export async function getPublicProgram(programId: string) {
+  return fetchPublicProgram(programId);
+}
+
+export async function startOrContinueApplication(programId: string) {
+  const { data, error } = await supabase.rpc(
+    "app_start_or_get_application_v1",
+    {
+      p_program_id: programId,
+    }
+  );
+  if (error) throw error;
+  return data as {
+    id: string;
+    program_id: string;
+    user_id: string;
+    status: string;
+    answers: any;
+  };
+}
+
+export async function getPublicProgramById(supabase: any, id: string) {
+  return supabase
+    .from("programs_public")
+    .select(
+      [
+        "id",
+        "organization_id",
+        "name",
+        "type",
+        "description",
+        "metadata",
+        "published",
+        "published_scope",
+        "published_coalition_id",
+        "open_at",
+        "close_at",
+        "created_at",
+        "updated_at",
+        "published_at",
+      ].join(",")
+    )
+    .eq("id", id)
+    .maybeSingle();
 }

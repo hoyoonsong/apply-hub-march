@@ -316,6 +316,9 @@ export default function OrgAdminPrograms() {
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Created
                     </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -354,12 +357,20 @@ export default function OrgAdminPrograms() {
                         <td className="px-6 py-4 text-right text-sm text-gray-500">
                           {new Date(p.created_at).toLocaleString()}
                         </td>
+                        <td className="px-6 py-4 text-right text-sm">
+                          <Link
+                            to={`/org/${orgSlug}/admin/programs/${p.id}/builder`}
+                            className="text-indigo-600 hover:text-indigo-800 font-medium"
+                          >
+                            Edit application
+                          </Link>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-6 py-8 text-sm text-gray-500"
                       >
                         No programs yet. Create your first draft above.

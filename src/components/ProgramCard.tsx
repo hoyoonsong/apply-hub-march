@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { startOrGetApplication } from "../lib/rpc";
 import type { Program } from "../types/programs";
 
 function formatDate(s?: string | null) {
@@ -8,13 +10,31 @@ function formatDate(s?: string | null) {
 }
 
 export default function ProgramCard({ program }: { program: Program }) {
+  const navigate = useNavigate();
+  const [starting, setStarting] = useState(false);
   const open = formatDate(program.open_at);
   const close = formatDate(program.close_at);
 
+  const handleStartApplication = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (starting) return;
+
+    setStarting(true);
+    try {
+      const app = await startOrGetApplication(program.id);
+      navigate(`/applications/${app.id}`);
+    } catch (error) {
+      console.error("Failed to start application:", error);
+      // You could show a toast or error message here
+    } finally {
+      setStarting(false);
+    }
+  };
+
   return (
-    <Link
-      to={`/programs/${program.id}`}
-      className="block bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+    <div
+      onClick={handleStartApplication}
+      className="block bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
     >
       <div className="p-5">
         <div className="flex items-center justify-between">
@@ -49,10 +69,10 @@ export default function ProgramCard({ program }: { program: Program }) {
             {close && <span>Closes: {close}</span>}
           </div>
           <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700">
-            View
+            {starting ? "Starting..." : "Apply"}
           </span>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
