@@ -5,9 +5,11 @@ import {
   getApplication,
   getProgramSchema,
   submitApplication,
+  saveApplication,
 } from "../../lib/rpc";
 import { useApplicationAutosave } from "../../components/useApplicationAutosave";
 import type { ProgramApplicationSchema } from "../../types/application";
+import { isPastDeadline, getDeadlineMessage } from "../../lib/deadlineUtils";
 
 type AppRow = {
   id: string;
@@ -34,6 +36,8 @@ export default function ApplicationPage() {
   const [appRow, setAppRow] = useState<AppRow | null>(null);
   const [schema, setSchema] = useState<ProgramApplicationSchema>({});
   const [submitting, setSubmitting] = useState(false);
+  const [programDeadline, setProgramDeadline] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (!isUUID(appId)) return;
@@ -42,7 +46,13 @@ export default function ApplicationPage() {
         const app = await getApplication(appId!);
         setAppRow(app);
         const prog = await getProgramSchema(app.program_id);
+        console.log("Program data:", prog);
+        console.log("Close at:", prog?.close_at);
         setSchema(prog?.application_schema ?? { fields: [] });
+        setProgramDeadline(prog?.close_at || null);
+
+        // Set editing mode: draft apps are editable, submitted apps are read-only by default
+        setIsEditing(app.status === "draft");
       } catch (e) {
         console.error("Error loading application:", e);
         navigate("/");
@@ -58,21 +68,36 @@ export default function ApplicationPage() {
 
   const items = useMemo(() => schema.fields ?? [], [schema]);
 
-  const update = (name: string, value: any) =>
+  // Check if editing is allowed (not past deadline)
+  const canEdit = !isPastDeadline(programDeadline);
+  const isFormEditable = canEdit && isEditing;
+
+  const update = (name: string, value: any) => {
+    if (!isFormEditable) return; // Don't allow updates if not in edit mode
     setAnswers((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async () => {
     if (!appRow || !isUUID(appId)) return;
-    if (appRow.status !== "draft") {
-      alert("Already submitted");
+    if (!canEdit) {
+      alert("Cannot submit - deadline has passed");
       return;
     }
+
     setSubmitting(true);
     try {
-      await submitApplication(appId, answers);
-      localStorage.removeItem(`app:${appId}:answers`);
-      alert("Application submitted!");
-      navigate("/");
+      if (appRow.status === "draft") {
+        // First time submitting
+        await submitApplication(appId, answers);
+        localStorage.removeItem(`app:${appId}:answers`);
+        alert("Application submitted!");
+        navigate("/");
+      } else if (appRow.status === "submitted" && isEditing) {
+        // Saving changes to already submitted application
+        await saveApplication(appId, answers);
+        setIsEditing(false); // Exit edit mode and lock fields
+        alert("Changes saved!");
+      }
     } catch (e: any) {
       alert(e.message ?? "Submit failed");
     } finally {
@@ -90,14 +115,56 @@ export default function ApplicationPage() {
           {appRow.program_name ?? "Application"}
         </h1>
         <div className="flex gap-2">
-          <button
-            onClick={handleSubmit}
-            className="rounded-md bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-50"
-            disabled={submitting || appRow.status !== "draft"}
-            title={appRow.status !== "draft" ? "Already submitted" : ""}
-          >
-            {submitting ? "Submitting..." : "Submit"}
-          </button>
+          {/* Show Edit Application button only for submitted apps that can still be edited */}
+          {appRow.status === "submitted" && canEdit && !isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="rounded-md bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700"
+            >
+              Edit Application
+            </button>
+          )}
+
+          {/* Show Cancel button only when editing submitted apps */}
+          {isEditing && appRow.status === "submitted" && (
+            <button
+              onClick={() => setIsEditing(false)}
+              className="rounded-md bg-gray-500 px-3 py-2 text-sm text-white"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Deadline Status */}
+      <div
+        className={`rounded-lg border p-4 ${
+          canEdit ? "bg-blue-50 border-blue-200" : "bg-red-50 border-red-200"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-xl">{canEdit ? "📅" : "🔒"}</span>
+          <div>
+            <div className="font-semibold text-gray-900">
+              {canEdit ? "Application Open" : "Application Closed"}
+            </div>
+            <div className="text-sm text-gray-600">
+              {programDeadline
+                ? getDeadlineMessage(programDeadline)
+                : "No deadline set"}
+            </div>
+            {appRow.status === "submitted" && canEdit && (
+              <div className="text-sm text-green-600 mt-1">
+                ✓ Application submitted - You can still edit until the deadline
+              </div>
+            )}
+            {!canEdit && (
+              <div className="text-sm text-red-600 mt-1">
+                Application is locked - deadline has passed
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -120,10 +187,19 @@ export default function ApplicationPage() {
                       {item.required && " *"}
                     </label>
                     <input
-                      className="w-full rounded border p-2"
+                      className={`w-full rounded border p-2 ${
+                        !isFormEditable
+                          ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                          : ""
+                      }`}
                       value={val}
                       maxLength={item.maxLength}
                       onChange={(e) => update(key, e.target.value)}
+                      disabled={!isFormEditable}
+                      readOnly={!isFormEditable}
+                      style={{
+                        cursor: isFormEditable ? "text" : "not-allowed",
+                      }}
                     />
                   </div>
                 );
@@ -135,10 +211,19 @@ export default function ApplicationPage() {
                       {item.required && " *"}
                     </label>
                     <textarea
-                      className="w-full rounded border p-2"
+                      className={`w-full rounded border p-2 ${
+                        !isFormEditable
+                          ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                          : ""
+                      }`}
                       value={val}
                       maxLength={item.maxLength ?? 2000}
                       onChange={(e) => update(key, e.target.value)}
+                      disabled={!isFormEditable}
+                      readOnly={!isFormEditable}
+                      style={{
+                        cursor: isFormEditable ? "text" : "not-allowed",
+                      }}
                     />
                   </div>
                 );
@@ -149,6 +234,11 @@ export default function ApplicationPage() {
                       type="checkbox"
                       checked={!!val}
                       onChange={(e) => update(key, e.target.checked)}
+                      disabled={!isFormEditable}
+                      className={!isFormEditable ? "opacity-50" : ""}
+                      style={{
+                        cursor: isFormEditable ? "pointer" : "not-allowed",
+                      }}
                     />
                     <span>
                       {item.label}
@@ -165,9 +255,18 @@ export default function ApplicationPage() {
                     </label>
                     <input
                       type="date"
-                      className="w-full rounded border p-2"
+                      className={`w-full rounded border p-2 ${
+                        !isFormEditable
+                          ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                          : ""
+                      }`}
                       value={val}
                       onChange={(e) => update(key, e.target.value)}
+                      disabled={!isFormEditable}
+                      readOnly={!isFormEditable}
+                      style={{
+                        cursor: isFormEditable ? "text" : "not-allowed",
+                      }}
                     />
                   </div>
                 );
@@ -179,9 +278,17 @@ export default function ApplicationPage() {
                       {item.required && " *"}
                     </label>
                     <select
-                      className="w-full rounded border p-2"
+                      className={`w-full rounded border p-2 ${
+                        !isFormEditable
+                          ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                          : ""
+                      }`}
                       value={val}
                       onChange={(e) => update(key, e.target.value)}
+                      disabled={!isFormEditable}
+                      style={{
+                        cursor: isFormEditable ? "pointer" : "not-allowed",
+                      }}
                     >
                       <option value="" disabled>
                         Select…
@@ -206,6 +313,11 @@ export default function ApplicationPage() {
                       onChange={(e) =>
                         update(key, e.target.files?.[0]?.name ?? "")
                       }
+                      disabled={!isFormEditable}
+                      className={!isFormEditable ? "opacity-50" : ""}
+                      style={{
+                        cursor: isFormEditable ? "pointer" : "not-allowed",
+                      }}
                     />
                   </div>
                 );
@@ -216,7 +328,20 @@ export default function ApplicationPage() {
         )}
       </div>
 
-      {/* You can add submit-for-review / submit controls later */}
+      {/* Submit button at bottom like Google Forms */}
+      {(appRow.status === "draft" ||
+        (appRow.status === "submitted" && isEditing)) && (
+        <div className="flex justify-end pt-4 border-t">
+          <button
+            onClick={handleSubmit}
+            className="rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
+            disabled={submitting || !canEdit}
+            title={!canEdit ? "Cannot submit - deadline has passed" : ""}
+          >
+            {submitting ? "Submitting..." : "Submit Application"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

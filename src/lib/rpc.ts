@@ -6,7 +6,7 @@ const sb = createClient();
 export async function getProgramSchema(programId: string) {
   const { data, error } = await sb
     .from("programs_public")
-    .select("id, application_schema")
+    .select("id, application_schema, close_at")
     .eq("id", programId)
     .single();
   if (error) throw error;
