@@ -34,9 +34,18 @@ export default function ReviewAppPage() {
     "idle"
   );
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [restoredFromStorage, setRestoredFromStorage] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [submissionTimestamp, setSubmissionTimestamp] = useState<string | null>(null);
 
   const storageKey = useMemo(
     () => `review-draft:${applicationId}`,
+    [applicationId]
+  );
+  
+  const submissionKey = useMemo(
+    () => `review-submitted:${applicationId}`,
     [applicationId]
   );
 
@@ -52,14 +61,42 @@ export default function ReviewAppPage() {
         if (cancelled) return;
         setAppRow(data);
 
-        // Try to fetch an existing review row for this reviewer via upsert draft (no-op)
-        // or rely on local storage rehydrate.
-        const ls = localStorage.getItem(storageKey);
-        if (ls) {
-          const parsed = JSON.parse(ls);
-          setRatings(parsed.ratings ?? {});
-          setScore(Number.isFinite(parsed.score) ? parsed.score : null);
-          setComments(parsed.comments ?? "");
+        // Check for submission state first
+        const submissionData = localStorage.getItem(submissionKey);
+        console.log("Loading submission state:", { submissionKey, submissionData });
+        if (submissionData) {
+          try {
+            const parsed = JSON.parse(submissionData);
+            console.log("Parsed submission data:", parsed);
+            setIsSubmitted(true);
+            setSubmissionTimestamp(parsed.timestamp);
+            // Load the submitted review data
+            setRatings(parsed.ratings ?? {});
+            setScore(Number.isFinite(parsed.score) ? parsed.score : null);
+            setComments(parsed.comments ?? "");
+          } catch (e) {
+            console.error("Failed to parse submission data:", e);
+            localStorage.removeItem(submissionKey);
+          }
+        } else {
+          // Try to fetch an existing review row for this reviewer via upsert draft (no-op)
+          // or rely on local storage rehydrate.
+          const ls = localStorage.getItem(storageKey);
+          console.log("Loading from localStorage:", { storageKey, ls });
+          if (ls) {
+            try {
+              const parsed = JSON.parse(ls);
+              console.log("Parsed localStorage data:", parsed);
+              setRatings(parsed.ratings ?? {});
+              setScore(Number.isFinite(parsed.score) ? parsed.score : null);
+              setComments(parsed.comments ?? "");
+              setRestoredFromStorage(true);
+            } catch (e) {
+              console.error("Failed to parse localStorage data:", e);
+              // Clear invalid data
+              localStorage.removeItem(storageKey);
+            }
+          }
         }
       } catch (e: any) {
         if (!cancelled) setLoadErr(e?.message ?? "Failed to load");
@@ -83,6 +120,7 @@ export default function ReviewAppPage() {
       if (!applicationId || !appRow) return;
       try {
         setSaving("saving");
+        console.log("Saving to localStorage:", { storageKey, payload });
         localStorage.setItem(storageKey, JSON.stringify(payload));
         await saveReviewDraft(supabase, {
           applicationId: appRow.id,
@@ -101,13 +139,21 @@ export default function ReviewAppPage() {
     800
   );
 
-  // When any field changes, debounce-save
+  // When any field changes, debounce-save (only if not submitted or currently editing)
   useEffect(() => {
-    if (appRow) {
+    if (appRow && (!isSubmitted || isEditing)) {
+      console.log("Triggering debounced save:", { ratings, score, comments });
       debouncedSave({ ratings, score, comments });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(ratings), score, comments, appRow]);
+  }, [
+    JSON.stringify(ratings),
+    score,
+    comments,
+    appRow,
+    isSubmitted,
+    isEditing,
+  ]);
 
   async function handleSubmit() {
     if (!applicationId || !appRow) return;
@@ -119,13 +165,47 @@ export default function ReviewAppPage() {
         score,
         comments,
       });
-      localStorage.removeItem(storageKey);
+      
+      // Save submission state to localStorage
+      const submissionData = {
+        ratings,
+        score,
+        comments,
+        timestamp: new Date().toISOString(),
+      };
+      localStorage.setItem(submissionKey, JSON.stringify(submissionData));
+      localStorage.removeItem(storageKey); // Remove draft data
+      
       setSaving("saved");
+      setIsSubmitted(true);
+      setIsEditing(false);
+      setSubmissionTimestamp(submissionData.timestamp);
       alert("Review submitted ✅");
     } catch (e: any) {
       console.error(e);
       setSaving("error");
       alert(e?.message ?? "Submit failed");
+    }
+  }
+
+  function handleEdit() {
+    setIsEditing(true);
+  }
+
+  function handleCancelEdit() {
+    setIsEditing(false);
+  }
+
+  function handleClearSubmission() {
+    if (confirm("Are you sure you want to clear the submitted review? This will allow you to start fresh.")) {
+      localStorage.removeItem(submissionKey);
+      setIsSubmitted(false);
+      setIsEditing(false);
+      setSubmissionTimestamp(null);
+      // Reset form to empty state
+      setRatings({});
+      setScore(null);
+      setComments("");
     }
   }
 
@@ -170,7 +250,11 @@ export default function ReviewAppPage() {
                   <span className="block mb-2 font-medium">Score</span>
                   <input
                     type="number"
-                    className="border rounded px-3 py-2 w-full"
+                    className={`border rounded px-3 py-2 w-full ${
+                      isSubmitted && !isEditing
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : ""
+                    }`}
                     value={score ?? ""}
                     onChange={(e) =>
                       setScore(
@@ -178,23 +262,33 @@ export default function ReviewAppPage() {
                       )
                     }
                     placeholder="Enter score"
+                    disabled={isSubmitted && !isEditing}
                   />
                 </label>
 
                 <label className="block text-sm">
                   <span className="block mb-2 font-medium">Comments</span>
                   <textarea
-                    className="border rounded px-3 py-2 w-full h-32 resize-none"
+                    className={`border rounded px-3 py-2 w-full h-32 resize-none ${
+                      isSubmitted && !isEditing
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : ""
+                    }`}
                     value={comments}
                     onChange={(e) => setComments(e.target.value)}
                     placeholder="Add your review comments..."
+                    disabled={isSubmitted && !isEditing}
                   />
                 </label>
 
                 <label className="block text-sm">
                   <span className="block mb-2 font-medium">Ratings (JSON)</span>
                   <textarea
-                    className="border rounded px-3 py-2 w-full h-32 font-mono text-xs resize-none"
+                    className={`border rounded px-3 py-2 w-full h-32 font-mono text-xs resize-none ${
+                      isSubmitted && !isEditing
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : ""
+                    }`}
                     value={JSON.stringify(ratings ?? {}, null, 2)}
                     onChange={(e) => {
                       try {
@@ -205,6 +299,7 @@ export default function ReviewAppPage() {
                       }
                     }}
                     placeholder='{"q1": 5, "notes": "great"}'
+                    disabled={isSubmitted && !isEditing}
                   />
                   <div className="text-xs text-gray-500 mt-1">
                     Example: {'{ "q1": 5, "notes": "great" }'}
@@ -212,26 +307,82 @@ export default function ReviewAppPage() {
                 </label>
 
                 <div className="pt-4 border-t border-gray-200">
-                  <button
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    onClick={handleSubmit}
-                  >
-                    Submit Review
-                  </button>
+                  {isSubmitted && !isEditing ? (
+                    // Submitted state - show edit button
+                    <div className="space-y-3">
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-green-600 mb-1">
+                          ✓ Review Submitted
+                        </div>
+                        {submissionTimestamp && (
+                          <div className="text-xs text-gray-500 mb-2">
+                            {new Date(submissionTimestamp).toLocaleString()}
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          <button
+                            className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                            onClick={handleEdit}
+                          >
+                            Edit Review
+                          </button>
+                          <button
+                            className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium text-sm"
+                            onClick={handleClearSubmission}
+                          >
+                            Clear Submission
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Draft state - show submit and cancel buttons
+                    <div className="space-y-3">
+                      <button
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                        onClick={handleSubmit}
+                        disabled={saving === "saving"}
+                      >
+                        {saving === "saving"
+                          ? "Submitting..."
+                          : "Submit Review"}
+                      </button>
+
+                      {isEditing && (
+                        <button
+                          className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                          onClick={handleCancelEdit}
+                        >
+                          Cancel Edit
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-3 text-center">
                     {saving === "saving" && (
                       <span className="text-xs text-gray-500">Saving…</span>
                     )}
-                    {saving === "saved" && (
+                    {saving === "saved" && !isSubmitted && (
                       <span className="text-xs text-green-600">✓ Saved</span>
                     )}
                     {saving === "error" && (
                       <span className="text-xs text-red-600">✗ Save error</span>
                     )}
-                    {saving === "idle" && (
-                      <span className="text-xs text-gray-400">Auto-saved</span>
-                    )}
+                    {saving === "idle" &&
+                      restoredFromStorage &&
+                      !isSubmitted && (
+                        <span className="text-xs text-blue-600">
+                          ✓ Restored from draft
+                        </span>
+                      )}
+                    {saving === "idle" &&
+                      !restoredFromStorage &&
+                      !isSubmitted && (
+                        <span className="text-xs text-gray-400">
+                          Auto-saved
+                        </span>
+                      )}
                   </div>
                 </div>
               </div>
