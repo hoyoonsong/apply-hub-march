@@ -1,7 +1,7 @@
 // lib/rpc.ts
-import { createClient } from "./supabase-browser";
+import { supabase } from "./supabase-browser";
 
-const sb = createClient();
+const sb = supabase;
 
 export async function getProgramSchema(programId: string) {
   const { data, error } = await sb
