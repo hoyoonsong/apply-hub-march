@@ -6,7 +6,7 @@ const sb = supabase;
 export async function getProgramSchema(programId: string) {
   const { data, error } = await sb
     .from("programs_public")
-    .select("id, application_schema, close_at")
+    .select("id, application_schema, open_at, close_at")
     .eq("id", programId)
     .single();
   if (error) throw error;

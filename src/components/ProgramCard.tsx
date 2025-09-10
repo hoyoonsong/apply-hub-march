@@ -1,6 +1,7 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { startOrGetApplication } from "../lib/rpc";
+import { isBeforeOpenDate, isPastDeadline } from "../lib/deadlineUtils";
 import type { Program } from "../types/programs";
 
 function formatDate(s?: string | null) {
@@ -14,10 +15,12 @@ export default function ProgramCard({ program }: { program: Program }) {
   const [starting, setStarting] = useState(false);
   const open = formatDate(program.open_at);
   const close = formatDate(program.close_at);
+  const isOpensSoon = isBeforeOpenDate(program.open_at);
+  const isDeadlinePassed = isPastDeadline(program.close_at);
 
   const handleStartApplication = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (starting) return;
+    if (starting || isOpensSoon || isDeadlinePassed) return;
 
     setStarting(true);
     try {
@@ -34,9 +37,15 @@ export default function ProgramCard({ program }: { program: Program }) {
   return (
     <div
       onClick={handleStartApplication}
-      className="block bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      className={`relative block bg-white rounded-lg border shadow-sm transition-shadow ${
+        isOpensSoon || isDeadlinePassed
+          ? "border-gray-200 cursor-not-allowed"
+          : "border-gray-200 hover:shadow-md cursor-pointer"
+      }`}
     >
-      <div className="p-5">
+      <div
+        className={`p-5 ${isOpensSoon || isDeadlinePassed ? "opacity-40" : ""}`}
+      >
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">
             {program.name}
@@ -68,8 +77,20 @@ export default function ProgramCard({ program }: { program: Program }) {
             {open && <span className="mr-3">Opens: {open}</span>}
             {close && <span>Closes: {close}</span>}
           </div>
-          <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700">
-            {starting ? "Starting..." : "Apply"}
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded ${
+              isOpensSoon || isDeadlinePassed
+                ? "bg-gray-100 text-gray-500"
+                : "bg-blue-50 text-blue-700"
+            }`}
+          >
+            {starting
+              ? "Starting..."
+              : isOpensSoon
+              ? "Coming Soon"
+              : isDeadlinePassed
+              ? "Closed"
+              : "Apply"}
           </span>
         </div>
       </div>
