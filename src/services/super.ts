@@ -16,8 +16,10 @@ export async function listCoalitions(includeDeleted = false) {
   return data ?? [];
 }
 
-export async function listPrograms() {
-  const { data, error } = await supabase.rpc("super_list_programs_v1");
+export async function listPrograms(includeDeleted = false) {
+  const { data, error } = await supabase.rpc("super_list_programs_v1", {
+    include_deleted: includeDeleted,
+  });
   if (error) throw error;
   return data ?? [];
 }
@@ -49,6 +51,25 @@ export async function createProgram(input: {
     p_close_at: input.closeAt ?? null,
     p_published: !!input.published,
   });
+  if (error) throw error;
+  return data;
+}
+
+// Programs soft-delete
+export async function softDeleteProgram(params: { p_program_id: string }) {
+  const { data, error } = await supabase.rpc(
+    "super_soft_delete_program_v1",
+    params
+  );
+  if (error) throw error;
+  return data;
+}
+
+export async function restoreProgram(params: { p_program_id: string }) {
+  const { data, error } = await supabase.rpc(
+    "super_restore_program_v1",
+    params
+  );
   if (error) throw error;
   return data;
 }
@@ -130,6 +151,40 @@ export async function removeOrgFromCoalition(params: {
     "super_remove_org_from_coalition_v1",
     params
   );
+  if (error) throw error;
+  return data;
+}
+
+// Users soft-delete
+export async function listUsers(opts: {
+  search?: string | null;
+  role?: string | null;
+  includeDeleted?: boolean;
+  limit?: number;
+  offset?: number;
+}) {
+  const { data, error } = await supabase.rpc("super_list_users_v1", {
+    p_search: opts.search ?? null,
+    p_role_filter: opts.role ?? null,
+    p_limit: opts.limit ?? 1000,
+    p_offset: opts.offset ?? 0,
+    include_deleted: !!opts.includeDeleted,
+  });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function softDeleteUser(params: { p_user_id: string }) {
+  const { data, error } = await supabase.rpc(
+    "super_soft_delete_user_v1",
+    params
+  );
+  if (error) throw error;
+  return data;
+}
+
+export async function restoreUser(params: { p_user_id: string }) {
+  const { data, error } = await supabase.rpc("super_restore_user_v1", params);
   if (error) throw error;
   return data;
 }

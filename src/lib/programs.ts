@@ -25,6 +25,7 @@ export type Program = {
   published_coalition_id: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 };
 
 export function getReviewStatus(p?: Program | null): ReviewStatus {
@@ -74,6 +75,7 @@ export type ProgramRow = {
   created_at: string;
   updated_at: string;
   metadata: any | null;
+  deleted_at?: string | null;
 };
 
 export async function adminListMyPrograms(): Promise<Program[]> {
@@ -161,7 +163,13 @@ export async function superListProgramSubmissions(
     }
   );
   if (error) throw new Error(error.message);
-  return (data ?? []) as Program[];
+
+  // Filter out soft-deleted programs
+  const filteredData = (data ?? []).filter(
+    (program: any) => !program.deleted_at
+  );
+
+  return filteredData as Program[];
 }
 
 export async function superReviewProgram(args: {

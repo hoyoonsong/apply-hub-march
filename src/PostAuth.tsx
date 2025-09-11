@@ -15,9 +15,17 @@ export default function PostAuth() {
       // Ensure profile exists (no DB trigger needed)
       const { data } = await supabase
         .from("profiles")
-        .select("id, onboarded_at, role")
+        .select("id, onboarded_at, role, deleted_at")
         .eq("id", session.user.id)
         .maybeSingle();
+
+      // Check if user is deleted
+      if (data?.deleted_at) {
+        console.log("User is soft deleted, signing out");
+        await supabase.auth.signOut();
+        return nav("/", { replace: true });
+      }
+
       if (!data) {
         await supabase.from("profiles").insert({ id: session.user.id });
       }

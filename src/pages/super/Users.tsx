@@ -12,6 +12,7 @@ import {
   updateUserRoleV2,
   getEffectiveRoles,
 } from "../../lib/assignments";
+import { listUsers, softDeleteUser, restoreUser } from "../../services/super";
 import ProgramPicker from "../../components/ProgramPicker";
 import OrganizationPicker from "../../components/OrganizationPicker";
 import CoalitionPicker from "../../components/CoalitionPicker";
@@ -37,6 +38,7 @@ type ProfileRow = {
   role: string;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
 };
 
 const ROLE_OPTIONS: UserRole[] = [
@@ -153,6 +155,7 @@ export default function Users() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState<string>("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "">("");
+  const [showDeleted, setShowDeleted] = useState(false);
 
   // selection and row states
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -186,20 +189,21 @@ export default function Users() {
     setFetchError(null);
     setBanner(null);
 
-    const { data, error } = await supabase.rpc("super_list_users_v1", {
-      p_search: search === "" ? null : search,
-      p_role_filter: null, // Don't filter by role on backend - we'll do it client-side
-      p_limit: 1000, // Large limit instead of pagination
-      p_offset: 0,
-    });
-
-    if (error) {
-      setFetchError(error.message);
-      setUsers([]);
-    } else {
+    try {
+      const data = await listUsers({
+        search: search === "" ? null : search,
+        role: null, // Don't filter by role on backend - we'll do it client-side
+        includeDeleted: showDeleted,
+        limit: 1000, // Large limit instead of pagination
+        offset: 0,
+      });
       setUsers(data ?? []);
+    } catch (error: any) {
+      setFetchError(error?.message ?? "Failed to fetch users");
+      setUsers([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -207,7 +211,7 @@ export default function Users() {
     // reset selection when filters change
     setSelected({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]); // Only refetch when search changes, not roleFilter
+  }, [search, showDeleted]); // Only refetch when search or showDeleted changes, not roleFilter
 
   // Load effective roles for all users when users data changes
   useEffect(() => {
@@ -325,7 +329,9 @@ export default function Users() {
   }
 
   async function bulkChangeRole(newRole: UserRole) {
-    const ids = Object.keys(selected).filter((k) => selected[k]);
+    const ids = Object.entries(selected)
+      .filter(([id, sel]) => sel && !users.find((u) => u.id === id)?.deleted_at)
+      .map(([id]) => id);
     if (ids.length === 0) return;
 
     setBanner(null);
@@ -436,6 +442,16 @@ export default function Users() {
                   ))}
                 </select>
               </div>
+            </div>
+            <div className="mt-4">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showDeleted}
+                  onChange={(e) => setShowDeleted(e.target.checked)}
+                />
+                Show deleted
+              </label>
             </div>
           </div>
         </div>
@@ -561,7 +577,7 @@ export default function Users() {
                       <tr
                         className={`hover:bg-gray-50 ${
                           selected[u.id] ? "bg-blue-50" : ""
-                        }`}
+                        } ${u.deleted_at ? "opacity-60" : ""}`}
                       >
                         <td className="px-3 sm:px-6 py-4">
                           <button
@@ -611,7 +627,11 @@ export default function Users() {
                               </div>
                             </div>
                             <div className="ml-3 sm:ml-4 min-w-0 flex-1">
-                              <div className="text-sm font-medium text-gray-900 truncate">
+                              <div
+                                className={`text-sm font-medium text-gray-900 truncate ${
+                                  u.deleted_at ? "line-through" : ""
+                                }`}
+                              >
                                 {u.full_name || "Unnamed User"}
                               </div>
                               <div className="text-xs text-gray-500 font-mono truncate">
@@ -647,10 +667,28 @@ export default function Users() {
                               </span>
                               <span className="sm:hidden">...</span>
                             </div>
+                          ) : u.deleted_at ? (
+                            <button
+                              className="text-indigo-600 hover:underline ml-2"
+                              onClick={() =>
+                                restoreUser({ p_user_id: u.id }).then(
+                                  fetchUsers
+                                )
+                              }
+                            >
+                              Restore
+                            </button>
                           ) : (
-                            <span className="text-gray-400 text-xs sm:text-sm">
-                              —
-                            </span>
+                            <button
+                              className="text-red-600 hover:underline ml-2"
+                              onClick={() =>
+                                softDeleteUser({ p_user_id: u.id }).then(
+                                  fetchUsers
+                                )
+                              }
+                            >
+                              Delete
+                            </button>
                           )}
                         </td>
                       </tr>

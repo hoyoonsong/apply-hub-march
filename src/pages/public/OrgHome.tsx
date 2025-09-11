@@ -44,9 +44,16 @@ export default function OrgHome() {
 
         setOrg(foundOrg);
 
-        // Get programs for this organization using existing RPC
+        // Get programs for this organization using public RPC
         const { data: pData, error: pErr } = await supabase.rpc(
-          "super_list_programs_v1"
+          "public_list_programs_v1",
+          {
+            p_type: null,
+            p_search: null,
+            p_coalition_id: null,
+            p_limit: 100,
+            p_offset: 0,
+          }
         );
 
         if (!mounted) return;
@@ -57,9 +64,12 @@ export default function OrgHome() {
         }
 
         // Filter programs by organization and published status
+        // Also filter out deleted programs (deleted_at should be null)
         const orgPrograms = (pData || []).filter(
           (program: Program) =>
-            program.organization_id === foundOrg.id && program.published
+            program.organization_id === foundOrg.id &&
+            program.published &&
+            !program.deleted_at
         );
 
         // Apply search filter

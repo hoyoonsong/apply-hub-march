@@ -60,9 +60,16 @@ export default function CoalitionHome() {
 
         setCoalition(foundCoalition);
 
-        // Get programs for this coalition using existing RPC
+        // Get programs for this coalition using public RPC
         const { data: pData, error: pErr } = await supabase.rpc(
-          "super_list_programs_v1"
+          "public_list_programs_v1",
+          {
+            p_type: null,
+            p_search: null,
+            p_coalition_id: foundCoalition.id,
+            p_limit: 100,
+            p_offset: 0,
+          }
         );
 
         if (!mounted) return;
@@ -73,11 +80,13 @@ export default function CoalitionHome() {
         }
 
         // Filter programs by coalition and published status
+        // Also filter out deleted programs (deleted_at should be null)
         const coalitionPrograms = (pData || []).filter(
           (program: Program) =>
             program.published &&
             program.published_scope === "coalition" &&
-            program.published_coalition_id === foundCoalition.id
+            program.published_coalition_id === foundCoalition.id &&
+            !program.deleted_at
         );
 
         // Apply search filter

@@ -5,6 +5,8 @@ import {
   createProgram,
   listOrgs,
   isBackendUpdatingError,
+  softDeleteProgram,
+  restoreProgram,
 } from "../../services/super";
 
 interface Program {
@@ -19,6 +21,7 @@ interface Program {
   created_at: string;
   organization_name: string;
   organization_slug: string;
+  deleted_at?: string | null;
 }
 
 interface Organization {
@@ -34,6 +37,7 @@ export default function Programs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   // Form state
   const [organizationId, setOrganizationId] = useState("");
@@ -50,7 +54,7 @@ export default function Programs() {
     try {
       setLoading(true);
       const [programsData, orgsData] = await Promise.all([
-        listPrograms(),
+        listPrograms(showDeleted),
         listOrgs(false),
       ]);
       setPrograms(programsData);
@@ -68,7 +72,7 @@ export default function Programs() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [showDeleted]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,6 +113,28 @@ export default function Programs() {
     }
   };
 
+  const handleSoftDelete = async (id: string) => {
+    try {
+      setError(null);
+      await softDeleteProgram({ p_program_id: id });
+      setSuccess("Program deleted");
+      await loadData();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to delete program");
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      setError(null);
+      await restoreProgram({ p_program_id: id });
+      setSuccess("Program restored");
+      await loadData();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to restore program");
+    }
+  };
+
   const filteredOrgs = orgs.filter((org) =>
     org.name.toLowerCase().includes(orgSearchTerm.toLowerCase())
   );
@@ -143,6 +169,14 @@ export default function Programs() {
               <p className="mt-1 text-sm text-gray-500">
                 Manage auditions and scholarships
               </p>
+              <label className="inline-flex items-center gap-2 text-sm mt-2">
+                <input
+                  type="checkbox"
+                  checked={showDeleted}
+                  onChange={(e) => setShowDeleted(e.target.checked)}
+                />
+                Show deleted
+              </label>
             </div>
             <Link
               to="/super"
@@ -395,18 +429,30 @@ export default function Programs() {
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px] hidden sm:table-cell">
                     Created
                   </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {programs.map((program) => (
-                  <tr key={program.id}>
+                  <tr
+                    key={program.id}
+                    className={program.deleted_at ? "opacity-60" : ""}
+                  >
                     <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900 w-[120px]">
                       <div className="truncate">
                         {program.organization_name}
                       </div>
                     </td>
                     <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 w-[150px]">
-                      <div className="truncate">{program.name}</div>
+                      <div
+                        className={`truncate ${
+                          program.deleted_at ? "line-through" : ""
+                        }`}
+                      >
+                        {program.name}
+                      </div>
                     </td>
                     <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 w-[100px]">
                       <span
@@ -454,6 +500,23 @@ export default function Programs() {
                     </td>
                     <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 w-[100px] hidden sm:table-cell">
                       {new Date(program.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 w-[100px]">
+                      {program.deleted_at ? (
+                        <button
+                          onClick={() => handleRestore(program.id)}
+                          className="text-indigo-600 hover:underline"
+                        >
+                          Restore
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleSoftDelete(program.id)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

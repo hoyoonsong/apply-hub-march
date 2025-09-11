@@ -25,6 +25,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Check for deleted users periodically
+  useEffect(() => {
+    if (!user) return;
+
+    const checkUserStatus = async () => {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("deleted_at")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.deleted_at) {
+          console.log("User is soft deleted, signing out");
+          await supabase.auth.signOut();
+        }
+      } catch (error) {
+        console.error("Error checking user status:", error);
+      }
+    };
+
+    // Check immediately
+    checkUserStatus();
+
+    // Check every 30 seconds
+    const interval = setInterval(checkUserStatus, 30000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
   return <Ctx.Provider value={{ loading, user }}>{children}</Ctx.Provider>;
 }
 export const useAuth = () => useContext(Ctx);

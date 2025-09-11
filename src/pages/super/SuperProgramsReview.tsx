@@ -11,9 +11,11 @@ import {
   ReviewStatus,
 } from "../../lib/programs";
 import { supabase } from "../../lib/supabase";
+import { softDeleteProgram, restoreProgram } from "../../services/super";
 
 export default function SuperProgramsReview() {
   const [list, setList] = useState<Program[]>([]);
+  const [deletedList, setDeletedList] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -21,6 +23,7 @@ export default function SuperProgramsReview() {
     new Set()
   );
   const [orgNames, setOrgNames] = useState<Record<string, string>>({});
+  const [showDeleted, setShowDeleted] = useState(false);
 
   async function fetchOrgNames() {
     try {
@@ -39,6 +42,45 @@ export default function SuperProgramsReview() {
     }
   }
 
+  async function fetchDeletedPrograms() {
+    if (!showDeleted) {
+      setDeletedList([]);
+      return;
+    }
+
+    try {
+      // Get all programs including deleted ones
+      const { data, error } = await supabase
+        .from("programs")
+        .select(
+          `
+          id,
+          organization_id,
+          name,
+          type,
+          description,
+          open_at,
+          close_at,
+          metadata,
+          published,
+          published_scope,
+          published_by,
+          published_at,
+          published_coalition_id,
+          created_at,
+          updated_at,
+          deleted_at
+        `
+        )
+        .not("deleted_at", "is", null);
+
+      if (error) throw error;
+      setDeletedList(data || []);
+    } catch (e: any) {
+      console.error("Failed to fetch deleted programs:", e);
+    }
+  }
+
   async function refresh() {
     setLoading(true);
     setError(null);
@@ -49,6 +91,7 @@ export default function SuperProgramsReview() {
       const [data] = await Promise.all([
         superListProgramSubmissions(statusFilter),
         fetchOrgNames(),
+        fetchDeletedPrograms(),
       ]);
 
       // If multiple statuses selected, filter on the client side
@@ -71,6 +114,10 @@ export default function SuperProgramsReview() {
   useEffect(() => {
     refresh();
   }, [selectedStatuses]);
+
+  useEffect(() => {
+    fetchDeletedPrograms();
+  }, [showDeleted]);
 
   function handleStatusToggle(status: ReviewStatus) {
     setSelectedStatuses((prev) => {
@@ -134,6 +181,30 @@ export default function SuperProgramsReview() {
     try {
       await superUnpublishProgram({ program_id: p.id, note: null });
       setSuccess("Unpublished");
+      await refresh();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
+  async function handleDelete(p: Program) {
+    setError(null);
+    setSuccess(null);
+    try {
+      await softDeleteProgram({ p_program_id: p.id });
+      setSuccess("Program deleted");
+      await refresh();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
+  async function handleRestore(p: Program) {
+    setError(null);
+    setSuccess(null);
+    try {
+      await restoreProgram({ p_program_id: p.id });
+      setSuccess("Program restored");
       await refresh();
     } catch (e: any) {
       setError(e.message);
@@ -219,6 +290,128 @@ export default function SuperProgramsReview() {
               </p>
             )}
           </div>
+        </div>
+
+        {/* Deleted Programs Section */}
+        <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <button
+              onClick={() => setShowDeleted(!showDeleted)}
+              className="flex items-center text-lg font-semibold text-gray-900"
+            >
+              <svg
+                className={`w-5 h-5 mr-2 transform transition-transform ${
+                  showDeleted ? "rotate-90" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+              Deleted Programs{showDeleted && ` (${deletedList.length})`}
+            </button>
+          </div>
+          {showDeleted && (
+            <div className="divide-y divide-gray-200">
+              {deletedList.length === 0 ? (
+                <div className="px-6 py-4 text-center text-gray-500">
+                  No deleted programs found.
+                </div>
+              ) : (
+                deletedList.map((p) => {
+                  const st = getReviewStatus(p);
+                  const programWithDeleted = p as Program & {
+                    deleted_at?: string | null;
+                  };
+                  return (
+                    <div
+                      key={p.id}
+                      className="px-6 py-4 flex items-center justify-between opacity-60"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-1">
+                            <h3 className="text-sm font-medium text-gray-900 line-through">
+                              {p.name}
+                            </h3>
+                            <p className="text-sm text-gray-500 line-through">
+                              {p.description}
+                            </p>
+                            <div className="flex items-center space-x-4 mt-1">
+                              <span className="text-xs text-gray-400">
+                                {orgNames[p.organization_id] || "Unknown"}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {p.type}
+                              </span>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  st === "submitted"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : st === "changes_requested"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : st === "approved"
+                                    ? "bg-green-100 text-green-800"
+                                    : st === "unpublished"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {st.replace("_", " ")}
+                              </span>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  p.published
+                                    ? p.published_scope === "coalition"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-green-100 text-green-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {p.published
+                                  ? p.published_scope === "coalition"
+                                    ? "Coalition"
+                                    : "Org"
+                                  : "Not published"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-400">
+                          Deleted:{" "}
+                          {programWithDeleted.deleted_at
+                            ? new Date(
+                                programWithDeleted.deleted_at
+                              ).toLocaleDateString()
+                            : "Unknown"}
+                        </span>
+                        <Link
+                          to={`/super/programs/${p.id}/builder`}
+                          className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                        >
+                          View
+                        </Link>
+                        <button
+                          onClick={() => handleRestore(p)}
+                          className="text-green-600 hover:text-green-800 text-sm font-medium"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
 
         {/* Programs Table */}
@@ -333,12 +526,54 @@ export default function SuperProgramsReview() {
                         </td>
                         <td className="px-4 py-4 text-center">
                           {st === "draft" ? (
-                            <div className="text-sm text-gray-500 italic">
-                              Waiting for submission
+                            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                              <div className="text-sm text-gray-500 italic">
+                                Waiting for submission
+                              </div>
+                              <button
+                                onClick={() => handleDelete(p)}
+                                className="text-red-600 hover:text-red-800 p-1"
+                                title="Delete program"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
                             </div>
                           ) : st === "changes_requested" ? (
-                            <div className="text-sm text-gray-500 italic">
-                              Waiting for submission
+                            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                              <div className="text-sm text-gray-500 italic">
+                                Waiting for submission
+                              </div>
+                              <button
+                                onClick={() => handleDelete(p)}
+                                className="text-red-600 hover:text-red-800 p-1"
+                                title="Delete program"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
                             </div>
                           ) : p.published ? (
                             <div className="flex flex-col sm:flex-row gap-2 justify-center">
@@ -348,6 +583,25 @@ export default function SuperProgramsReview() {
                                 className="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded"
                               >
                                 Unpublish
+                              </button>
+                              <button
+                                onClick={() => handleDelete(p)}
+                                className="text-red-600 hover:text-red-800 p-1"
+                                title="Delete program"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
                               </button>
                             </div>
                           ) : (
@@ -378,6 +632,25 @@ export default function SuperProgramsReview() {
                                 title="Publish to coalition (approves program)"
                               >
                                 Publish (Coalition)
+                              </button>
+                              <button
+                                onClick={() => handleDelete(p)}
+                                className="text-red-600 hover:text-red-800 p-1"
+                                title="Delete program"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
                               </button>
                             </div>
                           )}

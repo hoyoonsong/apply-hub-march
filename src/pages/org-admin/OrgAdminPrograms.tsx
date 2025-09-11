@@ -7,8 +7,19 @@ import {
   orgCreateProgramDraft,
   ProgramRow,
   getProgramRowReviewStatus,
+  getReviewStatus,
+  Program,
 } from "../../lib/programs";
+
+type ProgramWithDeleted = Program & {
+  deleted_at?: string | null;
+};
 import { supabase } from "../../lib/supabase";
+import {
+  adminListPrograms,
+  adminSoftDeleteProgram,
+  adminRestoreProgram,
+} from "../../services/admin";
 
 type CreateState = {
   name: string;
@@ -27,7 +38,10 @@ export default function OrgAdminPrograms() {
 
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
-  const [programs, setPrograms] = useState<ProgramRow[]>([]);
+  const [programs, setPrograms] = useState<ProgramWithDeleted[]>([]);
+  const [deletedList, setDeletedList] = useState<ProgramWithDeleted[]>([]);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -67,9 +81,19 @@ export default function OrgAdminPrograms() {
         setOrgName(org.name);
 
         // 3) list programs
-        const rows = await listOrgPrograms(org.id);
+        const rows = await adminListPrograms(org.id, true); // Always get all programs including deleted
         if (!mounted) return;
-        setPrograms(rows);
+
+        // Separate active and deleted programs
+        const activePrograms = rows.filter(
+          (p: ProgramWithDeleted) => !p.deleted_at
+        );
+        const deletedPrograms = rows.filter(
+          (p: ProgramWithDeleted) => p.deleted_at
+        );
+
+        setPrograms(activePrograms as ProgramWithDeleted[]);
+        setDeletedList(deletedPrograms as ProgramWithDeleted[]);
         setListError(null);
       } catch (e: any) {
         // If forbidden from listing, bounce to unauthorized
@@ -124,7 +148,14 @@ export default function OrgAdminPrograms() {
 
       // refresh list
       const rows = await listOrgPrograms(orgId);
-      setPrograms(rows);
+      // Convert ProgramRow to ProgramWithDeleted
+      const convertedRows = rows.map((row) => ({
+        ...row,
+        organization_id: orgId,
+        published_by: null,
+        published_coalition_id: null,
+      })) as ProgramWithDeleted[];
+      setPrograms(convertedRows);
     } catch (e: any) {
       // If forbidden from creating, bounce to unauthorized
       if (e?.code === "42501" || `${e?.message ?? ""}`.includes("forbidden")) {
@@ -136,6 +167,48 @@ export default function OrgAdminPrograms() {
       setCreating(false);
     }
   }
+
+  const onDelete = async (id: string) => {
+    try {
+      await adminSoftDeleteProgram(id);
+      setSuccess("Program deleted");
+      // Refresh the list
+      if (orgId) {
+        const rows = await adminListPrograms(orgId, true);
+        const activePrograms = rows.filter(
+          (p: ProgramWithDeleted) => !p.deleted_at
+        );
+        const deletedPrograms = rows.filter(
+          (p: ProgramWithDeleted) => p.deleted_at
+        );
+        setPrograms(activePrograms as ProgramWithDeleted[]);
+        setDeletedList(deletedPrograms as ProgramWithDeleted[]);
+      }
+    } catch (e: any) {
+      setListError(e?.message ?? "Delete failed");
+    }
+  };
+
+  const onRestore = async (id: string) => {
+    try {
+      await adminRestoreProgram(id);
+      setSuccess("Program restored");
+      // Refresh the list
+      if (orgId) {
+        const rows = await adminListPrograms(orgId, true);
+        const activePrograms = rows.filter(
+          (p: ProgramWithDeleted) => !p.deleted_at
+        );
+        const deletedPrograms = rows.filter(
+          (p: ProgramWithDeleted) => p.deleted_at
+        );
+        setPrograms(activePrograms as ProgramWithDeleted[]);
+        setDeletedList(deletedPrograms as ProgramWithDeleted[]);
+      }
+    } catch (e: any) {
+      setListError(e?.message ?? "Restore failed");
+    }
+  };
 
   const hasPrograms = useMemo(() => (programs?.length ?? 0) > 0, [programs]);
 
@@ -283,12 +356,132 @@ export default function OrgAdminPrograms() {
           </form>
         </div>
 
+        {/* Deleted Programs Section */}
+        <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <button
+              onClick={() => setShowDeleted(!showDeleted)}
+              className="flex items-center text-lg font-semibold text-gray-900"
+            >
+              <svg
+                className={`w-5 h-5 mr-2 transform transition-transform ${
+                  showDeleted ? "rotate-90" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+              Deleted Programs{showDeleted && ` (${deletedList.length})`}
+            </button>
+          </div>
+          {showDeleted && (
+            <div className="divide-y divide-gray-200">
+              {deletedList.length === 0 ? (
+                <div className="px-6 py-4 text-center text-gray-500">
+                  No deleted programs found.
+                </div>
+              ) : (
+                deletedList.map((p) => {
+                  const status = getReviewStatus(p);
+                  return (
+                    <div
+                      key={p.id}
+                      className="px-6 py-4 flex items-center justify-between opacity-60"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-1">
+                            <h3 className="text-sm font-medium text-gray-900 line-through">
+                              {p.name}
+                            </h3>
+                            <p className="text-sm text-gray-500 line-through">
+                              {p.description}
+                            </p>
+                            <div className="flex items-center space-x-4 mt-1">
+                              <span className="text-xs text-gray-400">
+                                {p.type}
+                              </span>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  status === "submitted"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : status === "changes_requested"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : status === "approved"
+                                    ? "bg-green-100 text-green-800"
+                                    : status === "unpublished"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {status.replace("_", " ")}
+                              </span>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  p.published
+                                    ? p.published_scope === "coalition"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-green-100 text-green-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {p.published
+                                  ? p.published_scope === "coalition"
+                                    ? "Coalition"
+                                    : "Org"
+                                  : "Not published"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-400">
+                          Deleted:{" "}
+                          {p.deleted_at
+                            ? new Date(p.deleted_at).toLocaleDateString()
+                            : "Unknown"}
+                        </span>
+                        <Link
+                          to={`/org/${orgSlug}/admin/programs/${p.id}/builder`}
+                          className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                        >
+                          View
+                        </Link>
+                        <button
+                          onClick={() => onRestore(p.id)}
+                          className="text-indigo-600 hover:underline text-sm font-medium"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+
         {/* List */}
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Programs for {orgName}
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Programs for {orgName}
+              </h2>
+              <div className="text-sm text-gray-600">
+                {success && <span className="text-green-700">{success}</span>}
+                {listError && <span className="text-red-700">{listError}</span>}
+              </div>
+            </div>
           </div>
 
           {listError ? (
@@ -338,7 +531,7 @@ export default function OrgAdminPrograms() {
                         </td>
                         <td className="px-6 py-4">
                           {(() => {
-                            const status = getProgramRowReviewStatus(p);
+                            const status = getReviewStatus(p);
                             return (
                               <span
                                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -389,19 +582,40 @@ export default function OrgAdminPrograms() {
                           {new Date(p.created_at).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 text-right text-sm">
-                          <Link
-                            to={`/org/${orgSlug}/admin/programs/${p.id}/builder`}
-                            className="text-indigo-600 hover:text-indigo-800 font-medium"
-                          >
-                            Edit application
-                          </Link>
+                          <div className="flex items-center justify-end gap-2">
+                            <Link
+                              to={`/org/${orgSlug}/admin/programs/${p.id}/builder`}
+                              className="text-indigo-600 hover:text-indigo-800 font-medium"
+                            >
+                              Edit application
+                            </Link>
+                            <button
+                              onClick={() => onDelete(p.id)}
+                              className="text-red-600 hover:text-red-800 p-1 ml-2"
+                              title="Delete program"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={8}
                         className="px-6 py-8 text-sm text-gray-500"
                       >
                         No programs yet. Create your first draft above.

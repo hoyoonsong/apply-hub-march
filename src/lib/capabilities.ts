@@ -11,9 +11,15 @@ export async function getUserRole(): Promise<string | null> {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, deleted_at")
       .eq("id", user.id)
       .single();
+
+    // If user is deleted, return null to deny access
+    if (profile?.deleted_at) {
+      console.log("User is soft deleted, denying access");
+      return null;
+    }
 
     return profile?.role || null;
   } catch (error) {

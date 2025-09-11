@@ -24,11 +24,17 @@ export default function ProtectedSuperRoute({
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("role")
+          .select("role, deleted_at")
           .eq("id", session.user.id)
           .single();
 
-        setIsSuperAdmin(profile?.role === "superadmin");
+        // Check if user is deleted or not superadmin
+        if (profile?.deleted_at) {
+          console.log("User is soft deleted, denying super admin access");
+          setIsSuperAdmin(false);
+        } else {
+          setIsSuperAdmin(profile?.role === "superadmin");
+        }
       } catch (error) {
         console.error("Error checking super admin status:", error);
         setIsSuperAdmin(false);
