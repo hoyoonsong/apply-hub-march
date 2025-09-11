@@ -10,7 +10,9 @@ export function useCollaborativeReview(appId: string) {
   const supabase = createClient();
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [review, setReview] = useState<ReviewGetRow["review"]>({});
-  const [applicationSchema, setApplicationSchema] = useState<any>({});
+  const [applicationSchema, setApplicationSchema] = useState<any>({
+    fields: [],
+  });
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);

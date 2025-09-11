@@ -9,6 +9,7 @@ import {
 } from "../../lib/rpc";
 import { useApplicationAutosave } from "../../components/useApplicationAutosave";
 import type { ProgramApplicationSchema } from "../../types/application";
+import { missingRequired } from "../../utils/answers";
 import {
   isPastDeadline,
   isBeforeOpenDate,
@@ -102,6 +103,17 @@ export default function ApplicationPage() {
         alert("Cannot submit - application is not currently open");
       }
       return;
+    }
+
+    // Validate required fields before submitting
+    if (schema) {
+      const missing = missingRequired(schema, answers);
+      if (missing.length > 0) {
+        alert(
+          `Please complete the following required fields: ${missing.join(", ")}`
+        );
+        return;
+      }
     }
 
     setSubmitting(true);

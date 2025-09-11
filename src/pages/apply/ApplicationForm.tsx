@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getApplication, saveApplication } from "../../lib/rpc";
+import { missingRequired } from "../../utils/answers";
 
 /**
  * We expect the program builder to have saved metadata like:
@@ -134,6 +135,25 @@ export default function ApplicationForm() {
 
   async function onSubmitApp() {
     if (!applicationId) return;
+
+    // Validate required fields before submitting
+    const fields = (program?.metadata as any)?.form?.fields || [];
+    const schema = {
+      fields: fields.map((f: any) => ({
+        key: f.id,
+        label: f.label,
+        required: f.required,
+        type: f.type,
+      })),
+    };
+    const missing = missingRequired(schema, answers);
+    if (missing.length > 0) {
+      setErr(
+        `Please complete the following required fields: ${missing.join(", ")}`
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
       setErr(null);
