@@ -113,6 +113,14 @@ export default function CoalitionProgramBuilder() {
     setSaving(true);
     setMsg(null);
     try {
+      // First, save any current changes to the schema
+      const updatedSchema = {
+        fields: fields,
+      };
+      console.log("Saving schema before submission:", updatedSchema);
+      await setBuilderSchema(programId, updatedSchema);
+      console.log("Schema saved before submission");
+
       // If program is already submitted, we need to reset it to draft first
       const meta = (program?.metadata ?? {}) as any;
       const currentStatus =

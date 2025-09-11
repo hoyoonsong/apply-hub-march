@@ -1,5 +1,6 @@
 // src/pages/super/SuperProgramsReview.tsx
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   superListProgramSubmissions,
   superReviewProgram,
@@ -9,7 +10,6 @@ import {
   Program,
   ReviewStatus,
 } from "../../lib/programs";
-import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 
 export default function SuperProgramsReview() {
@@ -230,22 +230,22 @@ export default function SuperProgramsReview() {
             <table className="w-full min-w-[800px] divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
                     Name
                   </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
                     Org
                   </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">
                     Type
                   </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
                     Status
                   </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
                     Published
                   </th>
-                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[300px]">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-[300px]">
                     Actions
                   </th>
                 </tr>
@@ -253,13 +253,13 @@ export default function SuperProgramsReview() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td className="px-3 sm:px-6 py-4" colSpan={6}>
+                    <td className="px-4 py-4 text-center" colSpan={6}>
                       Loading…
                     </td>
                   </tr>
                 ) : list.length === 0 ? (
                   <tr>
-                    <td className="px-3 sm:px-6 py-4" colSpan={6}>
+                    <td className="px-4 py-4 text-center" colSpan={6}>
                       No programs found.
                     </td>
                   </tr>
@@ -268,26 +268,33 @@ export default function SuperProgramsReview() {
                     const st = getReviewStatus(p);
                     return (
                       <tr key={p.id}>
-                        <td className="px-3 sm:px-6 py-4">
-                          <div className="font-medium text-sm">{p.name}</div>
-                          {p.description && (
-                            <div className="text-xs text-gray-500 mt-1 truncate max-w-[180px]">
-                              {p.description}
-                            </div>
-                          )}
+                        <td className="px-4 py-4 text-center">
+                          <div className="flex flex-col items-center">
+                            <Link
+                              to={`/super/programs/${p.id}/builder`}
+                              className="font-medium text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              {p.name}
+                            </Link>
+                            {p.description && (
+                              <div className="text-xs text-gray-500 mt-1 truncate max-w-[180px]">
+                                {p.description}
+                              </div>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-3 sm:px-6 py-4">
+                        <td className="px-4 py-4 text-center">
                           <div className="text-sm text-gray-700">
                             {orgNames[p.organization_id] ||
                               p.organization_id.substring(0, 8) + "..."}
                           </div>
                         </td>
-                        <td className="px-3 sm:px-6 py-4">
+                        <td className="px-4 py-4 text-center">
                           <span className="text-sm text-gray-700 capitalize">
                             {p.type}
                           </span>
                         </td>
-                        <td className="px-3 sm:px-6 py-4">
+                        <td className="px-4 py-4 text-center">
                           <span
                             className={
                               "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium " +
@@ -305,7 +312,7 @@ export default function SuperProgramsReview() {
                             {st.replace("_", " ")}
                           </span>
                         </td>
-                        <td className="px-3 sm:px-6 py-4">
+                        <td className="px-4 py-4 text-center">
                           {p.published ? (
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -324,7 +331,7 @@ export default function SuperProgramsReview() {
                             </span>
                           )}
                         </td>
-                        <td className="px-3 sm:px-6 py-4 text-right">
+                        <td className="px-4 py-4 text-center">
                           {st === "draft" ? (
                             <div className="text-sm text-gray-500 italic">
                               Waiting for submission
@@ -334,7 +341,7 @@ export default function SuperProgramsReview() {
                               Waiting for submission
                             </div>
                           ) : p.published ? (
-                            <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                            <div className="flex flex-col sm:flex-row gap-2 justify-center">
                               {/* Only show Unpublish for published programs */}
                               <button
                                 onClick={() => handleUnpublish(p)}
@@ -344,7 +351,7 @@ export default function SuperProgramsReview() {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                            <div className="flex flex-col sm:flex-row gap-2 justify-center">
                               {/* Review Actions for submitted but not published programs */}
                               <button
                                 onClick={() =>

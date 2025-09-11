@@ -38,6 +38,9 @@ export default function OrgProgramBuilder() {
     [params]
   );
 
+  // Check if this is being accessed as a super admin (no orgSlug in params)
+  const isSuperAdmin = !orgSlug;
+
   const [org, setOrg] = useState<Org | null>(null);
   const [program, setProgram] = useState<Program | null>(null);
   const [includeApplyHubCommon, setIncludeApplyHubCommon] =
@@ -49,11 +52,55 @@ export default function OrgProgramBuilder() {
   const [msg, setMsg] = useState<string | null>(null);
   const [schema, setSchema] = useState<ApplicationSchema>({ fields: [] });
   const [isEditing, setIsEditing] = useState(false);
+
+  // Function to handle edit button click
+  const handleEditClick = async () => {
+    if (!program) return;
+
+    try {
+      // If program is submitted, revert it to draft first
+      const meta = (program?.metadata ?? {}) as any;
+      const currentStatus =
+        typeof meta?.review_status === "string" ? meta.review_status : "draft";
+
+      if (currentStatus === "submitted") {
+        const { error: updateError } = await supabase
+          .from("programs")
+          .update({
+            metadata: {
+              ...meta,
+              review_status: "draft",
+            },
+          })
+          .eq("id", program.id);
+
+        if (updateError) throw new Error(updateError.message);
+
+        // Update the program state
+        setProgram({
+          ...program,
+          metadata: {
+            ...meta,
+            review_status: "draft",
+          },
+        });
+      }
+
+      setIsEditing(true);
+    } catch (e: any) {
+      setMsg(`Error: ${e.message}`);
+    }
+  };
   const [loading, setLoading] = useState(true);
 
   // load org
   useEffect(() => {
     (async () => {
+      if (isSuperAdmin) {
+        // For super admin, we'll load org from program data later
+        return;
+      }
+
       const { data, error } = await supabase
         .from("organizations")
         .select("id,slug,name")
@@ -62,7 +109,7 @@ export default function OrgProgramBuilder() {
       if (error || !data) return navigate("/unauthorized");
       setOrg(data);
     })();
-  }, [orgSlug, navigate]);
+  }, [orgSlug, navigate, isSuperAdmin]);
 
   // load program and schema
   useEffect(() => {
@@ -86,17 +133,54 @@ export default function OrgProgramBuilder() {
           const appMeta = row.metadata?.application || {};
           setIncludeApplyHubCommon(!!appMeta?.common?.applyhub);
           setIncludeCoalitionCommon(!!appMeta?.common?.coalition);
+
+          // For super admin, load org data from program
+          if (isSuperAdmin && !org) {
+            const { data: orgData, error: orgError } = await supabase
+              .from("organizations")
+              .select("id,slug,name")
+              .eq("id", row.organization_id)
+              .single();
+
+            if (!orgError && orgData) {
+              setOrg(orgData);
+            }
+          }
         }
 
         // Load builder schema separately
         try {
-          const s = await getBuilderSchema(programId);
+          let s;
+          if (isSuperAdmin) {
+            // For super admin, get schema from programs_public table
+            const { data: programData, error: programError } = await supabase
+              .from("programs_public")
+              .select("application_schema")
+              .eq("id", programId)
+              .single();
+
+            if (!programError && programData) {
+              s = programData.application_schema;
+            } else {
+              // Fallback to program metadata
+              const appMeta = row.metadata?.application || {};
+              if (appMeta.schema) {
+                s = appMeta.schema;
+              } else {
+                // Last resort - try RPC call
+                s = await getBuilderSchema(programId);
+              }
+            }
+          } else {
+            s = await getBuilderSchema(programId);
+          }
+
           if (mounted) {
             setSchema(s ?? { fields: [] });
             setFields(s?.fields || []);
           }
         } catch (e) {
-          // First time - no schema exists yet
+          // First time - no schema exists yet, or RPC failed for super admin
           if (mounted) {
             setSchema({ fields: [] });
             setFields([]);
@@ -134,18 +218,13 @@ export default function OrgProgramBuilder() {
     setSaving(true);
     setMsg(null);
     try {
-      // Update the schema with current fields
       const updatedSchema = {
         fields: fields,
       };
-
-      console.log("Saving schema:", updatedSchema);
-      const saved = await setBuilderSchema(programId, updatedSchema);
-      console.log("Saved schema result:", saved);
-      setSchema(saved ?? updatedSchema);
-      setMsg("Saved.");
+      await setBuilderSchema(programId, updatedSchema);
+      setSchema(updatedSchema);
+      setMsg("Saved!");
     } catch (e: any) {
-      console.error("Save error:", e);
       setMsg(e.message ?? "Save failed");
     } finally {
       setSaving(false);
@@ -157,40 +236,24 @@ export default function OrgProgramBuilder() {
     setSaving(true);
     setMsg(null);
     try {
-      // If program is already submitted, we need to reset it to draft first
-      const meta = (program?.metadata ?? {}) as any;
-      const currentStatus =
-        typeof meta?.review_status === "string" ? meta.review_status : "draft";
+      // Save the current schema first
+      await setBuilderSchema(programId, { fields: fields });
 
-      if (currentStatus === "submitted") {
-        // Reset to draft first by updating metadata
-        const { error: updateError } = await supabase
-          .from("programs")
-          .update({
-            metadata: {
-              ...meta,
-              review_status: "draft",
-            },
-          })
-          .eq("id", program.id);
-
-        if (updateError) throw new Error(updateError.message);
-      }
-
+      // Submit for review (this handles both first submission and resubmission)
       await orgSubmitProgramForReview({
         program_id: program.id,
-        note: isSubmitted
-          ? "Org admin resubmitted for review"
-          : "Org admin submitted for review",
+        note: "Program submitted for review",
       });
-      setMsg(
-        isSubmitted
-          ? "Resubmitted for review. Superadmin will review & publish."
-          : "Submitted for review. Superadmin will review & publish."
-      );
+
+      setMsg("Submitted for review. Superadmin will review & publish.");
+
       // Navigate back to programs list after successful submission
       setTimeout(() => {
-        navigate(`/org/${org?.slug}/admin/programs`);
+        if (isSuperAdmin) {
+          navigate("/super/programs");
+        } else {
+          navigate(`/org/${org?.slug}/admin/programs`);
+        }
       }, 1500);
     } catch (e: any) {
       setMsg(e.message || "Request failed.");
@@ -204,12 +267,12 @@ export default function OrgProgramBuilder() {
   if (!org) return <div className="p-6">Loading organization…</div>;
   if (!program) return <div className="p-6">Loading program…</div>;
 
-  // Check if form should be disabled (when status is submitted)
+  // Check if form should be disabled (when status is submitted or for super admin view)
   const meta = (program?.metadata ?? {}) as any;
   const status =
     typeof meta?.review_status === "string" ? meta.review_status : "draft";
   const isSubmitted = status === "submitted";
-  const isDisabled = isSubmitted && !isEditing;
+  const isDisabled = isSuperAdmin || (isSubmitted && !isEditing);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
@@ -217,12 +280,20 @@ export default function OrgProgramBuilder() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {org.name} — Edit Application
+              {isSuperAdmin ? "Super Admin" : org.name} —{" "}
+              {isSuperAdmin ? "View" : "Edit"} Application
             </h1>
             <p className="text-sm text-gray-500">Program: {program.name}</p>
+            {isSuperAdmin && org && (
+              <p className="text-sm text-gray-500">Organization: {org.name}</p>
+            )}
           </div>
           <Link
-            to={`/org/${org.slug}/admin/programs`}
+            to={
+              isSuperAdmin
+                ? "/super/programs"
+                : `/org/${org?.slug}/admin/programs`
+            }
             className="px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700"
           >
             Back to Programs
@@ -274,7 +345,9 @@ export default function OrgProgramBuilder() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setIsEditing(!isEditing)}
+                    onClick={
+                      isEditing ? () => setIsEditing(false) : handleEditClick
+                    }
                     className="ml-4 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
                   >
                     {isEditing ? "Cancel Edit" : "Edit"}
@@ -321,50 +394,52 @@ export default function OrgProgramBuilder() {
         <div className="bg-white border rounded-lg p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Application Builder</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => addField("short_text")}
-                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isDisabled}
-              >
-                Short text
-              </button>
-              <button
-                onClick={() => addField("long_text")}
-                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isDisabled}
-              >
-                Long text
-              </button>
-              <button
-                onClick={() => addField("date")}
-                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isDisabled}
-              >
-                Date
-              </button>
-              <button
-                onClick={() => addField("select")}
-                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isDisabled}
-              >
-                Select
-              </button>
-              <button
-                onClick={() => addField("checkbox")}
-                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isDisabled}
-              >
-                Checkbox
-              </button>
-              <button
-                onClick={() => addField("file")}
-                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isDisabled}
-              >
-                File upload
-              </button>
-            </div>
+            {!isSuperAdmin && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => addField("short_text")}
+                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isDisabled}
+                >
+                  Short text
+                </button>
+                <button
+                  onClick={() => addField("long_text")}
+                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isDisabled}
+                >
+                  Long text
+                </button>
+                <button
+                  onClick={() => addField("date")}
+                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isDisabled}
+                >
+                  Date
+                </button>
+                <button
+                  onClick={() => addField("select")}
+                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isDisabled}
+                >
+                  Select
+                </button>
+                <button
+                  onClick={() => addField("checkbox")}
+                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isDisabled}
+                >
+                  Checkbox
+                </button>
+                <button
+                  onClick={() => addField("file")}
+                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isDisabled}
+                >
+                  File upload
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mt-4 space-y-4">
@@ -464,23 +539,25 @@ export default function OrgProgramBuilder() {
             )}
           </div>
 
-          <div className="mt-6 flex gap-3">
-            <button
-              disabled={saving || isDisabled}
-              onClick={onSave}
-              className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
-            <button
-              disabled={saving || (isSubmitted && !isEditing)}
-              onClick={onSubmitForReview}
-              className="px-4 py-2 rounded border border-indigo-600 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
-            >
-              {isSubmitted ? "Resubmit for review" : "Submit for review"}
-            </button>
-            {msg && <span className="text-sm text-gray-600 ml-2">{msg}</span>}
-          </div>
+          {!isSuperAdmin && (
+            <div className="mt-6 flex gap-3">
+              <button
+                disabled={saving || isDisabled}
+                onClick={onSave}
+                className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+              <button
+                disabled={saving || (isSubmitted && !isEditing)}
+                onClick={onSubmitForReview}
+                className="px-4 py-2 rounded border border-indigo-600 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+              >
+                {isSubmitted ? "Resubmit for review" : "Submit for review"}
+              </button>
+              {msg && <span className="text-sm text-gray-600 ml-2">{msg}</span>}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -92,6 +92,14 @@ export default function App() {
               }
             />
             <Route
+              path="/super/programs/:programId/builder"
+              element={
+                <ProtectedSuperRoute>
+                  <OrgProgramBuilder />
+                </ProtectedSuperRoute>
+              }
+            />
+            <Route
               path="/super/coalitions"
               element={
                 <ProtectedSuperRoute>
