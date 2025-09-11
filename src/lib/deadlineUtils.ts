@@ -45,14 +45,29 @@ export function getDeadlineMessage(deadline: string | null): string {
   const diffMs = deadlineDate.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
+  // Format the exact deadline with time and timezone
+  const exactDeadline = deadlineDate.toLocaleString("en-US", {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+
   if (diffMs < 0) {
-    return "Deadline passed";
+    return `Deadline passed (was ${exactDeadline})`;
   } else if (diffDays === 1) {
-    return "Deadline tomorrow";
+    return `Due tomorrow at ${deadlineDate.toLocaleString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    })} (${exactDeadline})`;
   } else if (diffDays <= 7) {
-    return `Deadline in ${diffDays} days`;
+    return `Due in ${diffDays} days (${exactDeadline})`;
   } else {
-    return `Deadline: ${deadlineDate.toLocaleDateString()}`;
+    return `Due: ${exactDeadline}`;
   }
 }
 
@@ -64,13 +79,28 @@ export function getOpenDateMessage(openDate: string | null): string {
   const diffMs = openDateObj.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
+  // Format the exact open date with time and timezone
+  const exactOpenDate = openDateObj.toLocaleString("en-US", {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+
   if (diffMs < 0) {
     return "Application is open";
   } else if (diffDays === 1) {
-    return "Opens tomorrow";
+    return `Opens tomorrow at ${openDateObj.toLocaleString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    })} (${exactOpenDate})`;
   } else if (diffDays <= 7) {
-    return `Opens in ${diffDays} days`;
+    return `Opens in ${diffDays} days (${exactOpenDate})`;
   } else {
-    return `Opens: ${openDateObj.toLocaleDateString()}`;
+    return `Opens: ${exactOpenDate}`;
   }
 }
