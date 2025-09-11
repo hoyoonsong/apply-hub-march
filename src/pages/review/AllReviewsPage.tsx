@@ -1,44 +1,48 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useCapabilities } from "../../lib/capabilities";
 import type { ReviewsListRow } from "../../types/reviews";
 
 export default function AllReviewsPage() {
-  const [rows, setRows] = useState<ReviewsListRow[]>([]);
+  const [allRows, setAllRows] = useState<ReviewsListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mineOnly, setMineOnly] = useState(false);
   const [status, setStatus] = useState<"" | "draft" | "submitted">("");
-  const [page, setPage] = useState(0);
-  const pageSize = 25;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProgramId, setSelectedProgramId] = useState<string>("");
+
+  const { reviewerPrograms, loading: capabilitiesLoading } = useCapabilities();
 
   async function fetchList() {
     setLoading(true);
     setError(null);
 
+    // Get all reviews (no pagination, no program filter at RPC level)
     const { data, error } = await supabase.rpc("reviews_list_v1", {
       p_mine_only: mineOnly,
       p_status: status || null,
       p_program_id: null,
       p_org_id: null,
-      p_limit: pageSize,
-      p_offset: page * pageSize,
+      p_limit: 1000, // Large limit to get all reviews
+      p_offset: 0,
     });
 
     if (error) {
       console.error("Error fetching reviews:", error);
       setError(error.message);
-      setRows([]);
+      setAllRows([]);
     } else {
       const reviews = (data ?? []) as ReviewsListRow[];
-      setRows(reviews);
+      setAllRows(reviews);
     }
     setLoading(false);
   }
 
   useEffect(() => {
     fetchList();
-  }, [mineOnly, status, page]); // eslint-disable-line
+  }, [mineOnly, status]); // eslint-disable-line
 
   // Realtime refresh whenever any review changes (no heavy logic here)
   useEffect(() => {
@@ -53,6 +57,39 @@ export default function AllReviewsPage() {
     return () => supabase.removeChannel(ch);
   }, [supabase]); // eslint-disable-line
 
+  // Filter rows based on search term, program selection, and user's assigned programs
+  const filteredRows = useMemo(() => {
+    let filtered = allRows;
+
+    // Filter by assigned programs only
+    if (reviewerPrograms.length > 0) {
+      const assignedProgramIds = reviewerPrograms.map((p) => p.id);
+      filtered = filtered.filter((row) =>
+        assignedProgramIds.includes(row.program_id)
+      );
+    }
+
+    // Filter by selected program
+    if (selectedProgramId) {
+      filtered = filtered.filter((row) => row.program_id === selectedProgramId);
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (row) =>
+          row.program_name.toLowerCase().includes(term) ||
+          (row.applicant_name &&
+            row.applicant_name.toLowerCase().includes(term)) ||
+          (row.applicant_id && row.applicant_id.toLowerCase().includes(term)) ||
+          (row.reviewer_name && row.reviewer_name.toLowerCase().includes(term))
+      );
+    }
+
+    return filtered;
+  }, [allRows, reviewerPrograms, selectedProgramId, searchTerm]);
+
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -60,34 +97,61 @@ export default function AllReviewsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3">
-        <label className="inline-flex items-center gap-2">
-          <input
-            type="checkbox"
-            className="h-4 w-4"
-            checked={mineOnly}
-            onChange={(e) => {
-              setPage(0);
-              setMineOnly(e.target.checked);
-            }}
-          />
-          <span className="text-sm">My reviews only</span>
-        </label>
-        <label className="inline-flex items-center gap-2">
-          <span className="text-sm">Status</span>
-          <select
-            className="rounded border px-2 py-1 text-sm"
-            value={status}
-            onChange={(e) => {
-              setPage(0);
-              setStatus(e.target.value as any);
-            }}
-          >
-            <option value="">All</option>
-            <option value="draft">Draft</option>
-            <option value="submitted">Submitted</option>
-          </select>
-        </label>
+      <div className="space-y-4">
+        {/* Search Bar */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Search by program name, applicant name, or reviewer..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Other Filters */}
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3">
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={mineOnly}
+              onChange={(e) => setMineOnly(e.target.checked)}
+            />
+            <span className="text-sm">My reviews only</span>
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <span className="text-sm">Status</span>
+            <select
+              className="rounded border px-2 py-1 text-sm"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as any)}
+            >
+              <option value="">All</option>
+              <option value="draft">Draft</option>
+              <option value="submitted">Submitted</option>
+            </select>
+          </label>
+          {reviewerPrograms.length > 0 && (
+            <label className="inline-flex items-center gap-2">
+              <span className="text-sm">Program</span>
+              <select
+                className="rounded border px-2 py-1 text-sm"
+                value={selectedProgramId}
+                onChange={(e) => setSelectedProgramId(e.target.value)}
+              >
+                <option value="">All Programs</option>
+                {reviewerPrograms.map((program) => (
+                  <option key={program.id} value={program.id}>
+                    {program.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -112,15 +176,17 @@ export default function AllReviewsPage() {
                 </td>
               </tr>
             )}
-            {!loading && rows.length === 0 && (
+            {!loading && filteredRows.length === 0 && (
               <tr>
                 <td colSpan={7} className="p-4 text-center text-gray-500">
-                  No reviews yet.
+                  {searchTerm || selectedProgramId
+                    ? "No reviews match your filters."
+                    : "No reviews yet."}
                 </td>
               </tr>
             )}
             {!loading &&
-              rows.map((r) => (
+              filteredRows.map((r) => (
                 <tr key={r.review_id} className="border-t">
                   <td className="p-2">
                     {r.updated_at
@@ -158,23 +224,16 @@ export default function AllReviewsPage() {
         </table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <button
-          className="rounded px-3 py-1 border"
-          disabled={page === 0}
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
-        >
-          Previous
-        </button>
-        <div className="text-sm text-gray-500">Page {page + 1}</div>
-        <button
-          className="rounded px-3 py-1 border"
-          disabled={rows.length < pageSize}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next
-        </button>
+      {/* Results Count */}
+      <div className="flex items-center justify-between text-sm text-gray-600">
+        <div>
+          {loading
+            ? "Loading..."
+            : `Showing ${filteredRows.length} of ${allRows.length} reviews`}
+        </div>
+        {reviewerPrograms.length > 0 && (
+          <div className="text-xs">Filtered to your assigned programs only</div>
+        )}
       </div>
 
       {error && <div className="text-sm text-red-600">Error: {error}</div>}
