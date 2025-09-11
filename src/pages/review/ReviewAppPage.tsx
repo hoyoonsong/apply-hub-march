@@ -1,6 +1,6 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import useCollaborativeReview from "../../hooks/useCollaborativeReview";
+import { useCollaborativeReview } from "../../hooks/useCollaborativeReview";
 import AnswersViewer from "../../components/review/AnswersViewer";
 
 export default function ReviewAppPage() {
