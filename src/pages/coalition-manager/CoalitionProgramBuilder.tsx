@@ -4,7 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { isUUID } from "../../lib/id";
 import {
   saveBuilderSchema,
-  submitForReview,
+  orgSubmitProgramForReview,
   type ProgramApplicationDraft,
   getCoalitionTemplate,
 } from "../../lib/programs";
@@ -42,6 +42,7 @@ export default function CoalitionProgramBuilder() {
   const [fields, setFields] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // load coalition
   useEffect(() => {
@@ -112,13 +113,41 @@ export default function CoalitionProgramBuilder() {
     setSaving(true);
     setMsg(null);
     try {
-      await submitForReview(
-        program.id,
-        "coalition",
-        coalition.id,
-        "Coalition manager submitted for review"
+      // If program is already submitted, we need to reset it to draft first
+      const meta = (program?.metadata ?? {}) as any;
+      const currentStatus =
+        typeof meta?.review_status === "string" ? meta.review_status : "draft";
+
+      if (currentStatus === "submitted") {
+        // Reset to draft first by updating metadata
+        const { error: updateError } = await supabase
+          .from("programs")
+          .update({
+            metadata: {
+              ...meta,
+              review_status: "draft",
+            },
+          })
+          .eq("id", program.id);
+
+        if (updateError) throw new Error(updateError.message);
+      }
+
+      await orgSubmitProgramForReview({
+        program_id: program.id,
+        note: isSubmitted
+          ? "Coalition manager resubmitted for review"
+          : "Coalition manager submitted for review",
+      });
+      setMsg(
+        isSubmitted
+          ? "Resubmitted for review. Superadmin will review & publish."
+          : "Submitted for review. Superadmin will review & publish."
       );
-      setMsg("Submitted for review. Superadmin will review & publish.");
+      // Navigate back to programs list after successful submission
+      setTimeout(() => {
+        navigate(`/coalition/${coalitionSlug}/admin/programs`);
+      }, 1500);
     } catch (e: any) {
       setMsg(e.message || "Request failed.");
     } finally {
@@ -128,6 +157,13 @@ export default function CoalitionProgramBuilder() {
 
   if (!isUUID(programId)) return null; // Guard against undefined ID
   if (!coalition || !program) return <div>Loading...</div>;
+
+  // Check if form should be disabled (when status is submitted)
+  const meta = (program?.metadata ?? {}) as any;
+  const status =
+    typeof meta?.review_status === "string" ? meta.review_status : "draft";
+  const isSubmitted = status === "submitted";
+  const isDisabled = isSubmitted && !isEditing;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
@@ -148,6 +184,63 @@ export default function CoalitionProgramBuilder() {
         </div>
       </div>
 
+      {/* Review note for coalition managers */}
+      {(() => {
+        const meta = (program?.metadata ?? {}) as any;
+        const status =
+          typeof meta?.review_status === "string"
+            ? meta.review_status
+            : "draft";
+        const note =
+          typeof meta?.review_note === "string" ? meta.review_note : null;
+        if (status === "changes_requested" && note) {
+          return (
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md">
+                <div className="font-semibold">Changes requested</div>
+                <div className="text-sm whitespace-pre-wrap">{note}</div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
+      {/* Disabled state notice for submitted programs */}
+      {(() => {
+        const meta = (program?.metadata ?? {}) as any;
+        const status =
+          typeof meta?.review_status === "string"
+            ? meta.review_status
+            : "draft";
+        if (status === "submitted") {
+          return (
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+              <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold">
+                      Program submitted for review
+                    </div>
+                    <div className="text-sm">
+                      This program has been submitted and is awaiting review.
+                      You can view and edit the form as needed.
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="ml-4 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                  >
+                    {isEditing ? "Cancel Edit" : "Edit"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       <div className="max-w-6xl mx-auto mt-6 px-4 sm:px-6 lg:px-8 space-y-6">
         {/* Toggles */}
         <div className="bg-white border rounded-lg p-6">
@@ -161,6 +254,7 @@ export default function CoalitionProgramBuilder() {
                 className="h-4 w-4"
                 checked={includeApplyHubCommon}
                 onChange={(e) => setIncludeApplyHubCommon(e.target.checked)}
+                disabled={isDisabled}
               />
               <span>Include Apply-Hub Common App</span>
             </label>
@@ -170,6 +264,7 @@ export default function CoalitionProgramBuilder() {
                 className="h-4 w-4"
                 checked={includeCoalitionCommon}
                 onChange={(e) => setIncludeCoalitionCommon(e.target.checked)}
+                disabled={isDisabled}
               />
               <span>Include Coalition Common App (if available)</span>
             </label>
@@ -183,37 +278,43 @@ export default function CoalitionProgramBuilder() {
             <div className="flex gap-2">
               <button
                 onClick={() => addField("short_text")}
-                className="px-3 py-1.5 border rounded"
+                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isDisabled}
               >
                 Short text
               </button>
               <button
                 onClick={() => addField("long_text")}
-                className="px-3 py-1.5 border rounded"
+                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isDisabled}
               >
                 Long text
               </button>
               <button
                 onClick={() => addField("date")}
-                className="px-3 py-1.5 border rounded"
+                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isDisabled}
               >
                 Date
               </button>
               <button
                 onClick={() => addField("select")}
-                className="px-3 py-1.5 border rounded"
+                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isDisabled}
               >
                 Select
               </button>
               <button
                 onClick={() => addField("checkbox")}
-                className="px-3 py-1.5 border rounded"
+                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isDisabled}
               >
                 Checkbox
               </button>
               <button
                 onClick={() => addField("file")}
-                className="px-3 py-1.5 border rounded"
+                className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isDisabled}
               >
                 File upload
               </button>
@@ -228,7 +329,7 @@ export default function CoalitionProgramBuilder() {
                     {field.type}
                   </span>
                   <input
-                    className="border rounded px-3 py-2 w-80"
+                    className="border rounded px-3 py-2 w-80 disabled:opacity-50 disabled:bg-gray-100"
                     value={field.label}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -238,6 +339,7 @@ export default function CoalitionProgramBuilder() {
                         return newFields;
                       });
                     }}
+                    disabled={isDisabled}
                   />
                   <label className="flex items-center gap-2 text-sm">
                     <input
@@ -251,6 +353,7 @@ export default function CoalitionProgramBuilder() {
                           return newFields;
                         });
                       }}
+                      disabled={isDisabled}
                     />
                     Required
                   </label>
@@ -294,10 +397,11 @@ export default function CoalitionProgramBuilder() {
                     />
                   )}
                   <button
-                    className="ml-auto text-red-600 hover:text-red-700"
+                    className="ml-auto text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() =>
                       setFields((f) => f.filter((_, i) => i !== idx))
                     }
+                    disabled={isDisabled}
                   >
                     Remove
                   </button>
@@ -314,18 +418,18 @@ export default function CoalitionProgramBuilder() {
 
           <div className="mt-6 flex gap-3">
             <button
-              disabled={saving}
+              disabled={saving || isDisabled}
               onClick={onSave}
               className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save"}
             </button>
             <button
-              disabled={saving}
+              disabled={saving || (isSubmitted && !isEditing)}
               onClick={onSubmitForReview}
               className="px-4 py-2 rounded border border-indigo-600 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
             >
-              Submit for review
+              {isSubmitted ? "Resubmit for review" : "Submit for review"}
             </button>
             {msg && <span className="text-sm text-gray-600 ml-2">{msg}</span>}
           </div>

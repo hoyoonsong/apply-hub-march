@@ -10,20 +10,57 @@ import {
   ReviewStatus,
 } from "../../lib/programs";
 import { Link } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
 
 export default function SuperProgramsReview() {
   const [list, setList] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [filter, setFilter] = useState<ReviewStatus | "">("");
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<ReviewStatus>>(
+    new Set()
+  );
+  const [orgNames, setOrgNames] = useState<Record<string, string>>({});
+
+  async function fetchOrgNames() {
+    try {
+      const { data, error } = await supabase.rpc("super_list_orgs_v1", {
+        include_deleted: false,
+      });
+      if (error) throw error;
+
+      const orgMap: Record<string, string> = {};
+      (data || []).forEach((org: any) => {
+        orgMap[org.id] = org.name;
+      });
+      setOrgNames(orgMap);
+    } catch (e: any) {
+      console.error("Failed to fetch organization names:", e);
+    }
+  }
 
   async function refresh() {
     setLoading(true);
     setError(null);
     try {
-      const data = await superListProgramSubmissions(filter || null);
-      setList(data);
+      // If no statuses selected, show all. Otherwise, filter by selected statuses
+      const statusFilter =
+        selectedStatuses.size === 0 ? null : Array.from(selectedStatuses)[0];
+      const [data] = await Promise.all([
+        superListProgramSubmissions(statusFilter),
+        fetchOrgNames(),
+      ]);
+
+      // If multiple statuses selected, filter on the client side
+      let filteredData = data;
+      if (selectedStatuses.size > 1) {
+        filteredData = data.filter((program) => {
+          const status = getReviewStatus(program);
+          return selectedStatuses.has(status);
+        });
+      }
+
+      setList(filteredData);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -33,7 +70,19 @@ export default function SuperProgramsReview() {
 
   useEffect(() => {
     refresh();
-  }, [filter]);
+  }, [selectedStatuses]);
+
+  function handleStatusToggle(status: ReviewStatus) {
+    setSelectedStatuses((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(status)) {
+        newSet.delete(status);
+      } else {
+        newSet.add(status);
+      }
+      return newSet;
+    });
+  }
 
   async function handleReview(
     p: Program,
@@ -101,7 +150,7 @@ export default function SuperProgramsReview() {
                 Program Reviews
               </h1>
               <p className="mt-1 text-sm text-gray-500">
-                Approve, request changes, publish or unpublish
+                Review programs that have been submitted for approval
               </p>
             </div>
             <Link
@@ -129,24 +178,46 @@ export default function SuperProgramsReview() {
 
         {/* Filter */}
         <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="space-y-3">
             <label className="text-sm font-medium text-gray-700">
               Filter by status:
             </label>
-            <select
-              className="w-full sm:w-48 h-10 border border-gray-300 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as any)}
-            >
-              <option value="">All</option>
-              <option value="submitted">Submitted</option>
-              <option value="changes_requested">Changes requested</option>
-              <option value="approved">Approved</option>
-              <option value="unpublished">Unpublished</option>
-              <option value="draft" disabled>
-                Draft (admin-only)
-              </option>
-            </select>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[
+                {
+                  value: "submitted" as ReviewStatus,
+                  label: "Submitted for Review",
+                },
+                {
+                  value: "changes_requested" as ReviewStatus,
+                  label: "Changes Requested",
+                },
+                { value: "approved" as ReviewStatus, label: "Approved" },
+                { value: "unpublished" as ReviewStatus, label: "Unpublished" },
+                {
+                  value: "draft" as ReviewStatus,
+                  label: "Draft (Not Submitted)",
+                },
+              ].map(({ value, label }) => (
+                <label
+                  key={value}
+                  className="flex items-center space-x-2 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedStatuses.has(value)}
+                    onChange={() => handleStatusToggle(value)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-700">{label}</span>
+                </label>
+              ))}
+            </div>
+            {selectedStatuses.size === 0 && (
+              <p className="text-xs text-gray-500 italic">
+                No filters selected - showing all programs
+              </p>
+            )}
           </div>
         </div>
 
@@ -206,8 +277,9 @@ export default function SuperProgramsReview() {
                           )}
                         </td>
                         <td className="px-3 sm:px-6 py-4">
-                          <div className="text-xs text-gray-500 font-mono">
-                            {p.organization_id.substring(0, 8)}...
+                          <div className="text-sm text-gray-700">
+                            {orgNames[p.organization_id] ||
+                              p.organization_id.substring(0, 8) + "..."}
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-4">
@@ -235,7 +307,13 @@ export default function SuperProgramsReview() {
                         </td>
                         <td className="px-3 sm:px-6 py-4">
                           {p.published ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                p.published_scope === "coalition"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
                               {p.published_scope === "coalition"
                                 ? "Coalition"
                                 : "Org"}
@@ -247,50 +325,55 @@ export default function SuperProgramsReview() {
                           )}
                         </td>
                         <td className="px-3 sm:px-6 py-4 text-right">
-                          <div className="flex flex-col sm:flex-row gap-2 justify-end">
-                            {/* Review Actions */}
-                            <button
-                              onClick={() => handleReview(p, "approve")}
-                              className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleReview(p, "request_changes")}
-                              className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
-                            >
-                              Request Changes
-                            </button>
-
-                            {/* Publish / Unpublish Actions */}
-                            {p.published ? (
+                          {st === "draft" ? (
+                            <div className="text-sm text-gray-500 italic">
+                              Waiting for submission
+                            </div>
+                          ) : st === "changes_requested" ? (
+                            <div className="text-sm text-gray-500 italic">
+                              Waiting for submission
+                            </div>
+                          ) : p.published ? (
+                            <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                              {/* Only show Unpublish for published programs */}
                               <button
                                 onClick={() => handleUnpublish(p)}
                                 className="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded"
                               >
                                 Unpublish
                               </button>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => handlePublish(p, "org")}
-                                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded"
-                                  title="Publish to organization"
-                                >
-                                  Publish (Org)
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    handlePublish(p, "coalition");
-                                  }}
-                                  className="bg-indigo-700 hover:bg-indigo-800 text-white text-xs px-3 py-1.5 rounded"
-                                  title="Publish to coalition"
-                                >
-                                  Publish (Coalition)
-                                </button>
-                              </>
-                            )}
-                          </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                              {/* Review Actions for submitted but not published programs */}
+                              <button
+                                onClick={() =>
+                                  handleReview(p, "request_changes")
+                                }
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
+                              >
+                                Request Changes
+                              </button>
+
+                              {/* Publish Actions (publishing = approving) */}
+                              <button
+                                onClick={() => handlePublish(p, "org")}
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
+                                title="Publish to organization (approves program)"
+                              >
+                                Publish (Org)
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handlePublish(p, "coalition");
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded"
+                                title="Publish to coalition (approves program)"
+                              >
+                                Publish (Coalition)
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

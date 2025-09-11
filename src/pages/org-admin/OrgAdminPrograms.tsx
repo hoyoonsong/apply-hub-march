@@ -1,11 +1,12 @@
 // src/pages/org-admin/OrgAdminPrograms.tsx
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { getOrgBySlug } from "../../lib/orgs";
 import {
   listOrgPrograms,
   orgCreateProgramDraft,
   ProgramRow,
+  getProgramRowReviewStatus,
 } from "../../lib/programs";
 import { supabase } from "../../lib/supabase";
 
@@ -40,8 +41,9 @@ export default function OrgAdminPrograms() {
     close_at: "",
   });
 
-  // Small helper: convert datetime-local to ISO or null
-  const toISOorNull = (v: string) => (v ? new Date(v).toISOString() : null);
+  // Small helper: convert datetime-local to ISO or undefined
+  const toISOorNull = (v: string) =>
+    v ? new Date(v).toISOString() : undefined;
 
   // Gate: ensure user is allowed (reuse existing /unauthorized route if checks fail)
   useEffect(() => {
@@ -106,7 +108,7 @@ export default function OrgAdminPrograms() {
         organization_id: orgId,
         name: form.name,
         type: form.type,
-        description: form.description || null,
+        description: form.description || undefined,
         open_at: toISOorNull(form.open_at),
         close_at: toISOorNull(form.close_at),
       });
@@ -305,6 +307,9 @@ export default function OrgAdminPrograms() {
                       Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Published
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -332,10 +337,36 @@ export default function OrgAdminPrograms() {
                           {p.type}
                         </td>
                         <td className="px-6 py-4">
+                          {(() => {
+                            const status = getProgramRowReviewStatus(p);
+                            return (
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  status === "submitted"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : status === "changes_requested"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : status === "approved"
+                                    ? "bg-green-100 text-green-800"
+                                    : status === "unpublished"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {status.replace("_", " ")}
+                              </span>
+                            );
+                          })()}
+                        </td>
+                        <td className="px-6 py-4">
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               p.published
-                                ? "bg-green-100 text-green-800"
+                                ? p.published_scope === "coalition"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : p.published_scope === "org"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-green-100 text-green-800"
                                 : "bg-gray-100 text-gray-800"
                             }`}
                           >

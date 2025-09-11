@@ -43,6 +43,22 @@ export function getReviewStatus(p?: Program | null): ReviewStatus {
   ) as ReviewStatus;
 }
 
+export function getProgramRowReviewStatus(p?: ProgramRow | null): ReviewStatus {
+  const meta = (p?.metadata ?? {}) as any;
+  const raw =
+    typeof meta?.review_status === "string" ? meta.review_status : "draft";
+  const allowed: ReviewStatus[] = [
+    "draft",
+    "submitted",
+    "changes_requested",
+    "approved",
+    "unpublished",
+  ];
+  return (
+    allowed.includes(raw as ReviewStatus) ? raw : "draft"
+  ) as ReviewStatus;
+}
+
 /* ========== Admin-side RPCs ========== */
 
 export type ProgramRow = {
@@ -57,6 +73,7 @@ export type ProgramRow = {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  metadata: any | null;
 };
 
 export async function adminListMyPrograms(): Promise<Program[]> {
