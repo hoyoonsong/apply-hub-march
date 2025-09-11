@@ -47,7 +47,7 @@ import QueuePage from "./pages/review/QueuePage";
 import ReviewPage from "./pages/review/ReviewPage";
 import ReviewHome from "./pages/review/ReviewHome";
 import ReviewAppPage from "./pages/review/ReviewAppPage";
-import MyReviewsPage from "./pages/review/MyReviewsPage";
+import AllReviewsPage from "./pages/review/AllReviewsPage";
 import OrgReviewsPage from "./pages/org/admin/OrgReviewsPage";
 
 export default function App() {
@@ -249,10 +249,10 @@ export default function App() {
               }
             />
             <Route
-              path="/review/my"
+              path="/review/all"
               element={
                 <ProtectedRoute needsReviewer>
-                  <MyReviewsPage />
+                  <AllReviewsPage />
                 </ProtectedRoute>
               }
             />
