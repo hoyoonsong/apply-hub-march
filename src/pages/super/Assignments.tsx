@@ -44,7 +44,7 @@ export default function Assignments() {
         [
           supabase.rpc("super_list_orgs_v1", { include_deleted: false }),
           supabase.rpc("super_list_coalitions_v1", { include_deleted: false }),
-          supabase.rpc("super_list_programs_v1"),
+          supabase.rpc("super_list_programs_v1", { include_deleted: false }),
           supabase.rpc("super_list_users_v1", {
             p_search: null,
             p_role_filter: null,

@@ -147,7 +147,7 @@ export default function SearchablePicker({
               filteredOptions.map((option) => (
                 <div
                   key={option.id}
-                  className="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm"
+                  className="px-3 py-3 cursor-pointer hover:bg-gray-100 text-sm"
                   onClick={() => handleSelect(option)}
                 >
                   <div className="font-medium">{option.label}</div>

@@ -5,10 +5,8 @@ import SearchablePicker from "./SearchablePicker";
 export type ProgramLite = {
   id: string;
   name: string;
-  type: "audition" | "scholarship";
   organization_id: string;
   organization_name: string;
-  organization_slug: string;
 };
 
 interface ProgramPickerProps {
@@ -39,12 +37,21 @@ export default function ProgramPicker({
     setError(null);
 
     try {
-      const { data, error } = await supabase.rpc("super_list_all_programs_v1", {
-        p_org_id: orgId || null,
+      const { data, error } = await supabase.rpc("super_list_programs_v1", {
+        include_deleted: false,
       });
 
       if (error) throw error;
-      setPrograms(data || []);
+
+      // If orgId is provided, filter by organization
+      let filteredData = data || [];
+      if (orgId) {
+        filteredData = filteredData.filter(
+          (program: any) => program.organization_id === orgId
+        );
+      }
+
+      setPrograms(filteredData);
     } catch (err: any) {
       console.error("Failed to load programs:", err);
       setError(err.message);
@@ -56,7 +63,7 @@ export default function ProgramPicker({
   const options = programs.map((program) => ({
     id: program.id,
     label: `${program.organization_name} — ${program.name}`,
-    description: program.type,
+    description: "",
   }));
 
   return (
