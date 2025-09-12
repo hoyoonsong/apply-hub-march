@@ -406,12 +406,12 @@ export default function SuperProgramsReview() {
                               ).toLocaleDateString()
                             : "Unknown"}
                         </span>
-                        <Link
-                          to={`/super/programs/${p.id}/builder`}
-                          className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                        <button
+                          onClick={() => handlePreviewProgram(p)}
+                          className="text-indigo-600 hover:text-indigo-800 text-sm font-medium cursor-pointer"
                         >
                           View
-                        </Link>
+                        </button>
                         <button
                           onClick={() => handleRestore(p)}
                           className="text-green-600 hover:text-green-800 text-sm font-medium"
