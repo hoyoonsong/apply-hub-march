@@ -16,15 +16,21 @@ export function reconcileAnswers(
 function defaultValueForField(type: string) {
   switch (type) {
     case "SHORT_TEXT":
+    case "short_text":
     case "LONG_TEXT":
+    case "long_text":
       return "";
     case "DATE":
+    case "date":
       return null; // ISO string or null
     case "SELECT":
+    case "select":
       return null; // selected option
     case "CHECKBOX":
+    case "checkbox":
       return false;
     case "FILE":
+    case "file":
       return null; // you can store file URL or storage path
     default:
       return null;
@@ -39,11 +45,13 @@ export function missingRequired(
   for (const f of schema.fields) {
     if (!f.required) continue;
     const v = answers[f.key];
+    const isCheckbox = f.type === "CHECKBOX" || f.type === "checkbox";
     const empty =
       v === null ||
       v === undefined ||
       (typeof v === "string" && v.trim() === "") ||
-      (Array.isArray(v) && v.length === 0);
+      (Array.isArray(v) && v.length === 0) ||
+      (isCheckbox && v === false);
     if (empty) missing.push(f.label || f.key);
   }
   return missing;

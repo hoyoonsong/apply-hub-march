@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import {
@@ -17,6 +17,23 @@ import type {
 } from "../../types/application";
 import OptionsInput from "../../components/OptionsInput";
 import ApplicationPreview from "../../components/ApplicationPreview";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type Program = {
   id: string;
@@ -30,6 +47,153 @@ type Program = {
 };
 
 type Org = { id: string; slug: string; name: string };
+
+// Sortable Field Component
+function SortableField({
+  field,
+  idx,
+  isDisabled,
+  onUpdateField,
+  onRemoveField,
+}: {
+  field: AppItem;
+  idx: number;
+  isDisabled: boolean;
+  onUpdateField: (idx: number, updates: Partial<AppItem>) => void;
+  onRemoveField: (idx: number) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: field.key || `field-${idx}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 hover:shadow-md hover:border-gray-300 transition-all duration-200"
+    >
+      {/* Field Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-6">
+          <span
+            className={`text-2xl font-bold uppercase tracking-wide ${
+              field.type === "long_text"
+                ? "text-blue-600"
+                : field.type === "short_text"
+                ? "text-green-600"
+                : field.type === "select"
+                ? "text-purple-600"
+                : field.type === "date"
+                ? "text-orange-600"
+                : field.type === "checkbox"
+                ? "text-pink-600"
+                : field.type === "file"
+                ? "text-gray-600"
+                : "text-gray-600"
+            }`}
+          >
+            {field.type.replace("_", " ")}
+          </span>
+          <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+            <input
+              type="checkbox"
+              checked={!!field.required}
+              onChange={(e) =>
+                onUpdateField(idx, { required: e.target.checked })
+              }
+              disabled={isDisabled}
+              className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span>Required</span>
+          </label>
+        </div>
+        <div className="flex items-center gap-1">
+          {/* Drag Handle */}
+          <button
+            {...attributes}
+            {...listeners}
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded cursor-grab active:cursor-grabbing"
+            disabled={isDisabled}
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+            </svg>
+          </button>
+          <button
+            className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={() => onRemoveField(idx)}
+            disabled={isDisabled}
+          >
+            <span>🗑️</span>
+            Remove
+          </button>
+        </div>
+      </div>
+
+      {/* Field Configuration */}
+      <div className="space-y-4">
+        {/* Question Label */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Question Text *
+          </label>
+          <div className="flex gap-3 items-center">
+            <input
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-base disabled:opacity-50 disabled:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter your question here..."
+              value={field.label}
+              onChange={(e) => onUpdateField(idx, { label: e.target.value })}
+              disabled={isDisabled}
+            />
+            {field.type === "long_text" && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                  Max characters:
+                </label>
+                <input
+                  className="w-20 border border-gray-300 rounded px-2 py-2 text-sm disabled:opacity-50 disabled:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  type="number"
+                  placeholder="500"
+                  value={field.maxLength ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value
+                      ? Number(e.target.value)
+                      : undefined;
+                    onUpdateField(idx, { maxLength: val });
+                  }}
+                  disabled={isDisabled}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Additional Options Row */}
+        <div className="flex flex-wrap gap-4 items-center"></div>
+
+        {/* Select Options */}
+        {field.type === "select" && (
+          <OptionsInput
+            options={field.options ?? []}
+            onChange={(options) => onUpdateField(idx, { options })}
+            disabled={isDisabled}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function OrgProgramBuilder() {
   const params = useParams();
@@ -55,6 +219,46 @@ export default function OrgProgramBuilder() {
   const [schema, setSchema] = useState<ApplicationSchema>({ fields: [] });
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Drag and drop handlers
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setFields((items) => {
+        const oldIndex = items.findIndex(
+          (item) => (item.key || `field-${items.indexOf(item)}`) === active.id
+        );
+        const newIndex = items.findIndex(
+          (item) => (item.key || `field-${items.indexOf(item)}`) === over.id
+        );
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  // Field update handler
+  const handleUpdateField = (idx: number, updates: Partial<AppItem>) => {
+    setFields((f) => {
+      const newFields = [...f];
+      newFields[idx] = { ...newFields[idx], ...updates };
+      return newFields;
+    });
+  };
+
+  // Field remove handler
+  const handleRemoveField = (idx: number) => {
+    setFields((f) => f.filter((_, i) => i !== idx));
+  };
 
   // Function to handle edit button click
   const handleEditClick = async () => {
@@ -180,7 +384,13 @@ export default function OrgProgramBuilder() {
 
           if (mounted) {
             setSchema(s ?? { fields: [] });
-            setFields(s?.fields || []);
+            const loadedFields = s?.fields || [];
+            // Ensure all fields have a key property for drag and drop
+            const fieldsWithKeys = loadedFields.map((field, idx) => ({
+              ...field,
+              key: field.key || `field-${idx}-${Date.now()}`,
+            }));
+            setFields(fieldsWithKeys);
           }
         } catch (e) {
           // First time - no schema exists yet, or RPC failed for super admin
@@ -280,27 +490,33 @@ export default function OrgProgramBuilder() {
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
       <div className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {isSuperAdmin ? "Super Admin" : org.name} —{" "}
-              {isSuperAdmin ? "View" : "Edit"} Application
-            </h1>
-            <p className="text-sm text-gray-500">Program: {program.name}</p>
-            {isSuperAdmin && org && (
-              <p className="text-sm text-gray-500">Organization: {org.name}</p>
-            )}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {program?.name || "Loading..."} - Edit Application
+              </h1>
+              <p className="text-gray-600 mb-4">
+                {program?.description || "Program description"}
+              </p>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>Organization:</span>
+                <span className="font-medium">{org?.name || "Loading..."}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                to={
+                  isSuperAdmin
+                    ? "/super/programs"
+                    : `/org/${org?.slug}/admin/programs`
+                }
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                ← Back to Programs
+              </Link>
+            </div>
           </div>
-          <Link
-            to={
-              isSuperAdmin
-                ? "/super/programs"
-                : `/org/${org?.slug}/admin/programs`
-            }
-            className="px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700"
-          >
-            Back to Programs
-          </Link>
         </div>
       </div>
 
@@ -363,205 +579,220 @@ export default function OrgProgramBuilder() {
         return null;
       })()}
 
-      <div className="max-w-6xl mx-auto mt-6 px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="max-w-6xl mx-auto mt-6 px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Toggles */}
-        <div className="bg-white border rounded-lg p-6">
-          <h2 className="text-lg font-semibold mb-4">
-            Common Application Options
-          </h2>
-          <div className="space-y-3">
-            <label className="flex items-center gap-3">
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-1 h-8 bg-blue-500 rounded-full"></div>
+            <h2 className="text-xl font-bold text-gray-900">
+              Common Application Options
+            </h2>
+          </div>
+          <div className="space-y-4">
+            <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-100 hover:bg-blue-25 transition-colors">
               <input
                 type="checkbox"
-                className="h-4 w-4"
+                className="h-4 w-4 text-blue-600"
                 checked={includeApplyHubCommon}
                 onChange={(e) => setIncludeApplyHubCommon(e.target.checked)}
                 disabled={isDisabled}
               />
-              <span>Include Apply-Hub Common App</span>
+              <span className="font-medium text-gray-700">
+                Include Apply-Hub Common App
+              </span>
             </label>
-            <label className="flex items-center gap-3">
+            <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-100 hover:bg-blue-25 transition-colors">
               <input
                 type="checkbox"
-                className="h-4 w-4"
+                className="h-4 w-4 text-blue-600"
                 checked={includeCoalitionCommon}
                 onChange={(e) => setIncludeCoalitionCommon(e.target.checked)}
                 disabled={isDisabled}
               />
-              <span>Include Coalition Common App (if available)</span>
+              <span className="font-medium text-gray-700">
+                Include Coalition Common App (if available)
+              </span>
             </label>
           </div>
         </div>
 
         {/* Builder */}
-        <div className="bg-white border rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Application Builder</h2>
-            {!isSuperAdmin && (
-              <div className="flex gap-2">
+        <div className="bg-green-50 border-2 border-green-200 rounded-xl p-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-1 h-8 bg-green-500 rounded-full"></div>
+            <h2 className="text-xl font-bold text-gray-900">
+              Application Builder
+            </h2>
+          </div>
+
+          {/* Field Type Selection Section */}
+          {!isSuperAdmin && (
+            <div className="bg-white rounded-lg p-6 mb-8 shadow-sm border">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-1 h-8 bg-blue-500 rounded-full"></div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Add New Question
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <button
                   onClick={() => addField("short_text")}
-                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   disabled={isDisabled}
                 >
-                  Short text
+                  <div className="text-3xl mb-2">📝</div>
+                  <span className="text-sm font-medium text-gray-700">
+                    Short Text
+                  </span>
                 </button>
                 <button
                   onClick={() => addField("long_text")}
-                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   disabled={isDisabled}
                 >
-                  Long text
+                  <div className="text-3xl mb-2">📄</div>
+                  <span className="text-sm font-medium text-gray-700">
+                    Long Text
+                  </span>
                 </button>
                 <button
                   onClick={() => addField("date")}
-                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   disabled={isDisabled}
                 >
-                  Date
+                  <div className="text-3xl mb-2">📅</div>
+                  <span className="text-sm font-medium text-gray-700">
+                    Date
+                  </span>
                 </button>
                 <button
                   onClick={() => addField("select")}
-                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   disabled={isDisabled}
                 >
-                  Select
+                  <div className="text-3xl mb-2">📋</div>
+                  <span className="text-sm font-medium text-gray-700">
+                    Select
+                  </span>
                 </button>
                 <button
                   onClick={() => addField("checkbox")}
-                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   disabled={isDisabled}
                 >
-                  Checkbox
+                  <div className="text-3xl mb-2">☑️</div>
+                  <span className="text-sm font-medium text-gray-700">
+                    Checkbox
+                  </span>
                 </button>
                 <button
                   onClick={() => addField("file")}
-                  className="px-3 py-1.5 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   disabled={isDisabled}
                 >
-                  File upload
+                  <div className="text-3xl mb-2">📎</div>
+                  <span className="text-sm font-medium text-gray-700">
+                    File Upload
+                  </span>
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Configured Questions Section */}
+          <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-8 bg-green-500 rounded-full"></div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Your Questions
+                </h3>
+              </div>
+              <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                {fields.length} question{fields.length !== 1 ? "s" : ""} added
+              </div>
+            </div>
+
+            {fields.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl">
+                <div className="text-4xl mb-4">📝</div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">
+                  No questions yet
+                </h4>
+                <p className="text-gray-600">
+                  Click the buttons above to add your first question
+                </p>
+              </div>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={fields.map(
+                    (field, idx) => field.key || `field-${idx}`
+                  )}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-6">
+                    {fields.map((field, idx) => (
+                      <SortableField
+                        key={field.key || `field-${idx}`}
+                        field={field}
+                        idx={idx}
+                        isDisabled={isDisabled}
+                        onUpdateField={handleUpdateField}
+                        onRemoveField={handleRemoveField}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </div>
 
-          <div className="mt-4 space-y-4">
-            {fields.map((field, idx) => (
-              <div key={idx} className="border rounded p-4">
-                <div className="flex flex-wrap gap-3 items-center">
-                  <span className="text-xs uppercase tracking-wide bg-gray-100 px-2 py-1 rounded">
-                    {field.type}
-                  </span>
-                  <input
-                    className="border rounded px-3 py-2 w-80 disabled:opacity-50 disabled:bg-gray-100"
-                    value={field.label}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setFields((f) => {
-                        const newFields = [...f];
-                        newFields[idx] = { ...newFields[idx], label: v };
-                        return newFields;
-                      });
-                    }}
-                    disabled={isDisabled}
-                  />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={!!field.required}
-                      onChange={(e) => {
-                        const v = e.target.checked;
-                        setFields((f) => {
-                          const newFields = [...f];
-                          newFields[idx] = { ...newFields[idx], required: v };
-                          return newFields;
-                        });
-                      }}
-                      disabled={isDisabled}
-                    />
-                    Required
-                  </label>
-                  {field.type === "long_text" && (
-                    <input
-                      className="border rounded px-3 py-2 w-52 disabled:opacity-50 disabled:bg-gray-100"
-                      type="number"
-                      placeholder="Max length"
-                      value={field.maxLength ?? ""}
-                      onChange={(e) => {
-                        const val = e.target.value
-                          ? Number(e.target.value)
-                          : undefined;
-                        setFields((f) => {
-                          const newFields = [...f];
-                          newFields[idx] = {
-                            ...newFields[idx],
-                            maxLength: val,
-                          };
-                          return newFields;
-                        });
-                      }}
-                      disabled={isDisabled}
-                    />
-                  )}
-                  <button
-                    className="ml-auto text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() =>
-                      setFields((f) => f.filter((_, i) => i !== idx))
-                    }
-                    disabled={isDisabled}
-                  >
-                    Remove
-                  </button>
-                </div>
-                {field.type === "select" && (
-                  <OptionsInput
-                    options={field.options ?? []}
-                    onChange={(options) => {
-                      setFields((f) => {
-                        const newFields = [...f];
-                        newFields[idx] = { ...newFields[idx], options };
-                        return newFields;
-                      });
-                    }}
-                    disabled={isDisabled}
-                  />
+          {/* Action Buttons */}
+          <div className="mt-8 bg-white rounded-lg p-6 shadow-sm border">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={() => setShowPreview(true)}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 hover:shadow-md transition-all duration-200 font-medium"
+                >
+                  <span className="text-lg">👁️</span>
+                  Preview Application
+                </button>
+                {!isSuperAdmin && (
+                  <>
+                    <button
+                      disabled={saving || isDisabled}
+                      onClick={onSave}
+                      className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                    >
+                      <span className="text-lg">{saving ? "⏳" : "💾"}</span>
+                      {saving ? "Saving..." : "Save Draft"}
+                    </button>
+                    <button
+                      disabled={saving || (isSubmitted && !isEditing)}
+                      onClick={onSubmitForReview}
+                      className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                    >
+                      <span className="text-lg">📤</span>
+                      {isSubmitted
+                        ? "Resubmit for Review"
+                        : "Submit for Review"}
+                    </button>
+                  </>
                 )}
               </div>
-            ))}
 
-            {fields.length === 0 && (
-              <p className="text-sm text-gray-500">
-                No fields yet. Add fields above.
-              </p>
-            )}
-          </div>
-
-          <div className="mt-6 flex gap-3">
-            <button
-              onClick={() => setShowPreview(true)}
-              className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              Preview Application
-            </button>
-            {!isSuperAdmin && (
-              <>
-                <button
-                  disabled={saving || isDisabled}
-                  onClick={onSave}
-                  className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {saving ? "Saving..." : "Save"}
-                </button>
-                <button
-                  disabled={saving || (isSubmitted && !isEditing)}
-                  onClick={onSubmitForReview}
-                  className="px-4 py-2 rounded border border-indigo-600 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
-                >
-                  {isSubmitted ? "Resubmit for review" : "Submit for review"}
-                </button>
-              </>
-            )}
-            {msg && <span className="text-sm text-gray-600 ml-2">{msg}</span>}
+              {msg && (
+                <div className="text-sm text-gray-600 bg-gray-50 px-4 py-3 rounded-lg border">
+                  {msg}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

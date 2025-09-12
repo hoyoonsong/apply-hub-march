@@ -106,6 +106,13 @@ export default function ApplicationPage() {
     appRow?.updated_at ?? undefined
   );
 
+  // Update answers when appRow changes (e.g., after submission)
+  useEffect(() => {
+    if (appRow?.answers) {
+      setAnswers(appRow.answers);
+    }
+  }, [appRow?.answers, setAnswers]);
+
   const items = useMemo(() => schema.fields ?? [], [schema]);
 
   // Check if application is currently open (between open and close dates)
@@ -151,12 +158,19 @@ export default function ApplicationPage() {
       if (appRow.status === "draft") {
         // First time submitting
         await submitApplication(appId, answers);
+        // Reload application data to get updated status and answers
+        const updatedApp = await getApplication(appId);
+        setAppRow(updatedApp);
+        // Clear localStorage after successful submission
         localStorage.removeItem(`app:${appId}:answers`);
         alert("Application submitted!");
         navigate("/");
       } else if (appRow.status === "submitted" && isEditing) {
         // Saving changes to already submitted application
         await saveApplication(appId, answers);
+        // Reload application data to get updated answers
+        const updatedApp = await getApplication(appId);
+        setAppRow(updatedApp);
         setIsEditing(false); // Exit edit mode and lock fields
         alert("Changes saved!");
       }
