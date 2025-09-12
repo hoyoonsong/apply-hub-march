@@ -15,6 +15,8 @@ import type {
   ProgramApplicationSchema,
   AppItem,
 } from "../../types/application";
+import OptionsInput from "../../components/OptionsInput";
+import ApplicationPreview from "../../components/ApplicationPreview";
 
 type Program = {
   id: string;
@@ -52,6 +54,7 @@ export default function OrgProgramBuilder() {
   const [msg, setMsg] = useState<string | null>(null);
   const [schema, setSchema] = useState<ApplicationSchema>({ fields: [] });
   const [isEditing, setIsEditing] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Function to handle edit button click
   const handleEditClick = async () => {
@@ -478,25 +481,6 @@ export default function OrgProgramBuilder() {
                     />
                     Required
                   </label>
-                  {field.type === "select" && (
-                    <input
-                      className="border rounded px-3 py-2 w-96 disabled:opacity-50 disabled:bg-gray-100"
-                      placeholder="Options comma-separated"
-                      value={(field.options ?? []).join(",")}
-                      onChange={(e) => {
-                        const arr = e.target.value
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean);
-                        setFields((f) => {
-                          const newFields = [...f];
-                          newFields[idx] = { ...newFields[idx], options: arr };
-                          return newFields;
-                        });
-                      }}
-                      disabled={isDisabled}
-                    />
-                  )}
                   {field.type === "long_text" && (
                     <input
                       className="border rounded px-3 py-2 w-52 disabled:opacity-50 disabled:bg-gray-100"
@@ -529,6 +513,19 @@ export default function OrgProgramBuilder() {
                     Remove
                   </button>
                 </div>
+                {field.type === "select" && (
+                  <OptionsInput
+                    options={field.options ?? []}
+                    onChange={(options) => {
+                      setFields((f) => {
+                        const newFields = [...f];
+                        newFields[idx] = { ...newFields[idx], options };
+                        return newFields;
+                      });
+                    }}
+                    disabled={isDisabled}
+                  />
+                )}
               </div>
             ))}
 
@@ -539,27 +536,41 @@ export default function OrgProgramBuilder() {
             )}
           </div>
 
-          {!isSuperAdmin && (
-            <div className="mt-6 flex gap-3">
-              <button
-                disabled={saving || isDisabled}
-                onClick={onSave}
-                className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
-              <button
-                disabled={saving || (isSubmitted && !isEditing)}
-                onClick={onSubmitForReview}
-                className="px-4 py-2 rounded border border-indigo-600 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
-              >
-                {isSubmitted ? "Resubmit for review" : "Submit for review"}
-              </button>
-              {msg && <span className="text-sm text-gray-600 ml-2">{msg}</span>}
-            </div>
-          )}
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={() => setShowPreview(true)}
+              className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              Preview Application
+            </button>
+            {!isSuperAdmin && (
+              <>
+                <button
+                  disabled={saving || isDisabled}
+                  onClick={onSave}
+                  className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+                <button
+                  disabled={saving || (isSubmitted && !isEditing)}
+                  onClick={onSubmitForReview}
+                  className="px-4 py-2 rounded border border-indigo-600 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+                >
+                  {isSubmitted ? "Resubmit for review" : "Submit for review"}
+                </button>
+              </>
+            )}
+            {msg && <span className="text-sm text-gray-600 ml-2">{msg}</span>}
+          </div>
         </div>
       </div>
+
+      <ApplicationPreview
+        fields={fields}
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+      />
     </div>
   );
 }

@@ -12,6 +12,8 @@ import type {
   ProgramApplicationSchema,
   AppItem,
 } from "../../types/application";
+import OptionsInput from "../../components/OptionsInput";
+import ApplicationPreview from "../../components/ApplicationPreview";
 
 type Program = {
   id: string;
@@ -43,6 +45,7 @@ export default function CoalitionProgramBuilder() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // load coalition
   useEffect(() => {
@@ -365,24 +368,6 @@ export default function CoalitionProgramBuilder() {
                     />
                     Required
                   </label>
-                  {field.type === "select" && (
-                    <input
-                      className="border rounded px-3 py-2 w-96"
-                      placeholder="Options comma-separated"
-                      value={(field.options ?? []).join(",")}
-                      onChange={(e) => {
-                        const arr = e.target.value
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean);
-                        setFields((f) => {
-                          const newFields = [...f];
-                          newFields[idx] = { ...newFields[idx], options: arr };
-                          return newFields;
-                        });
-                      }}
-                    />
-                  )}
                   {field.type === "long_text" && (
                     <input
                       className="border rounded px-3 py-2 w-52"
@@ -414,6 +399,19 @@ export default function CoalitionProgramBuilder() {
                     Remove
                   </button>
                 </div>
+                {field.type === "select" && (
+                  <OptionsInput
+                    options={field.options ?? []}
+                    onChange={(options) => {
+                      setFields((f) => {
+                        const newFields = [...f];
+                        newFields[idx] = { ...newFields[idx], options };
+                        return newFields;
+                      });
+                    }}
+                    disabled={isDisabled}
+                  />
+                )}
               </div>
             ))}
 
@@ -425,6 +423,12 @@ export default function CoalitionProgramBuilder() {
           </div>
 
           <div className="mt-6 flex gap-3">
+            <button
+              onClick={() => setShowPreview(true)}
+              className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              Preview Application
+            </button>
             <button
               disabled={saving || isDisabled}
               onClick={onSave}
@@ -443,6 +447,12 @@ export default function CoalitionProgramBuilder() {
           </div>
         </div>
       </div>
+
+      <ApplicationPreview
+        fields={fields}
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+      />
     </div>
   );
 }

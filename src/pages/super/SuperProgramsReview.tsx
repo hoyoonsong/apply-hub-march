@@ -12,6 +12,7 @@ import {
 } from "../../lib/programs";
 import { supabase } from "../../lib/supabase";
 import { softDeleteProgram, restoreProgram } from "../../services/super";
+import ApplicationPreview from "../../components/ApplicationPreview";
 
 export default function SuperProgramsReview() {
   const [list, setList] = useState<Program[]>([]);
@@ -24,6 +25,18 @@ export default function SuperProgramsReview() {
   );
   const [orgNames, setOrgNames] = useState<Record<string, string>>({});
   const [showDeleted, setShowDeleted] = useState(false);
+  const [previewProgram, setPreviewProgram] = useState<Program | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const handlePreviewProgram = (program: Program) => {
+    setPreviewProgram(program);
+    setShowPreview(true);
+  };
+
+  const handleClosePreview = () => {
+    setShowPreview(false);
+    setPreviewProgram(null);
+  };
 
   async function fetchOrgNames() {
     try {
@@ -463,12 +476,12 @@ export default function SuperProgramsReview() {
                       <tr key={p.id}>
                         <td className="px-4 py-4 text-center">
                           <div className="flex flex-col items-center">
-                            <Link
-                              to={`/super/programs/${p.id}/builder`}
-                              className="font-medium text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                            <button
+                              onClick={() => handlePreviewProgram(p)}
+                              className="font-medium text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                             >
                               {p.name}
-                            </Link>
+                            </button>
                             {p.description && (
                               <div className="text-xs text-gray-500 mt-1 truncate max-w-[180px]">
                                 {p.description}
@@ -664,6 +677,15 @@ export default function SuperProgramsReview() {
           </div>
         </div>
       </div>
+
+      {/* Application Preview Modal */}
+      {showPreview && previewProgram && (
+        <ApplicationPreview
+          program={previewProgram as any}
+          isOpen={showPreview}
+          onClose={handleClosePreview}
+        />
+      )}
     </div>
   );
 }

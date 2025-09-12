@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getApplication, saveApplication } from "../../lib/rpc";
+import {
+  getApplication,
+  saveApplication,
+  getProgramSchema,
+} from "../../lib/rpc";
 import { missingRequired } from "../../utils/answers";
+import { supabase } from "../../lib/supabase";
 
 /**
  * We expect the program builder to have saved metadata like:
@@ -58,8 +63,10 @@ export default function ApplicationForm() {
   const navigate = useNavigate();
   const applicationId = useMemo(() => (params?.id as string) || "", [params]);
 
-  const [app, setApp] = useState<AppRow | null>(null);
+  const [app, setApp] = useState<any>(null);
   const [program, setProgram] = useState<any>(null);
+  const [programDetails, setProgramDetails] = useState<any>(null);
+  const [organization, setOrganization] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -97,9 +104,36 @@ export default function ApplicationForm() {
         // Set program data from application_schema
         setProgram({
           id: data.program_id,
-          name: "Application",
+          name: data.program_name || "Application",
           metadata: { form: { fields } },
         });
+
+        // Load full program details and organization
+        try {
+          // Get program details from programs_public table
+          const { data: programData, error: programError } = await supabase
+            .from("programs_public")
+            .select("id, name, description, organization_id")
+            .eq("id", data.program_id)
+            .single();
+
+          if (!programError && programData) {
+            setProgramDetails(programData);
+
+            // Load organization details
+            const { data: orgData, error: orgError } = await supabase
+              .from("organizations")
+              .select("id, name")
+              .eq("id", programData.organization_id)
+              .single();
+
+            if (!orgError && orgData) {
+              setOrganization(orgData);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to load program details:", e);
+        }
       } catch (e: any) {
         if (!mounted) return;
         if (e.message?.includes("Not authorized or application not found")) {
@@ -183,7 +217,19 @@ export default function ApplicationForm() {
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{program.name} — Application</h1>
+        <div>
+          <h1 className="text-2xl font-bold">
+            {programDetails?.name || program.name}
+          </h1>
+          {programDetails?.description && (
+            <p className="mt-1 text-gray-600">{programDetails.description}</p>
+          )}
+          {organization && (
+            <p className="mt-1 text-sm text-gray-500">
+              Organization: {organization.name}
+            </p>
+          )}
+        </div>
         <button
           onClick={() => navigate("/")}
           className="px-3 py-2 border rounded-md text-sm"
@@ -276,13 +322,18 @@ export default function ApplicationForm() {
                     {f.label}
                     {f.required && " *"}
                   </label>
-                  <input
+                  <select
                     className="w-full rounded-md border px-3 py-2"
-                    placeholder="Comma-separated options (temporary UI)"
-                    value={val ?? f.options?.join(", ") ?? ""}
+                    value={val ?? ""}
                     onChange={(e) => setVal(e.target.value)}
-                  />
-                  {/* For now a simple text input; swap for a real <select> once builder saves options[] */}
+                  >
+                    <option value="">Select an option...</option>
+                    {f.options?.map((option, index) => (
+                      <option key={index} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               );
             case "checkbox":

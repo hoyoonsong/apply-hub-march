@@ -17,6 +17,7 @@ import {
   getDeadlineMessage,
   getOpenDateMessage,
 } from "../../lib/deadlineUtils";
+import { supabase } from "../../lib/supabase";
 
 type AppRow = {
   id: string;
@@ -46,6 +47,8 @@ export default function ApplicationPage() {
   const [programDeadline, setProgramDeadline] = useState<string | null>(null);
   const [programOpenDate, setProgramOpenDate] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [programDetails, setProgramDetails] = useState<any>(null);
+  const [organization, setOrganization] = useState<any>(null);
 
   useEffect(() => {
     if (!isUUID(appId)) return;
@@ -63,6 +66,33 @@ export default function ApplicationPage() {
 
         // Set editing mode: draft apps are editable, submitted apps are read-only by default
         setIsEditing(app.status === "draft");
+
+        // Load full program details and organization
+        try {
+          // Get program details from programs_public table
+          const { data: programData, error: programError } = await supabase
+            .from("programs_public")
+            .select("id, name, description, organization_id")
+            .eq("id", app.program_id)
+            .single();
+
+          if (!programError && programData) {
+            setProgramDetails(programData);
+
+            // Load organization details
+            const { data: orgData, error: orgError } = await supabase
+              .from("organizations")
+              .select("id, name")
+              .eq("id", programData.organization_id)
+              .single();
+
+            if (!orgError && orgData) {
+              setOrganization(orgData);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to load program details:", e);
+        }
       } catch (e) {
         console.error("Error loading application:", e);
         navigate("/");
@@ -141,260 +171,298 @@ export default function ApplicationPage() {
   if (!appRow || !schema) return <div>Loading...</div>;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">
-          {appRow.program_name ?? "Application"}
-        </h1>
-        <div className="flex gap-2">
-          {/* Show Edit Application button only for submitted apps that can still be edited */}
-          {appRow.status === "submitted" && canEdit && !isEditing && (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="rounded-md bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700"
-            >
-              Edit Application
-            </button>
-          )}
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Header Section */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">
+                {programDetails?.name || appRow.program_name || "Application"}
+              </h1>
+              {programDetails?.description && (
+                <p className="mt-1 text-gray-600">
+                  {programDetails.description}
+                </p>
+              )}
+              {organization && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Organization: {organization.name}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate("/")}
+                className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                <span>←</span>
+                Back to Home
+              </button>
+              {/* Show Edit Application button only for submitted apps that can still be edited */}
+              {appRow.status === "submitted" && canEdit && !isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="px-4 py-2 text-white bg-purple-600 rounded-md hover:bg-purple-700"
+                >
+                  Edit Application
+                </button>
+              )}
 
-          {/* Show Cancel button only when editing submitted apps */}
-          {isEditing && appRow.status === "submitted" && (
-            <button
-              onClick={() => setIsEditing(false)}
-              className="rounded-md bg-gray-500 px-3 py-2 text-sm text-white"
-            >
-              Cancel
-            </button>
-          )}
+              {/* Show Cancel button only when editing submitted apps */}
+              {isEditing && appRow.status === "submitted" && (
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="px-4 py-2 text-white bg-gray-500 rounded-md hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Application Status */}
-      <div
-        className={`rounded-lg border p-4 ${
-          canEdit
-            ? "bg-blue-50 border-blue-200"
-            : isBeforeOpen
-            ? "bg-yellow-50 border-yellow-200"
-            : "bg-red-50 border-red-200"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-xl">
-            {canEdit ? "📅" : isBeforeOpen ? "⏰" : "🔒"}
-          </span>
-          <div>
-            <div className="font-semibold text-gray-900">
-              {canEdit
-                ? "Application Open"
-                : isBeforeOpen
-                ? "Application Coming Soon"
-                : "Application Closed"}
+        {/* Application Card */}
+        <div className="bg-white rounded-lg border shadow-sm">
+          <div className="p-6">
+            {/* Application Status */}
+            <div
+              className={`rounded-lg border p-4 ${
+                canEdit
+                  ? "bg-blue-50 border-blue-200"
+                  : isBeforeOpen
+                  ? "bg-yellow-50 border-yellow-200"
+                  : "bg-red-50 border-red-200"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">
+                  {canEdit ? "📅" : isBeforeOpen ? "⏰" : "🔒"}
+                </span>
+                <div>
+                  <div className="font-semibold text-gray-900">
+                    {canEdit
+                      ? "Application Open"
+                      : isBeforeOpen
+                      ? "Application Coming Soon"
+                      : "Application Closed"}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {isBeforeOpen
+                      ? getOpenDateMessage(programOpenDate)
+                      : programDeadline
+                      ? getDeadlineMessage(programDeadline)
+                      : "No deadline set"}
+                  </div>
+                  {appRow.status === "submitted" && canEdit && (
+                    <div className="text-sm text-green-600 mt-1">
+                      ✓ Application submitted - You can still edit until the
+                      deadline
+                    </div>
+                  )}
+                  {isBeforeOpen && (
+                    <div className="text-sm text-yellow-600 mt-1">
+                      Application will be available soon
+                    </div>
+                  )}
+                  {!canEdit && !isBeforeOpen && (
+                    <div className="text-sm text-red-600 mt-1">
+                      Application is locked - deadline has passed
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="text-sm text-gray-600">
-              {isBeforeOpen
-                ? getOpenDateMessage(programOpenDate)
-                : programDeadline
-                ? getDeadlineMessage(programDeadline)
-                : "No deadline set"}
-            </div>
-            {appRow.status === "submitted" && canEdit && (
-              <div className="text-sm text-green-600 mt-1">
-                ✓ Application submitted - You can still edit until the deadline
+
+            {/* Only show form if application is open or past deadline (for viewing submitted apps) */}
+            {!isBeforeOpen && (
+              <div className="rounded border bg-white p-4 space-y-4">
+                {items.length === 0 ? (
+                  <div className="text-sm text-slate-500">
+                    This application doesn't include custom questions.
+                  </div>
+                ) : (
+                  items.map((item, idx) => {
+                    const key = item.key || `q_${idx}`;
+                    const val = answers?.[key] ?? "";
+
+                    switch (item.type) {
+                      case "short_text":
+                        return (
+                          <div key={key}>
+                            <label className="block text-sm mb-1">
+                              {item.label}
+                              {item.required && " *"}
+                            </label>
+                            <input
+                              className={`w-full rounded border p-2 ${
+                                !isFormEditable
+                                  ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                  : ""
+                              }`}
+                              value={val}
+                              maxLength={item.maxLength}
+                              onChange={(e) => update(key, e.target.value)}
+                              disabled={!isFormEditable}
+                              readOnly={!isFormEditable}
+                              style={{
+                                cursor: isFormEditable ? "text" : "not-allowed",
+                              }}
+                            />
+                          </div>
+                        );
+                      case "long_text":
+                        return (
+                          <div key={key}>
+                            <label className="block text-sm mb-1">
+                              {item.label}
+                              {item.required && " *"}
+                            </label>
+                            <textarea
+                              className={`w-full rounded border p-2 ${
+                                !isFormEditable
+                                  ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                  : ""
+                              }`}
+                              value={val}
+                              maxLength={item.maxLength ?? 2000}
+                              onChange={(e) => update(key, e.target.value)}
+                              disabled={!isFormEditable}
+                              readOnly={!isFormEditable}
+                              style={{
+                                cursor: isFormEditable ? "text" : "not-allowed",
+                              }}
+                            />
+                          </div>
+                        );
+                      case "checkbox":
+                        return (
+                          <div key={key} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={!!val}
+                              onChange={(e) => update(key, e.target.checked)}
+                              disabled={!isFormEditable}
+                              className={!isFormEditable ? "opacity-50" : ""}
+                              style={{
+                                cursor: isFormEditable
+                                  ? "pointer"
+                                  : "not-allowed",
+                              }}
+                            />
+                            <span>
+                              {item.label}
+                              {item.required && " *"}
+                            </span>
+                          </div>
+                        );
+                      case "date":
+                        return (
+                          <div key={key}>
+                            <label className="block text-sm mb-1">
+                              {item.label}
+                              {item.required && " *"}
+                            </label>
+                            <input
+                              type="date"
+                              className={`w-full rounded border p-2 ${
+                                !isFormEditable
+                                  ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                  : ""
+                              }`}
+                              value={val}
+                              onChange={(e) => update(key, e.target.value)}
+                              disabled={!isFormEditable}
+                              readOnly={!isFormEditable}
+                              style={{
+                                cursor: isFormEditable ? "text" : "not-allowed",
+                              }}
+                            />
+                          </div>
+                        );
+                      case "select":
+                        return (
+                          <div key={key}>
+                            <label className="block text-sm mb-1">
+                              {item.label}
+                              {item.required && " *"}
+                            </label>
+                            <select
+                              className={`w-full rounded border p-2 ${
+                                !isFormEditable
+                                  ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                  : ""
+                              }`}
+                              value={val}
+                              onChange={(e) => update(key, e.target.value)}
+                              disabled={!isFormEditable}
+                              style={{
+                                cursor: isFormEditable
+                                  ? "pointer"
+                                  : "not-allowed",
+                              }}
+                            >
+                              <option value="" disabled>
+                                Select…
+                              </option>
+                              {(item.options || []).map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      case "file":
+                        return (
+                          <div key={key}>
+                            <label className="block text-sm mb-1">
+                              {item.label}
+                              {item.required && " *"}
+                            </label>
+                            <input
+                              type="file"
+                              onChange={(e) =>
+                                update(key, e.target.files?.[0]?.name ?? "")
+                              }
+                              disabled={!isFormEditable}
+                              className={!isFormEditable ? "opacity-50" : ""}
+                              style={{
+                                cursor: isFormEditable
+                                  ? "pointer"
+                                  : "not-allowed",
+                              }}
+                            />
+                          </div>
+                        );
+                      default:
+                        return null;
+                    }
+                  })
+                )}
               </div>
             )}
-            {isBeforeOpen && (
-              <div className="text-sm text-yellow-600 mt-1">
-                Application will be available soon
-              </div>
-            )}
-            {!canEdit && !isBeforeOpen && (
-              <div className="text-sm text-red-600 mt-1">
-                Application is locked - deadline has passed
-              </div>
-            )}
+
+            {/* Submit button at bottom like Google Forms - only show if not before open */}
+            {!isBeforeOpen &&
+              (appRow.status === "draft" ||
+                (appRow.status === "submitted" && isEditing)) && (
+                <div className="flex justify-end pt-4 border-t">
+                  <button
+                    onClick={handleSubmit}
+                    className="rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
+                    disabled={submitting || !canEdit}
+                    title={
+                      !canEdit ? "Cannot submit - deadline has passed" : ""
+                    }
+                  >
+                    {submitting ? "Submitting..." : "Submit Application"}
+                  </button>
+                </div>
+              )}
           </div>
         </div>
       </div>
-
-      {/* Only show form if application is open or past deadline (for viewing submitted apps) */}
-      {!isBeforeOpen && (
-        <div className="rounded border bg-white p-4 space-y-4">
-          {items.length === 0 ? (
-            <div className="text-sm text-slate-500">
-              This application doesn't include custom questions.
-            </div>
-          ) : (
-            items.map((item, idx) => {
-              const key = item.key || `q_${idx}`;
-              const val = answers?.[key] ?? "";
-
-              switch (item.type) {
-                case "short_text":
-                  return (
-                    <div key={key}>
-                      <label className="block text-sm mb-1">
-                        {item.label}
-                        {item.required && " *"}
-                      </label>
-                      <input
-                        className={`w-full rounded border p-2 ${
-                          !isFormEditable
-                            ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                            : ""
-                        }`}
-                        value={val}
-                        maxLength={item.maxLength}
-                        onChange={(e) => update(key, e.target.value)}
-                        disabled={!isFormEditable}
-                        readOnly={!isFormEditable}
-                        style={{
-                          cursor: isFormEditable ? "text" : "not-allowed",
-                        }}
-                      />
-                    </div>
-                  );
-                case "long_text":
-                  return (
-                    <div key={key}>
-                      <label className="block text-sm mb-1">
-                        {item.label}
-                        {item.required && " *"}
-                      </label>
-                      <textarea
-                        className={`w-full rounded border p-2 ${
-                          !isFormEditable
-                            ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                            : ""
-                        }`}
-                        value={val}
-                        maxLength={item.maxLength ?? 2000}
-                        onChange={(e) => update(key, e.target.value)}
-                        disabled={!isFormEditable}
-                        readOnly={!isFormEditable}
-                        style={{
-                          cursor: isFormEditable ? "text" : "not-allowed",
-                        }}
-                      />
-                    </div>
-                  );
-                case "checkbox":
-                  return (
-                    <div key={key} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={!!val}
-                        onChange={(e) => update(key, e.target.checked)}
-                        disabled={!isFormEditable}
-                        className={!isFormEditable ? "opacity-50" : ""}
-                        style={{
-                          cursor: isFormEditable ? "pointer" : "not-allowed",
-                        }}
-                      />
-                      <span>
-                        {item.label}
-                        {item.required && " *"}
-                      </span>
-                    </div>
-                  );
-                case "date":
-                  return (
-                    <div key={key}>
-                      <label className="block text-sm mb-1">
-                        {item.label}
-                        {item.required && " *"}
-                      </label>
-                      <input
-                        type="date"
-                        className={`w-full rounded border p-2 ${
-                          !isFormEditable
-                            ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                            : ""
-                        }`}
-                        value={val}
-                        onChange={(e) => update(key, e.target.value)}
-                        disabled={!isFormEditable}
-                        readOnly={!isFormEditable}
-                        style={{
-                          cursor: isFormEditable ? "text" : "not-allowed",
-                        }}
-                      />
-                    </div>
-                  );
-                case "select":
-                  return (
-                    <div key={key}>
-                      <label className="block text-sm mb-1">
-                        {item.label}
-                        {item.required && " *"}
-                      </label>
-                      <select
-                        className={`w-full rounded border p-2 ${
-                          !isFormEditable
-                            ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                            : ""
-                        }`}
-                        value={val}
-                        onChange={(e) => update(key, e.target.value)}
-                        disabled={!isFormEditable}
-                        style={{
-                          cursor: isFormEditable ? "pointer" : "not-allowed",
-                        }}
-                      >
-                        <option value="" disabled>
-                          Select…
-                        </option>
-                        {(item.options || []).map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-                case "file":
-                  return (
-                    <div key={key}>
-                      <label className="block text-sm mb-1">
-                        {item.label}
-                        {item.required && " *"}
-                      </label>
-                      <input
-                        type="file"
-                        onChange={(e) =>
-                          update(key, e.target.files?.[0]?.name ?? "")
-                        }
-                        disabled={!isFormEditable}
-                        className={!isFormEditable ? "opacity-50" : ""}
-                        style={{
-                          cursor: isFormEditable ? "pointer" : "not-allowed",
-                        }}
-                      />
-                    </div>
-                  );
-                default:
-                  return null;
-              }
-            })
-          )}
-        </div>
-      )}
-
-      {/* Submit button at bottom like Google Forms - only show if not before open */}
-      {!isBeforeOpen &&
-        (appRow.status === "draft" ||
-          (appRow.status === "submitted" && isEditing)) && (
-          <div className="flex justify-end pt-4 border-t">
-            <button
-              onClick={handleSubmit}
-              className="rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
-              disabled={submitting || !canEdit}
-              title={!canEdit ? "Cannot submit - deadline has passed" : ""}
-            >
-              {submitting ? "Submitting..." : "Submit Application"}
-            </button>
-          </div>
-        )}
     </div>
   );
 }
