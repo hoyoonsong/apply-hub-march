@@ -21,7 +21,6 @@ import ReviewerScopePicker from "./pages/reviewer/ReviewerScopePicker";
 import ReviewerInbox from "./pages/review/ReviewerInbox";
 import ReviewWorkspace from "./pages/review/ReviewWorkspace";
 import ReviewQueue from "./pages/review/ReviewQueue";
-import ReviewWorkspaceNew from "./pages/review/ReviewWorkspaceNew";
 import ReviewerIndex from "./pages/reviewer/index";
 import ReviewerQueue from "./pages/reviewer/programs/[programId]/queue";
 import ReviewerApplication from "./pages/reviewer/applications/[applicationId]";

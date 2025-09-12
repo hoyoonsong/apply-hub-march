@@ -1,9 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getProgramSchema, startOrGetApplication } from "../../lib/rpc";
 
 type ProgramPublic = {
   id: string;
+  name?: string;
+  type?: string;
+  description?: string;
+  published?: boolean;
+  published_scope?: string;
+  published_at?: string;
+  open_at?: string;
+  close_at?: string;
   application_schema: any;
 };
 
@@ -70,9 +78,11 @@ export default function ProgramDetail() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 sm:py-6 gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                {program.name}
+                {program?.name || "Loading..."}
               </h1>
-              <p className="mt-1 text-sm text-gray-500">Type: {program.type}</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Type: {program?.type || "Loading..."}
+              </p>
             </div>
             <Link
               to="/"
@@ -90,7 +100,7 @@ export default function ProgramDetail() {
             <div className="bg-white border rounded-lg p-4 sm:p-6">
               <h2 className="text-lg font-semibold text-gray-900">About</h2>
               <p className="mt-3 text-gray-700 whitespace-pre-line">
-                {program.description || "No description provided."}
+                {program?.description || "No description provided."}
               </p>
             </div>
 
@@ -99,18 +109,18 @@ export default function ProgramDetail() {
               <div className="mt-3 text-sm text-gray-700 space-y-2">
                 <Row
                   label="Published"
-                  value={program.published ? "Yes" : "No"}
+                  value={program?.published ? "Yes" : "No"}
                 />
                 <Row
                   label="Published Scope"
-                  value={program.published_scope || undefined}
+                  value={program?.published_scope || undefined}
                 />
                 <Row
                   label="Published At"
-                  value={formatDate(program.published_at)}
+                  value={formatDate(program?.published_at)}
                 />
-                <Row label="Opens" value={formatDate(program.open_at)} />
-                <Row label="Closes" value={formatDate(program.close_at)} />
+                <Row label="Opens" value={formatDate(program?.open_at)} />
+                <Row label="Closes" value={formatDate(program?.close_at)} />
               </div>
             </div>
           </div>
