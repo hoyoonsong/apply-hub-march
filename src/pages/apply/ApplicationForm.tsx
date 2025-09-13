@@ -7,6 +7,7 @@ import {
 } from "../../lib/rpc";
 import { missingRequired } from "../../utils/answers";
 import { supabase } from "../../lib/supabase";
+import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
 
 /**
  * We expect the program builder to have saved metadata like:
@@ -353,25 +354,19 @@ export default function ApplicationForm() {
               );
             case "file":
               return (
-                <div key={f.id} className="space-y-1">
+                <div key={f.id} className="space-y-2">
                   <label className="block text-sm font-medium">
                     {f.label}
                     {f.required && " *"}
                   </label>
-                  <input
-                    type="file"
-                    className="block w-full text-sm"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      // TODO: wire Supabase Storage + return URL; for now, store filename
-                      if (file) setVal({ name: file.name });
-                    }}
+                  <SimpleFileUpload
+                    applicationId={applicationId}
+                    fieldId={f.id}
+                    value={answers[f.id] || ""}
+                    onChange={(value) =>
+                      setAnswers((prev) => ({ ...prev, [f.id]: value }))
+                    }
                   />
-                  {val?.name && (
-                    <p className="text-xs text-gray-500">
-                      Attached: {val.name}
-                    </p>
-                  )}
                 </div>
               );
             default:

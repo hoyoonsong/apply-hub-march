@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getApplicationForReview, upsertReview } from "../../../lib/api";
+import { ApplicationFileViewer } from "../../../components/attachments/ApplicationFileViewer";
 
 type ApplicationData = {
   application: {
@@ -118,17 +119,28 @@ export default function ReviewerApplication() {
       return <span className="text-gray-400">—</span>;
     switch (question.type) {
       case "FILE":
-        return typeof value === "string" ? (
-          <a
-            href={value}
-            target="_blank"
-            rel="noreferrer"
-            className="text-blue-600 underline"
-          >
-            View file
-          </a>
-        ) : (
-          JSON.stringify(value)
+        // Check if this is a file field with metadata
+        try {
+          const fileInfo = JSON.parse(value);
+          if (fileInfo && fileInfo.fileName) {
+            return (
+              <div className="text-sm text-gray-600">
+                <div className="font-medium">📎 {fileInfo.fileName}</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {(fileInfo.fileSize / (1024 * 1024)).toFixed(2)} MB •{" "}
+                  {fileInfo.contentType}
+                </div>
+              </div>
+            );
+          }
+        } catch {
+          // Not JSON, treat as regular text
+        }
+
+        return (
+          <span className="text-gray-500 italic">
+            See File Attachments section below
+          </span>
         );
       case "CHECKBOX":
         return value ? "Yes" : "No";
@@ -216,6 +228,14 @@ export default function ReviewerApplication() {
                   ))
                 )}
               </div>
+            </div>
+
+            {/* File Attachments Section */}
+            <div className="bg-white rounded-lg border p-6 mt-6">
+              <h3 className="text-lg font-semibold mb-4">File Attachments</h3>
+              <ApplicationFileViewer
+                applicationAnswers={app.application.answers}
+              />
             </div>
           </div>
 

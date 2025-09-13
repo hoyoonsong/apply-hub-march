@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { ApplicationFileViewer } from "./attachments/ApplicationFileViewer";
 import { getBuilderSchema } from "../data/api";
 import { Program } from "../lib/programs";
 
@@ -211,6 +212,12 @@ export default function ApplicationPreview({
             <div key={field.id || index}>{renderField(field, index)}</div>
           ))
         )}
+
+        {/* File Attachments Section */}
+        <div className="mt-6 pt-4 border-t">
+          <h3 className="text-lg font-semibold mb-4">File Attachments</h3>
+          <ApplicationFileViewer applicationAnswers={answers} />
+        </div>
 
         <div className="mt-6 pt-4 border-t">
           <div className="flex justify-end gap-3">

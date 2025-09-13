@@ -8,6 +8,8 @@ import {
   saveApplication,
 } from "../../lib/rpc";
 import { useApplicationAutosave } from "../../components/useApplicationAutosave";
+import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
+import { AttachmentList } from "../../components/attachments/AttachmentList";
 import type { ProgramApplicationSchema } from "../../types/application";
 import { missingRequired } from "../../utils/answers";
 import {
@@ -434,18 +436,12 @@ export default function ApplicationPage() {
                               {item.label}
                               {item.required && " *"}
                             </label>
-                            <input
-                              type="file"
-                              onChange={(e) =>
-                                update(key, e.target.files?.[0]?.name ?? "")
-                              }
+                            <SimpleFileUpload
+                              applicationId={appId!}
+                              fieldId={key}
+                              value={answers[key] || ""}
+                              onChange={(value) => update(key, value)}
                               disabled={!isFormEditable}
-                              className={!isFormEditable ? "opacity-50" : ""}
-                              style={{
-                                cursor: isFormEditable
-                                  ? "pointer"
-                                  : "not-allowed",
-                              }}
                             />
                           </div>
                         );
@@ -456,6 +452,12 @@ export default function ApplicationPage() {
                 )}
               </div>
             )}
+
+            {/* Attachments Section */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+              <h3 className="text-lg font-semibold mb-4">Attachments</h3>
+              <AttachmentList applicationId={appId!} />
+            </div>
 
             {/* Submit button at bottom like Google Forms - only show if not before open */}
             {!isBeforeOpen &&
