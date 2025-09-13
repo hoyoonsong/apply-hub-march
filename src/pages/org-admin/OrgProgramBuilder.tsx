@@ -383,14 +383,30 @@ export default function OrgProgramBuilder() {
           }
 
           if (mounted) {
-            setSchema(s ?? { fields: [] });
-            const loadedFields = s?.fields || [];
-            // Ensure all fields have a key property for drag and drop
-            const fieldsWithKeys = loadedFields.map((field, idx) => ({
-              ...field,
-              key: field.key || `field-${idx}-${Date.now()}`,
-            }));
-            setFields(fieldsWithKeys);
+            // Check if there are pending changes to load instead of live schema
+            const meta = (row?.metadata ?? {}) as any;
+            const hasPendingChanges = meta?.review_status === "pending_changes";
+            const pendingSchema = meta?.pending_schema;
+
+            if (hasPendingChanges && pendingSchema) {
+              // Load pending changes for editing
+              setSchema(pendingSchema);
+              const loadedFields = pendingSchema?.fields || [];
+              const fieldsWithKeys = loadedFields.map((field, idx) => ({
+                ...field,
+                key: field.key || `field-${idx}-${Date.now()}`,
+              }));
+              setFields(fieldsWithKeys);
+            } else {
+              // Load live schema
+              setSchema(s ?? { fields: [] });
+              const loadedFields = s?.fields || [];
+              const fieldsWithKeys = loadedFields.map((field, idx) => ({
+                ...field,
+                key: field.key || `field-${idx}-${Date.now()}`,
+              }));
+              setFields(fieldsWithKeys);
+            }
           }
         } catch (e) {
           // First time - no schema exists yet, or RPC failed for super admin
@@ -434,10 +450,58 @@ export default function OrgProgramBuilder() {
       const updatedSchema = {
         fields: fields,
       };
-      await setBuilderSchema(programId, updatedSchema);
-      setSchema(updatedSchema);
-      setMsg("Saved!");
+
+      // Check if program is published - try multiple ways to determine this
+      const isPublished =
+        program?.published ||
+        program?.metadata?.published ||
+        program?.metadata?.review_status === "published";
+
+      console.log("Save - isPublished:", isPublished);
+      console.log("Save - program.published:", program?.published);
+      console.log("Save - program.metadata:", program?.metadata);
+
+      // Check if program is published
+      if (isPublished) {
+        // If published, save changes as draft and mark as pending
+        // Don't update the live schema - keep it separate
+        const meta = (program?.metadata ?? {}) as any;
+        console.log(
+          "Saving pending changes for published program:",
+          program?.id
+        );
+        console.log("Current metadata:", meta);
+
+        const { error: updateError } = await supabase
+          .from("programs")
+          .update({
+            metadata: {
+              ...meta,
+              // Keep the live schema in application_schema
+              // Store draft changes in pending_schema
+              pending_schema: updatedSchema,
+              review_status: "pending_changes",
+              pending_changes_at: new Date().toISOString(),
+              pending_changes_by: "org_admin",
+            },
+          })
+          .eq("id", program?.id);
+
+        if (updateError) throw new Error(updateError.message);
+
+        console.log("Successfully saved pending changes");
+
+        setMsg(
+          "Changes saved as draft! These changes require super admin approval before going live."
+        );
+      } else {
+        // If not published, save normally to the live schema
+        await setBuilderSchema(programId, updatedSchema);
+        setSchema(updatedSchema);
+        setMsg("Saved!");
+      }
     } catch (e: any) {
+      console.error("Save error:", e);
       setMsg(e.message ?? "Save failed");
     } finally {
       setSaving(false);
@@ -449,16 +513,32 @@ export default function OrgProgramBuilder() {
     setSaving(true);
     setMsg(null);
     try {
-      // Save the current schema first
-      await setBuilderSchema(programId, { fields: fields });
+      // First, save the current changes to ensure super admin sees latest version
+      console.log("Auto-saving current changes before submit...");
+      await onSave();
 
-      // Submit for review (this handles both first submission and resubmission)
-      await orgSubmitProgramForReview({
-        program_id: program.id,
-        note: "Program submitted for review",
-      });
+      const meta = (program?.metadata ?? {}) as any;
+      const hasPendingChanges = meta?.review_status === "pending_changes";
 
-      setMsg("Submitted for review. Superadmin will review & publish.");
+      if (hasPendingChanges) {
+        // For pending changes, just submit the existing pending schema
+        console.log("Submitting pending changes for review...");
+        const result = await orgSubmitProgramForReview({
+          program_id: program.id,
+          note: "Pending changes submitted for review",
+        });
+        console.log("Submit result:", result);
+        setMsg(
+          "Pending changes submitted for review. Superadmin will review & publish."
+        );
+      } else {
+        // For new submissions, submit for review (onSave already handled the saving)
+        await orgSubmitProgramForReview({
+          program_id: program.id,
+          note: "Program submitted for review",
+        });
+        setMsg("Submitted for review. Superadmin will review & publish.");
+      }
 
       // Navigate back to programs list after successful submission
       setTimeout(() => {
@@ -485,6 +565,7 @@ export default function OrgProgramBuilder() {
   const status =
     typeof meta?.review_status === "string" ? meta.review_status : "draft";
   const isSubmitted = status === "submitted";
+  const hasPendingChanges = status === "pending_changes";
   const isDisabled = isSuperAdmin || (isSubmitted && !isEditing);
 
   return (
@@ -535,6 +616,30 @@ export default function OrgProgramBuilder() {
               <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md">
                 <div className="font-semibold">Changes requested</div>
                 <div className="text-sm whitespace-pre-wrap">{note}</div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
+      {/* Pending changes notification */}
+      {(() => {
+        const meta = (program?.metadata ?? {}) as any;
+        const status =
+          typeof meta?.review_status === "string"
+            ? meta.review_status
+            : "draft";
+        if (status === "pending_changes") {
+          return (
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+              <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-md">
+                <div className="font-semibold">⏳ Changes Pending Approval</div>
+                <div className="text-sm">
+                  Your changes have been saved but require super admin approval
+                  before going live. The current published version remains
+                  active until approved.
+                </div>
               </div>
             </div>
           );
@@ -627,71 +732,65 @@ export default function OrgProgramBuilder() {
 
           {/* Field Type Selection Section */}
           {!isSuperAdmin && (
-            <div className="bg-white rounded-lg p-6 mb-8 shadow-sm border">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-1 h-8 bg-blue-500 rounded-full"></div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Add New Question
-                </h3>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="bg-white rounded-lg p-3 mb-4 shadow-sm border">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
                 <button
                   onClick={() => addField("short_text")}
-                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
                   disabled={isDisabled}
                 >
-                  <div className="text-3xl mb-2">📝</div>
-                  <span className="text-sm font-medium text-gray-700">
+                  <div className="text-lg">📝</div>
+                  <span className="text-xs font-medium text-gray-700">
                     Short Text
                   </span>
                 </button>
                 <button
                   onClick={() => addField("long_text")}
-                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
                   disabled={isDisabled}
                 >
-                  <div className="text-3xl mb-2">📄</div>
-                  <span className="text-sm font-medium text-gray-700">
+                  <div className="text-lg">📄</div>
+                  <span className="text-xs font-medium text-gray-700">
                     Long Text
                   </span>
                 </button>
                 <button
                   onClick={() => addField("date")}
-                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
                   disabled={isDisabled}
                 >
-                  <div className="text-3xl mb-2">📅</div>
-                  <span className="text-sm font-medium text-gray-700">
+                  <div className="text-lg">📅</div>
+                  <span className="text-xs font-medium text-gray-700">
                     Date
                   </span>
                 </button>
                 <button
                   onClick={() => addField("select")}
-                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
                   disabled={isDisabled}
                 >
-                  <div className="text-3xl mb-2">📋</div>
-                  <span className="text-sm font-medium text-gray-700">
+                  <div className="text-lg">📋</div>
+                  <span className="text-xs font-medium text-gray-700">
                     Select
                   </span>
                 </button>
                 <button
                   onClick={() => addField("checkbox")}
-                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
                   disabled={isDisabled}
                 >
-                  <div className="text-3xl mb-2">☑️</div>
-                  <span className="text-sm font-medium text-gray-700">
+                  <div className="text-lg">☑️</div>
+                  <span className="text-xs font-medium text-gray-700">
                     Checkbox
                   </span>
                 </button>
                 <button
                   onClick={() => addField("file")}
-                  className="flex flex-col items-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
                   disabled={isDisabled}
                 >
-                  <div className="text-3xl mb-2">📎</div>
-                  <span className="text-sm font-medium text-gray-700">
+                  <div className="text-lg">📎</div>
+                  <span className="text-xs font-medium text-gray-700">
                     File Upload
                   </span>
                 </button>
@@ -735,7 +834,7 @@ export default function OrgProgramBuilder() {
                   )}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {fields.map((field, idx) => (
                       <SortableField
                         key={field.key || `field-${idx}`}
@@ -777,9 +876,16 @@ export default function OrgProgramBuilder() {
                       disabled={saving || (isSubmitted && !isEditing)}
                       onClick={onSubmitForReview}
                       className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                      title={
+                        hasPendingChanges
+                          ? "Submit pending changes for super admin review"
+                          : ""
+                      }
                     >
                       <span className="text-lg">📤</span>
-                      {isSubmitted
+                      {hasPendingChanges
+                        ? "Submit Pending Changes for Review"
+                        : isSubmitted
                         ? "Resubmit for Review"
                         : "Submit for Review"}
                     </button>

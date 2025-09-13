@@ -38,6 +38,89 @@ export default function SuperProgramsReview() {
     setPreviewProgram(null);
   };
 
+  const handleApproveChanges = async (program: Program) => {
+    try {
+      setLoading(true);
+      const meta = program.metadata || {};
+      const pendingSchema = meta.pending_schema;
+
+      if (pendingSchema) {
+        // Move pending schema to live schema
+        const { error } = await supabase
+          .from("programs")
+          .update({
+            published: true,
+            metadata: {
+              ...meta,
+              // Move pending schema to live schema
+              application_schema: pendingSchema,
+              // Clear pending changes
+              pending_schema: null,
+              review_status: "approved",
+              last_approved_at: new Date().toISOString(),
+              last_approved_by: "super_admin",
+            },
+          })
+          .eq("id", program.id);
+
+        if (error) throw error;
+        setSuccess(
+          `Live page updated for ${program.name}. Changes are now live!`
+        );
+      } else {
+        setError("No pending changes found to approve");
+      }
+
+      await refresh(); // Reload data
+    } catch (e: any) {
+      setError(e.message || "Failed to approve changes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestChanges = async (program: Program) => {
+    try {
+      setLoading(true);
+      const note =
+        prompt("Add a note for the org admin (what needs fixing)?") || "";
+
+      if (!note.trim()) {
+        setError("Please provide a note explaining what needs to be changed.");
+        return;
+      }
+
+      const meta = program.metadata || {};
+
+      // Clear pending changes and set status to changes_requested
+      const { error } = await supabase
+        .from("programs")
+        .update({
+          metadata: {
+            ...meta,
+            // Clear pending changes
+            pending_schema: null,
+            review_status: "changes_requested",
+            review_note: note.trim(),
+            last_changes_requested_at: new Date().toISOString(),
+            last_changes_requested_by: "super_admin",
+          },
+        })
+        .eq("id", program.id);
+
+      if (error) throw error;
+
+      setSuccess(
+        `Change request sent for ${program.name}. Org admin will be notified.`
+      );
+      await refresh(); // Reload data
+    } catch (e: any) {
+      setError(e.message || "Failed to request changes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   async function fetchOrgNames() {
     try {
       const { data, error } = await supabase.rpc("super_list_orgs_v1", {
@@ -98,6 +181,7 @@ export default function SuperProgramsReview() {
     setLoading(true);
     setError(null);
     try {
+      console.log("Refreshing super admin data...");
       // If no statuses selected, show all. Otherwise, filter by selected statuses
       const statusFilter =
         selectedStatuses.size === 0 ? null : Array.from(selectedStatuses)[0];
@@ -273,6 +357,10 @@ export default function SuperProgramsReview() {
                   label: "Submitted for Review",
                 },
                 {
+                  value: "pending_changes" as ReviewStatus,
+                  label: "Pending Changes",
+                },
+                {
                   value: "changes_requested" as ReviewStatus,
                   label: "Changes Requested",
                 },
@@ -367,16 +455,21 @@ export default function SuperProgramsReview() {
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                   st === "submitted"
                                     ? "bg-blue-100 text-blue-800"
+                                    : st === "pending_changes"
+                                    ? "bg-orange-100 text-orange-800"
                                     : st === "changes_requested"
                                     ? "bg-yellow-100 text-yellow-800"
-                                    : st === "approved"
+                                    : st === "approved" || st === "published"
                                     ? "bg-green-100 text-green-800"
                                     : st === "unpublished"
                                     ? "bg-purple-100 text-purple-800"
                                     : "bg-gray-100 text-gray-800"
                                 }`}
                               >
-                                {st.replace("_", " ")}
+                                {(st === "published" ? "approved" : st).replace(
+                                  "_",
+                                  " "
+                                )}
                               </span>
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -506,16 +599,21 @@ export default function SuperProgramsReview() {
                               "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium " +
                               (st === "submitted"
                                 ? "bg-blue-100 text-blue-800"
+                                : st === "pending_changes"
+                                ? "bg-orange-100 text-orange-800"
                                 : st === "changes_requested"
                                 ? "bg-yellow-100 text-yellow-800"
-                                : st === "approved"
+                                : st === "approved" || st === "published"
                                 ? "bg-green-100 text-green-800"
                                 : st === "unpublished"
                                 ? "bg-purple-100 text-purple-800"
                                 : "bg-gray-100 text-gray-800")
                             }
                           >
-                            {st.replace("_", " ")}
+                            {(st === "published" ? "approved" : st).replace(
+                              "_",
+                              " "
+                            )}
                           </span>
                         </td>
                         <td className="px-4 py-4 text-center">
@@ -588,6 +686,48 @@ export default function SuperProgramsReview() {
                                 </svg>
                               </button>
                             </div>
+                          ) : st === "pending_changes" ? (
+                            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                              <button
+                                onClick={() => handlePreviewProgram(p)}
+                                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+                              >
+                                Preview
+                              </button>
+                              <button
+                                onClick={() => handleApproveChanges(p)}
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
+                                title="Update live page with changes"
+                              >
+                                Update Live Page
+                              </button>
+                              <button
+                                onClick={() => handleRequestChanges(p)}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
+                                title="Request changes from org admin"
+                              >
+                                Change Request
+                              </button>
+                              <button
+                                onClick={() => handleDelete(p)}
+                                className="text-red-600 hover:text-red-800 p-1"
+                                title="Delete program"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
                           ) : p.published ? (
                             <div className="flex flex-col sm:flex-row gap-2 justify-center">
                               {/* Only show Unpublish for published programs */}
@@ -619,33 +759,56 @@ export default function SuperProgramsReview() {
                             </div>
                           ) : (
                             <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                              {/* Review Actions for submitted but not published programs */}
-                              <button
-                                onClick={() =>
-                                  handleReview(p, "request_changes")
-                                }
-                                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
-                              >
-                                Request Changes
-                              </button>
+                              {/* Check if this is a resubmission (has been published before) */}
+                              {p.published || p.published_at ? (
+                                // Resubmission actions - Update Live Page and Change Request
+                                <>
+                                  <button
+                                    onClick={() => handleApproveChanges(p)}
+                                    className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
+                                    title="Update live page with changes"
+                                  >
+                                    Update Live Page
+                                  </button>
+                                  <button
+                                    onClick={() => handleRequestChanges(p)}
+                                    className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
+                                    title="Request changes from org admin"
+                                  >
+                                    Change Request
+                                  </button>
+                                </>
+                              ) : (
+                                // First-time submission actions - standard review buttons
+                                <>
+                                  <button
+                                    onClick={() =>
+                                      handleReview(p, "request_changes")
+                                    }
+                                    className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
+                                  >
+                                    Request Changes
+                                  </button>
 
-                              {/* Publish Actions (publishing = approving) */}
-                              <button
-                                onClick={() => handlePublish(p, "org")}
-                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
-                                title="Publish to organization (approves program)"
-                              >
-                                Publish (Org)
-                              </button>
-                              <button
-                                onClick={() => {
-                                  handlePublish(p, "coalition");
-                                }}
-                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded"
-                                title="Publish to coalition (approves program)"
-                              >
-                                Publish (Coalition)
-                              </button>
+                                  {/* Publish Actions (publishing = approving) */}
+                                  <button
+                                    onClick={() => handlePublish(p, "org")}
+                                    className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
+                                    title="Publish to organization (approves program)"
+                                  >
+                                    Publish (Org)
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      handlePublish(p, "coalition");
+                                    }}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded"
+                                    title="Publish to coalition (approves program)"
+                                  >
+                                    Publish (Coalition)
+                                  </button>
+                                </>
+                              )}
                               <button
                                 onClick={() => handleDelete(p)}
                                 className="text-red-600 hover:text-red-800 p-1"

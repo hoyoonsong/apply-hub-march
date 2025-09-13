@@ -412,6 +412,8 @@ export default function OrgAdminPrograms() {
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                   status === "submitted"
                                     ? "bg-blue-100 text-blue-800"
+                                    : status === "pending_changes"
+                                    ? "bg-orange-100 text-orange-800"
                                     : status === "changes_requested"
                                     ? "bg-yellow-100 text-yellow-800"
                                     : status === "approved"
@@ -537,6 +539,8 @@ export default function OrgAdminPrograms() {
                                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                   status === "submitted"
                                     ? "bg-blue-100 text-blue-800"
+                                    : status === "pending_changes"
+                                    ? "bg-orange-100 text-orange-800"
                                     : status === "changes_requested"
                                     ? "bg-yellow-100 text-yellow-800"
                                     : status === "approved"

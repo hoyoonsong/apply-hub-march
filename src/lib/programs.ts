@@ -7,7 +7,9 @@ export type ReviewStatus =
   | "submitted"
   | "changes_requested"
   | "approved"
-  | "unpublished";
+  | "unpublished"
+  | "published"
+  | "pending_changes";
 
 export type Program = {
   id: string;
@@ -38,6 +40,8 @@ export function getReviewStatus(p?: Program | null): ReviewStatus {
     "changes_requested",
     "approved",
     "unpublished",
+    "published",
+    "pending_changes",
   ];
   return (
     allowed.includes(raw as ReviewStatus) ? raw : "draft"
@@ -54,6 +58,8 @@ export function getProgramRowReviewStatus(p?: ProgramRow | null): ReviewStatus {
     "changes_requested",
     "approved",
     "unpublished",
+    "published",
+    "pending_changes",
   ];
   return (
     allowed.includes(raw as ReviewStatus) ? raw : "draft"

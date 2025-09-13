@@ -45,20 +45,37 @@ export default function ApplicationPreview({
 
     setLoading(true);
     try {
-      // Try to get schema from programs_public table first
-      const { data: schemaData, error: schemaError } = await supabase
-        .from("programs_public")
-        .select("application_schema")
-        .eq("id", program.id)
-        .single();
+      // First check if there are pending changes to show
+      const meta = program.metadata || {};
+      const hasPendingChanges =
+        meta.review_status === "pending_changes" ||
+        meta.review_status === "submitted";
+      const pendingSchema = meta.pending_schema;
 
-      if (!schemaError && schemaData) {
-        const schema = schemaData.application_schema;
-        setFields(schema?.fields || []);
+      console.log("Preview - program metadata:", meta);
+      console.log("Preview - hasPendingChanges:", hasPendingChanges);
+      console.log("Preview - pendingSchema:", pendingSchema);
+
+      if (hasPendingChanges && pendingSchema) {
+        // Show pending changes for super admin review
+        console.log("Showing pending changes in preview:", pendingSchema);
+        setFields(pendingSchema.fields || []);
       } else {
-        // Fallback to RPC call
-        const schema = await getBuilderSchema(program.id);
-        setFields(schema.fields || []);
+        // Show live schema
+        const { data: schemaData, error: schemaError } = await supabase
+          .from("programs_public")
+          .select("application_schema")
+          .eq("id", program.id)
+          .single();
+
+        if (!schemaError && schemaData) {
+          const schema = schemaData.application_schema;
+          setFields(schema?.fields || []);
+        } else {
+          // Fallback to RPC call
+          const schema = await getBuilderSchema(program.id);
+          setFields(schema.fields || []);
+        }
       }
     } catch (e) {
       console.error("Failed to load fields:", e);
