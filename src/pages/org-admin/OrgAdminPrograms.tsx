@@ -423,7 +423,10 @@ export default function OrgAdminPrograms() {
                                     : "bg-gray-100 text-gray-800"
                                 }`}
                               >
-                                {status.replace("_", " ")}
+                                {(status === "pending_changes"
+                                  ? "update"
+                                  : status
+                                ).replace("_", " ")}
                               </span>
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -550,7 +553,10 @@ export default function OrgAdminPrograms() {
                                     : "bg-gray-100 text-gray-800"
                                 }`}
                               >
-                                {status.replace("_", " ")}
+                                {(status === "pending_changes"
+                                  ? "update"
+                                  : status
+                                ).replace("_", " ")}
                               </span>
                             );
                           })()}

@@ -358,7 +358,7 @@ export default function SuperProgramsReview() {
                 },
                 {
                   value: "pending_changes" as ReviewStatus,
-                  label: "Pending Changes",
+                  label: "Update",
                 },
                 {
                   value: "changes_requested" as ReviewStatus,
@@ -610,10 +610,12 @@ export default function SuperProgramsReview() {
                                 : "bg-gray-100 text-gray-800")
                             }
                           >
-                            {(st === "published" ? "approved" : st).replace(
-                              "_",
-                              " "
-                            )}
+                            {(st === "published"
+                              ? "approved"
+                              : st === "pending_changes"
+                              ? "update"
+                              : st
+                            ).replace("_", " ")}
                           </span>
                         </td>
                         <td className="px-4 py-4 text-center">
