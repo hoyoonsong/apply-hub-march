@@ -9,7 +9,6 @@ import {
 } from "../../lib/rpc";
 import { useApplicationAutosave } from "../../components/useApplicationAutosave";
 import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
-import { AttachmentList } from "../../components/attachments/AttachmentList";
 import type { ProgramApplicationSchema } from "../../types/application";
 import { missingRequired } from "../../utils/answers";
 import {
@@ -452,12 +451,6 @@ export default function ApplicationPage() {
                 )}
               </div>
             )}
-
-            {/* Attachments Section */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-lg font-semibold mb-4">Attachments</h3>
-              <AttachmentList applicationId={appId!} />
-            </div>
 
             {/* Submit button at bottom like Google Forms - only show if not before open */}
             {!isBeforeOpen &&

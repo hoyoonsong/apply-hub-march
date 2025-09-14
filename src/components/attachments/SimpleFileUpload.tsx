@@ -1,6 +1,7 @@
 // components/attachments/SimpleFileUpload.tsx
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
+import { FilePreview } from "./FilePreview";
 
 const ALLOWED_TYPES = [
   "image/png",
@@ -28,7 +29,6 @@ export function SimpleFileUpload({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const maxBytes = maxSizeMB * 1024 * 1024;
 
   console.log("[simple-upload] mounted for field", fieldId, "value:", value);
@@ -115,7 +115,6 @@ export function SimpleFileUpload({
 
       // Success! Update the form value with file info
       console.log("[simple-upload] success", fileInfo);
-      setUploadedFiles((prev) => [...prev, file.name]);
       onChange(JSON.stringify(fileInfo)); // Store as JSON string
       setFile(null);
     } catch (error: any) {
@@ -151,14 +150,21 @@ export function SimpleFileUpload({
 
       {/* Current file display */}
       {currentFile && (
-        <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
-          <strong>Saved:</strong> {currentFile.fileName}
-          {currentFile.fileSize && (
-            <span className="text-gray-500">
-              {" "}
-              • {(currentFile.fileSize / (1024 * 1024)).toFixed(2)} MB
-            </span>
-          )}
+        <div className="space-y-3">
+          <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
+            <strong>Saved:</strong> {currentFile.fileName}
+            {currentFile.fileSize && (
+              <span className="text-gray-500">
+                {" "}
+                • {(currentFile.fileSize / (1024 * 1024)).toFixed(2)} MB
+              </span>
+            )}
+          </div>
+
+          {/* File preview */}
+          <div className="border rounded-lg p-3 bg-white">
+            <FilePreview fileInfo={currentFile} />
+          </div>
         </div>
       )}
 
@@ -166,13 +172,6 @@ export function SimpleFileUpload({
       {uploading && (
         <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
           <strong>Uploading...</strong> {file?.name}
-        </div>
-      )}
-
-      {/* Recently uploaded files */}
-      {uploadedFiles.length > 0 && (
-        <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-          <strong>Recent uploads:</strong> {uploadedFiles.join(", ")}
         </div>
       )}
     </div>
