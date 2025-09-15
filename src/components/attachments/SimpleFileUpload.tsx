@@ -1,5 +1,5 @@
 // components/attachments/SimpleFileUpload.tsx
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { FilePreview } from "./FilePreview";
 
@@ -127,7 +127,7 @@ export function SimpleFileUpload({
   }
 
   // Parse the current value to show file info
-  let currentFile = null;
+  let currentFile: any = null;
   try {
     if (value) {
       currentFile = JSON.parse(value);

@@ -257,11 +257,13 @@ export default function ApplicationForm() {
       </div>
 
       {/* Dynamic fields */}
-      <div className="bg-white border rounded-lg p-4 space-y-4">
+      <div className="space-y-6">
         {fields.length === 0 && (
-          <p className="text-sm text-gray-500">
-            This program has no custom questions yet.
-          </p>
+          <div className="bg-white border rounded-lg p-6">
+            <p className="text-sm text-gray-500">
+              This program has no custom questions yet.
+            </p>
+          </div>
         )}
 
         {fields.map((f) => {
@@ -271,13 +273,16 @@ export default function ApplicationForm() {
           switch (f.type) {
             case "short_text":
               return (
-                <div key={f.id} className="space-y-1">
-                  <label className="block text-sm font-medium">
+                <div
+                  key={f.id}
+                  className="bg-white border rounded-lg p-6 space-y-3"
+                >
+                  <label className="block text-sm font-medium text-gray-700">
                     {f.label}
                     {f.required && " *"}
                   </label>
                   <input
-                    className="w-full rounded-md border px-3 py-2"
+                    className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     type="text"
                     maxLength={f.maxLength}
                     value={val ?? ""}
@@ -287,13 +292,16 @@ export default function ApplicationForm() {
               );
             case "long_text":
               return (
-                <div key={f.id} className="space-y-1">
-                  <label className="block text-sm font-medium">
+                <div
+                  key={f.id}
+                  className="bg-white border rounded-lg p-6 space-y-3"
+                >
+                  <label className="block text-sm font-medium text-gray-700">
                     {f.label}
                     {f.required && " *"}
                   </label>
                   <textarea
-                    className="w-full rounded-md border px-3 py-2"
+                    className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     rows={5}
                     maxLength={f.maxLength}
                     value={val ?? ""}
@@ -303,13 +311,16 @@ export default function ApplicationForm() {
               );
             case "date":
               return (
-                <div key={f.id} className="space-y-1">
-                  <label className="block text-sm font-medium">
+                <div
+                  key={f.id}
+                  className="bg-white border rounded-lg p-6 space-y-3"
+                >
+                  <label className="block text-sm font-medium text-gray-700">
                     {f.label}
                     {f.required && " *"}
                   </label>
                   <input
-                    className="rounded-md border px-3 py-2"
+                    className="rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     type="date"
                     value={val ?? ""}
                     onChange={(e) => setVal(e.target.value)}
@@ -318,13 +329,16 @@ export default function ApplicationForm() {
               );
             case "select":
               return (
-                <div key={f.id} className="space-y-1">
-                  <label className="block text-sm font-medium">
+                <div
+                  key={f.id}
+                  className="bg-white border rounded-lg p-6 space-y-3"
+                >
+                  <label className="block text-sm font-medium text-gray-700">
                     {f.label}
                     {f.required && " *"}
                   </label>
                   <select
-                    className="w-full rounded-md border px-3 py-2"
+                    className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={val ?? ""}
                     onChange={(e) => setVal(e.target.value)}
                   >
@@ -339,23 +353,28 @@ export default function ApplicationForm() {
               );
             case "checkbox":
               return (
-                <div key={f.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={!!val}
-                    onChange={(e) => setVal(e.target.checked)}
-                  />
-                  <label className="text-sm">
-                    {f.label}
-                    {f.required && " *"}
-                  </label>
+                <div key={f.id} className="bg-white border rounded-lg p-6">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                      checked={!!val}
+                      onChange={(e) => setVal(e.target.checked)}
+                    />
+                    <label className="text-sm font-medium text-gray-700">
+                      {f.label}
+                      {f.required && " *"}
+                    </label>
+                  </div>
                 </div>
               );
             case "file":
               return (
-                <div key={f.id} className="space-y-2">
-                  <label className="block text-sm font-medium">
+                <div
+                  key={f.id}
+                  className="bg-white border rounded-lg p-6 space-y-3"
+                >
+                  <label className="block text-sm font-medium text-gray-700">
                     {f.label}
                     {f.required && " *"}
                   </label>

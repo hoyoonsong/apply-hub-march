@@ -93,7 +93,7 @@ export function FilePreview({ fileInfo }: { fileInfo: FileInfo }) {
   const isHeic = contentType.includes("heic") || contentType.includes("heif");
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
+    <div className="bg-white p-4">
       {/* File header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">

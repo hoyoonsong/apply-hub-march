@@ -1,6 +1,7 @@
 // Enhanced secure file upload component
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
+import { FilePreview } from "./FilePreview";
 
 const ALLOWED_TYPES = [
   "image/png",
@@ -149,6 +150,68 @@ export function SecureFileUpload({
     }
   }
 
-  // Rest of component implementation...
-  // (Similar to SimpleFileUpload but with error display)
+  // Auto-upload when file is selected
+  useEffect(() => {
+    if (file && !uploading) {
+      handleAutoUpload();
+    }
+  }, [file]);
+
+  // Parse the current value to show file info
+  let currentFile: any = null;
+  try {
+    if (value) {
+      currentFile = JSON.parse(value);
+    }
+  } catch (e) {
+    // If it's not JSON, treat it as a simple filename
+    currentFile = { fileName: value };
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* File input */}
+      <input
+        type="file"
+        accept={ALLOWED_TYPES.join(",")}
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        disabled={disabled || uploading}
+        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+      />
+
+      {/* Error display */}
+      {error && (
+        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* Current file display */}
+      {currentFile && (
+        <div className="space-y-3">
+          <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
+            <strong>Saved:</strong> {currentFile.fileName}
+            {currentFile.fileSize && (
+              <span className="text-gray-500">
+                {" "}
+                • {(currentFile.fileSize / (1024 * 1024)).toFixed(2)} MB
+              </span>
+            )}
+          </div>
+
+          {/* File preview */}
+          <div className="border rounded-lg p-3 bg-white">
+            <FilePreview fileInfo={currentFile} />
+          </div>
+        </div>
+      )}
+
+      {/* Uploading status */}
+      {uploading && (
+        <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+          <strong>Uploading...</strong> {file?.name}
+        </div>
+      )}
+    </div>
+  );
 }

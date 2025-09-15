@@ -291,10 +291,12 @@ export default function ApplicationPage() {
 
             {/* Only show form if application is open or past deadline (for viewing submitted apps) */}
             {!isBeforeOpen && (
-              <div className="rounded border bg-white p-4 space-y-4">
+              <div className="space-y-6">
                 {items.length === 0 ? (
-                  <div className="text-sm text-slate-500">
-                    This application doesn't include custom questions.
+                  <div className="bg-white border rounded-lg p-6">
+                    <div className="text-sm text-slate-500">
+                      This application doesn't include custom questions.
+                    </div>
                   </div>
                 ) : (
                   items.map((item, idx) => {
@@ -304,13 +306,16 @@ export default function ApplicationPage() {
                     switch (item.type) {
                       case "short_text":
                         return (
-                          <div key={key}>
-                            <label className="block text-sm mb-1">
+                          <div
+                            key={key}
+                            className="bg-white border rounded-lg p-6 space-y-3"
+                          >
+                            <label className="block text-sm font-medium text-gray-700">
                               {item.label}
                               {item.required && " *"}
                             </label>
                             <input
-                              className={`w-full rounded border p-2 ${
+                              className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                 !isFormEditable
                                   ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
                                   : ""
@@ -328,13 +333,16 @@ export default function ApplicationPage() {
                         );
                       case "long_text":
                         return (
-                          <div key={key}>
-                            <label className="block text-sm mb-1">
+                          <div
+                            key={key}
+                            className="bg-white border rounded-lg p-6 space-y-3"
+                          >
+                            <label className="block text-sm font-medium text-gray-700">
                               {item.label}
                               {item.required && " *"}
                             </label>
                             <textarea
-                              className={`w-full rounded border p-2 ${
+                              className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                 !isFormEditable
                                   ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
                                   : ""
@@ -352,35 +360,45 @@ export default function ApplicationPage() {
                         );
                       case "checkbox":
                         return (
-                          <div key={key} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={!!val}
-                              onChange={(e) => update(key, e.target.checked)}
-                              disabled={!isFormEditable}
-                              className={!isFormEditable ? "opacity-50" : ""}
-                              style={{
-                                cursor: isFormEditable
-                                  ? "pointer"
-                                  : "not-allowed",
-                              }}
-                            />
-                            <span>
-                              {item.label}
-                              {item.required && " *"}
-                            </span>
+                          <div
+                            key={key}
+                            className="bg-white border rounded-lg p-6"
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={!!val}
+                                onChange={(e) => update(key, e.target.checked)}
+                                disabled={!isFormEditable}
+                                className={`h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
+                                  !isFormEditable ? "opacity-50" : ""
+                                }`}
+                                style={{
+                                  cursor: isFormEditable
+                                    ? "pointer"
+                                    : "not-allowed",
+                                }}
+                              />
+                              <label className="text-sm font-medium text-gray-700">
+                                {item.label}
+                                {item.required && " *"}
+                              </label>
+                            </div>
                           </div>
                         );
                       case "date":
                         return (
-                          <div key={key}>
-                            <label className="block text-sm mb-1">
+                          <div
+                            key={key}
+                            className="bg-white border rounded-lg p-6 space-y-3"
+                          >
+                            <label className="block text-sm font-medium text-gray-700">
                               {item.label}
                               {item.required && " *"}
                             </label>
                             <input
                               type="date"
-                              className={`w-full rounded border p-2 ${
+                              className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                 !isFormEditable
                                   ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
                                   : ""
@@ -397,13 +415,16 @@ export default function ApplicationPage() {
                         );
                       case "select":
                         return (
-                          <div key={key}>
-                            <label className="block text-sm mb-1">
+                          <div
+                            key={key}
+                            className="bg-white border rounded-lg p-6 space-y-3"
+                          >
+                            <label className="block text-sm font-medium text-gray-700">
                               {item.label}
                               {item.required && " *"}
                             </label>
                             <select
-                              className={`w-full rounded border p-2 ${
+                              className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                 !isFormEditable
                                   ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
                                   : ""
@@ -430,8 +451,11 @@ export default function ApplicationPage() {
                         );
                       case "file":
                         return (
-                          <div key={key}>
-                            <label className="block text-sm mb-1">
+                          <div
+                            key={key}
+                            className="bg-white border rounded-lg p-6 space-y-3"
+                          >
+                            <label className="block text-sm font-medium text-gray-700">
                               {item.label}
                               {item.required && " *"}
                             </label>

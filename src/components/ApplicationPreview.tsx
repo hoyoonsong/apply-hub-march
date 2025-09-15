@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { ApplicationFileViewer } from "./attachments/ApplicationFileViewer";
+import { SimpleFileUpload } from "./attachments/SimpleFileUpload";
 import { getBuilderSchema } from "../data/api";
 import { Program } from "../lib/programs";
 
@@ -98,13 +99,13 @@ export default function ApplicationPreview({
     switch (field.type) {
       case "short_text":
         return (
-          <div className="space-y-1">
-            <label className="block text-sm font-medium">
+          <div className="bg-white border rounded-lg p-6 space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
               {field.label}
               {field.required && " *"}
             </label>
             <input
-              className="w-full rounded-md border px-3 py-2"
+              className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               type="text"
               value={val ?? ""}
               onChange={(e) => setVal(field.id, e.target.value)}
@@ -113,13 +114,13 @@ export default function ApplicationPreview({
         );
       case "long_text":
         return (
-          <div className="space-y-1">
-            <label className="block text-sm font-medium">
+          <div className="bg-white border rounded-lg p-6 space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
               {field.label}
               {field.required && " *"}
             </label>
             <textarea
-              className="w-full rounded-md border px-3 py-2"
+              className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               rows={4}
               value={val ?? ""}
               onChange={(e) => setVal(field.id, e.target.value)}
@@ -128,13 +129,13 @@ export default function ApplicationPreview({
         );
       case "date":
         return (
-          <div className="space-y-1">
-            <label className="block text-sm font-medium">
+          <div className="bg-white border rounded-lg p-6 space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
               {field.label}
               {field.required && " *"}
             </label>
             <input
-              className="rounded-md border px-3 py-2"
+              className="rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               type="date"
               value={val ?? ""}
               onChange={(e) => setVal(field.id, e.target.value)}
@@ -143,13 +144,13 @@ export default function ApplicationPreview({
         );
       case "select":
         return (
-          <div className="space-y-1">
-            <label className="block text-sm font-medium">
+          <div className="bg-white border rounded-lg p-6 space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
               {field.label}
               {field.required && " *"}
             </label>
             <select
-              className="w-full rounded-md border px-3 py-2"
+              className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={val ?? ""}
               onChange={(e) => setVal(field.id, e.target.value)}
             >
@@ -164,30 +165,34 @@ export default function ApplicationPreview({
         );
       case "checkbox":
         return (
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={!!val}
-              onChange={(e) => setVal(field.id, e.target.checked)}
-            />
-            <label className="text-sm">
-              {field.label}
-              {field.required && " *"}
-            </label>
+          <div className="bg-white border rounded-lg p-6">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                className="h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                checked={!!val}
+                onChange={(e) => setVal(field.id, e.target.checked)}
+              />
+              <label className="text-sm font-medium text-gray-700">
+                {field.label}
+                {field.required && " *"}
+              </label>
+            </div>
           </div>
         );
       case "file":
         return (
-          <div className="space-y-1">
-            <label className="block text-sm font-medium">
+          <div className="bg-white border rounded-lg p-6 space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
               {field.label}
               {field.required && " *"}
             </label>
-            <input
-              className="w-full rounded-md border px-3 py-2"
-              type="file"
-              onChange={(e) => setVal(field.id, e.target.files?.[0])}
+            <SimpleFileUpload
+              applicationId="preview"
+              fieldId={field.id}
+              value={val || ""}
+              onChange={(value) => setVal(field.id, value)}
+              disabled={true}
             />
           </div>
         );
@@ -198,15 +203,19 @@ export default function ApplicationPreview({
 
   if (alwaysOpen) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         {loading ? (
-          <p className="text-gray-500 text-center py-8">
-            Loading application fields...
-          </p>
+          <div className="bg-white border rounded-lg p-6">
+            <p className="text-gray-500 text-center py-8">
+              Loading application fields...
+            </p>
+          </div>
         ) : fields.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
-            No fields added yet. Add some fields to see the preview.
-          </p>
+          <div className="bg-white border rounded-lg p-6">
+            <p className="text-gray-500 text-center py-8">
+              No fields added yet. Add some fields to see the preview.
+            </p>
+          </div>
         ) : (
           fields.map((field, index) => (
             <div key={field.id || index}>{renderField(field, index)}</div>
@@ -264,15 +273,19 @@ export default function ApplicationPreview({
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             {loading ? (
-              <p className="text-gray-500 text-center py-8">
-                Loading application fields...
-              </p>
+              <div className="bg-white border rounded-lg p-6">
+                <p className="text-gray-500 text-center py-8">
+                  Loading application fields...
+                </p>
+              </div>
             ) : fields.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                No fields added yet. Add some fields to see the preview.
-              </p>
+              <div className="bg-white border rounded-lg p-6">
+                <p className="text-gray-500 text-center py-8">
+                  No fields added yet. Add some fields to see the preview.
+                </p>
+              </div>
             ) : (
               fields.map((field, index) => (
                 <div key={field.id || index}>{renderField(field, index)}</div>
