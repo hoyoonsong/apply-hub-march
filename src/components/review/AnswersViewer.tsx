@@ -1,5 +1,5 @@
 import React from "react";
-import { ApplicationFileViewer } from "../attachments/ApplicationFileViewer";
+import { FilePreview } from "../attachments/FilePreview";
 
 type RawField = {
   id?: string;
@@ -51,10 +51,17 @@ function formatValue(value: any, field: Field): string {
         try {
           const fileInfo = JSON.parse(value);
           if (fileInfo && fileInfo.fileName) {
-            return `📎 ${fileInfo.fileName} (${(
-              fileInfo.fileSize /
-              (1024 * 1024)
-            ).toFixed(2)} MB)`;
+            return (
+              <div className="space-y-2">
+                <div className="text-sm text-gray-600">
+                  📎 {fileInfo.fileName} (
+                  {(fileInfo.fileSize / (1024 * 1024)).toFixed(2)} MB)
+                </div>
+                <div className="border rounded-lg p-3 bg-white">
+                  <FilePreview fileInfo={fileInfo} />
+                </div>
+              </div>
+            );
           }
         } catch {
           // Not JSON, treat as regular text
@@ -120,9 +127,6 @@ export default function AnswersViewer({
     [applicationSchema]
   );
 
-  // Check if there are any file fields
-  const hasFileFields = fields.some((field) => field.type === "file");
-
   return (
     <div className="space-y-4">
       {fields.map((field, idx) => {
@@ -138,16 +142,6 @@ export default function AnswersViewer({
           </div>
         );
       })}
-
-      {/* File Attachments Section - only show if there are file fields */}
-      {hasFileFields && (
-        <div className="border rounded-md p-3 bg-gray-50">
-          <div className="text-xs uppercase text-gray-500 mb-3">
-            File Attachments
-          </div>
-          <ApplicationFileViewer applicationAnswers={answers} />
-        </div>
-      )}
 
       {fields.length === 0 && (
         <div className="text-sm text-gray-500">

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getApplicationForReview, upsertReview } from "../../../lib/api";
-import { ApplicationFileViewer } from "../../../components/attachments/ApplicationFileViewer";
 
 type ApplicationData = {
   application: {
@@ -228,14 +227,6 @@ export default function ReviewerApplication() {
                   ))
                 )}
               </div>
-            </div>
-
-            {/* File Attachments Section */}
-            <div className="bg-white rounded-lg border p-6 mt-6">
-              <h3 className="text-lg font-semibold mb-4">File Attachments</h3>
-              <ApplicationFileViewer
-                applicationAnswers={app.application.answers}
-              />
             </div>
           </div>
 
