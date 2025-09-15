@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getApplicationForReview, upsertReview } from "../../../lib/api";
+import {
+  getApplicationForReview,
+  upsertReview,
+  getProgramReviewForm,
+} from "../../../lib/api";
 
 type ApplicationData = {
   application: {
@@ -40,9 +44,28 @@ export default function ReviewerApplication() {
   const [saving, setSaving] = useState(false);
 
   // Review state
-  const [score, setScore] = useState<number>(0);
+  const [score, setScore] = useState<number | null>(null);
   const [comments, setComments] = useState<string>("");
   const [ratings, setRatings] = useState<Record<string, any>>({});
+  const [decision, setDecision] = useState<string | null>(null);
+
+  // Reviewer form config
+  const [reviewForm, setReviewForm] = useState<{
+    show_score: boolean;
+    show_comments: boolean;
+    show_decision: boolean;
+    decision_options: string[];
+  }>({
+    show_score: true,
+    show_comments: true,
+    show_decision: false,
+    decision_options: ["accept", "waitlist", "reject"],
+  });
+
+  // Debug: log form state changes
+  useEffect(() => {
+    console.log("Review form state changed:", reviewForm);
+  }, [reviewForm]);
 
   useEffect(() => {
     (async () => {
@@ -54,11 +77,34 @@ export default function ReviewerApplication() {
           return;
         }
         setApp(data as ApplicationData);
+        console.log("Application data loaded:", data);
+        console.log("Program ID:", data.program.id);
+
+        // Load reviewer form config
+        try {
+          console.log(
+            "About to call getProgramReviewForm with:",
+            data.program.id
+          );
+          const formConfig = await getProgramReviewForm(data.program.id);
+          console.log("Loaded form config:", formConfig);
+          setReviewForm({
+            show_score: true,
+            show_comments: true,
+            show_decision: false,
+            decision_options: ["accept", "waitlist", "reject"],
+            ...formConfig,
+          });
+        } catch (e) {
+          console.error("Failed to load reviewer form config:", e);
+          // Continue with defaults
+        }
 
         // Initialize review data
-        setScore(0);
+        setScore(null);
         setComments("");
         setRatings({});
+        setDecision(null);
       } catch (e: any) {
         setError(e.message ?? "Failed to load application");
       } finally {
@@ -73,10 +119,11 @@ export default function ReviewerApplication() {
     try {
       await upsertReview({
         applicationId: applicationId!,
-        score,
-        comments,
+        score: reviewForm.show_score ? score : null,
+        comments: reviewForm.show_comments ? comments : null,
         ratings,
         status: "draft",
+        decision: reviewForm.show_decision ? decision : null,
       });
       alert("Draft saved");
     } catch (e: any) {
@@ -99,10 +146,11 @@ export default function ReviewerApplication() {
     try {
       await upsertReview({
         applicationId: applicationId!,
-        score,
-        comments,
+        score: reviewForm.show_score ? score : null,
+        comments: reviewForm.show_comments ? comments : null,
         ratings,
         status: "submitted",
+        decision: reviewForm.show_decision ? decision : null,
       });
       alert("Review submitted!");
       navigate(`/reviewer/programs/${app.application.program_id}/queue`);
@@ -234,20 +282,24 @@ export default function ReviewerApplication() {
           <div className="lg:col-span-1">
             <div className="sticky top-4 space-y-4">
               {/* Score */}
-              <div className="bg-white rounded-lg border p-4">
-                <h3 className="text-sm font-semibold mb-3">Score</h3>
-                <div className="space-y-2">
-                  <label className="text-sm text-gray-600">Score (0-100)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={score}
-                    onChange={(e) => setScore(Number(e.target.value))}
-                    className="w-full rounded border px-3 py-2 text-sm"
-                  />
+              {reviewForm.show_score && (
+                <div className="bg-white rounded-lg border p-4">
+                  <h3 className="text-sm font-semibold mb-3">Score</h3>
+                  <div className="space-y-2">
+                    <label className="text-sm text-gray-600">
+                      Score (0-100)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={score ?? ""}
+                      onChange={(e) => setScore(Number(e.target.value))}
+                      className="w-full rounded border px-3 py-2 text-sm"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Per-question ratings */}
               <div className="bg-white rounded-lg border p-4">
@@ -276,16 +328,37 @@ export default function ReviewerApplication() {
               </div>
 
               {/* Comments */}
-              <div className="bg-white rounded-lg border p-4">
-                <h3 className="text-sm font-semibold mb-3">Comments</h3>
-                <textarea
-                  className="w-full rounded border px-3 py-2 text-sm"
-                  rows={4}
-                  value={comments}
-                  onChange={(e) => setComments(e.target.value)}
-                  placeholder="General feedback..."
-                />
-              </div>
+              {reviewForm.show_comments && (
+                <div className="bg-white rounded-lg border p-4">
+                  <h3 className="text-sm font-semibold mb-3">Comments</h3>
+                  <textarea
+                    className="w-full rounded border px-3 py-2 text-sm"
+                    rows={4}
+                    value={comments}
+                    onChange={(e) => setComments(e.target.value)}
+                    placeholder="General feedback..."
+                  />
+                </div>
+              )}
+
+              {/* Decision */}
+              {reviewForm.show_decision && (
+                <div className="bg-white rounded-lg border p-4">
+                  <h3 className="text-sm font-semibold mb-3">Decision</h3>
+                  <select
+                    className="w-full rounded border px-3 py-2 text-sm"
+                    value={decision ?? ""}
+                    onChange={(e) => setDecision(e.target.value || null)}
+                  >
+                    <option value="">Select a decision...</option>
+                    {reviewForm.decision_options.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Action buttons */}
               <div className="space-y-2">

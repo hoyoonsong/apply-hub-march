@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useCapabilities } from "../../lib/capabilities";
+import { getProgramReviewForm } from "../../lib/api";
 import type { ReviewsListRow } from "../../types/reviews";
 
 export default function AllReviewsPage() {
@@ -12,8 +13,38 @@ export default function AllReviewsPage() {
   const [status, setStatus] = useState<"" | "draft" | "submitted">("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
+  const [programFormConfigs, setProgramFormConfigs] = useState<
+    Record<string, any>
+  >({});
 
   const { reviewerPrograms, loading: capabilitiesLoading } = useCapabilities();
+
+  // Load form configurations for all unique programs
+  async function loadProgramFormConfigs(reviews: ReviewsListRow[]) {
+    const uniqueProgramIds = [...new Set(reviews.map((r) => r.program_id))];
+    const configs: Record<string, any> = {};
+
+    for (const programId of uniqueProgramIds) {
+      try {
+        const formConfig = await getProgramReviewForm(programId);
+        configs[programId] = formConfig;
+      } catch (error) {
+        console.error(
+          `Failed to load form config for program ${programId}:`,
+          error
+        );
+        // Use default config if loading fails
+        configs[programId] = {
+          show_score: true,
+          show_comments: true,
+          show_decision: false,
+          decision_options: ["accept", "waitlist", "reject"],
+        };
+      }
+    }
+
+    setProgramFormConfigs(configs);
+  }
 
   async function fetchList() {
     setLoading(true);
@@ -36,6 +67,8 @@ export default function AllReviewsPage() {
     } else {
       const reviews = (data ?? []) as ReviewsListRow[];
       setAllRows(reviews);
+      // Load form configurations for all programs
+      await loadProgramFormConfigs(reviews);
     }
     setLoading(false);
   }
@@ -44,7 +77,7 @@ export default function AllReviewsPage() {
     fetchList();
   }, [mineOnly, status]); // eslint-disable-line
 
-  // Realtime refresh whenever any review changes (no heavy logic here)
+  // Realtime refresh whenever any review changes or program metadata changes
   useEffect(() => {
     const ch = supabase
       .channel("reviews:all")
@@ -53,9 +86,66 @@ export default function AllReviewsPage() {
         { event: "*", schema: "public", table: "application_reviews" },
         () => fetchList()
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "programs" },
+        () => fetchList() // Refresh when program metadata changes (including form config)
+      )
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [supabase]); // eslint-disable-line
+
+  // Always show decisions column
+  const hasAnyDecisionsEnabled = true;
+
+  // Color mapping for decision options
+  const getDecisionColor = (decision: string) => {
+    const colorMap: Record<string, { bg: string; text: string }> = {
+      // Standard decisions with specific colors
+      accept: { bg: "bg-green-100", text: "text-green-800" },
+      waitlist: { bg: "bg-yellow-100", text: "text-yellow-800" },
+      reject: { bg: "bg-red-100", text: "text-red-800" },
+
+      // Additional common decisions
+      approved: { bg: "bg-emerald-100", text: "text-emerald-800" },
+      denied: { bg: "bg-rose-100", text: "text-rose-800" },
+      pending: { bg: "bg-blue-100", text: "text-blue-800" },
+      "on-hold": { bg: "bg-orange-100", text: "text-orange-800" },
+      conditional: { bg: "bg-purple-100", text: "text-purple-800" },
+      deferred: { bg: "bg-indigo-100", text: "text-indigo-800" },
+      withdrawn: { bg: "bg-gray-100", text: "text-gray-600" },
+    };
+
+    // If we have a predefined color, use it
+    if (colorMap[decision.toLowerCase()]) {
+      return colorMap[decision.toLowerCase()];
+    }
+
+    // For custom decisions, generate a consistent color based on the string
+    const colors = [
+      { bg: "bg-cyan-100", text: "text-cyan-800" },
+      { bg: "bg-teal-100", text: "text-teal-800" },
+      { bg: "bg-lime-100", text: "text-lime-800" },
+      { bg: "bg-amber-100", text: "text-amber-800" },
+      { bg: "bg-pink-100", text: "text-pink-800" },
+      { bg: "bg-violet-100", text: "text-violet-800" },
+      { bg: "bg-sky-100", text: "text-sky-800" },
+      { bg: "bg-emerald-100", text: "text-emerald-800" },
+      { bg: "bg-rose-100", text: "text-rose-800" },
+      { bg: "bg-fuchsia-100", text: "text-fuchsia-800" },
+    ];
+
+    // Simple hash function to get consistent color for same decision
+    let hash = 0;
+    for (let i = 0; i < decision.length; i++) {
+      const char = decision.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    const colorIndex = Math.abs(hash) % colors.length;
+    return colors[colorIndex];
+  };
 
   // Filter rows based on search term, program selection, and user's assigned programs
   const filteredRows = useMemo(() => {
@@ -165,20 +255,21 @@ export default function AllReviewsPage() {
               <th className="text-left p-2">Last Edited By</th>
               <th className="text-left p-2">Review Status</th>
               <th className="text-left p-2">Score</th>
+              <th className="text-left p-2">Decision</th>
               <th className="text-left p-2"></th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={7} className="p-4 text-center text-gray-500">
+                <td colSpan={8} className="p-4 text-center text-gray-500">
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && filteredRows.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-4 text-center text-gray-500">
+                <td colSpan={8} className="p-4 text-center text-gray-500">
                   {searchTerm || selectedProgramId
                     ? "No reviews match your filters."
                     : "No reviews yet."}
@@ -210,6 +301,28 @@ export default function AllReviewsPage() {
                     )}
                   </td>
                   <td className="p-2">{r.score ?? "—"}</td>
+                  <td className="p-2">
+                    {programFormConfigs[r.program_id]?.show_decision ? (
+                      r.ratings?.decision ? (
+                        (() => {
+                          const colors = getDecisionColor(r.ratings.decision);
+                          return (
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-medium ${colors.bg} ${colors.text}`}
+                            >
+                              {r.ratings.decision}
+                            </span>
+                          );
+                        })()
+                      ) : (
+                        "—"
+                      )
+                    ) : (
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-500">
+                        Disabled
+                      </span>
+                    )}
+                  </td>
                   <td className="p-2 text-right">
                     <Link
                       to={`/review/app/${r.application_id}`}

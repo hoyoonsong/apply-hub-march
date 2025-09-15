@@ -10,6 +10,55 @@ export default function ReviewAppPage() {
     return <div className="p-6">Missing application ID</div>;
   }
 
+  // Color mapping for decision options (same as AllReviewsPage)
+  const getDecisionColor = (decision: string) => {
+    const colorMap: Record<string, { bg: string; text: string }> = {
+      // Standard decisions with specific colors
+      accept: { bg: "bg-green-100", text: "text-green-800" },
+      waitlist: { bg: "bg-yellow-100", text: "text-yellow-800" },
+      reject: { bg: "bg-red-100", text: "text-red-800" },
+
+      // Additional common decisions
+      approved: { bg: "bg-emerald-100", text: "text-emerald-800" },
+      denied: { bg: "bg-rose-100", text: "text-rose-800" },
+      pending: { bg: "bg-blue-100", text: "text-blue-800" },
+      "on-hold": { bg: "bg-orange-100", text: "text-orange-800" },
+      conditional: { bg: "bg-purple-100", text: "text-purple-800" },
+      deferred: { bg: "bg-indigo-100", text: "text-indigo-800" },
+      withdrawn: { bg: "bg-gray-100", text: "text-gray-600" },
+    };
+
+    // If we have a predefined color, use it
+    if (colorMap[decision.toLowerCase()]) {
+      return colorMap[decision.toLowerCase()];
+    }
+
+    // For custom decisions, generate a consistent color based on the string
+    const colors = [
+      { bg: "bg-cyan-100", text: "text-cyan-800" },
+      { bg: "bg-teal-100", text: "text-teal-800" },
+      { bg: "bg-lime-100", text: "text-lime-800" },
+      { bg: "bg-amber-100", text: "text-amber-800" },
+      { bg: "bg-pink-100", text: "text-pink-800" },
+      { bg: "bg-violet-100", text: "text-violet-800" },
+      { bg: "bg-sky-100", text: "text-sky-800" },
+      { bg: "bg-emerald-100", text: "text-emerald-800" },
+      { bg: "bg-rose-100", text: "text-rose-800" },
+      { bg: "bg-fuchsia-100", text: "text-fuchsia-800" },
+    ];
+
+    // Simple hash function to get consistent color for same decision
+    let hash = 0;
+    for (let i = 0; i < decision.length; i++) {
+      const char = decision.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    const colorIndex = Math.abs(hash) % colors.length;
+    return colors[colorIndex];
+  };
+
   const {
     loading,
     saving,
@@ -17,9 +66,10 @@ export default function ReviewAppPage() {
     answers,
     applicationSchema,
     review,
+    reviewFormConfig,
     setScore,
     setComments,
-    setRatingsJSON,
+    setDecision,
     saveDraft,
     submit,
   } = useCollaborativeReview(applicationId);
@@ -89,58 +139,67 @@ export default function ReviewAppPage() {
               </div>
 
               <div className="space-y-4">
-                <label className="block text-sm">
-                  <span className="block mb-2 font-medium">Score</span>
-                  <input
-                    type="number"
-                    className={`border rounded px-3 py-2 w-full ${
-                      review.status === "submitted"
-                        ? "bg-gray-100 cursor-not-allowed"
-                        : ""
-                    }`}
-                    value={review.score ?? ""}
-                    onChange={(e) =>
-                      setScore(
-                        e.target.value === "" ? null : Number(e.target.value)
-                      )
-                    }
-                    placeholder="Enter score"
-                    disabled={review.status === "submitted"}
-                  />
-                </label>
+                {reviewFormConfig.show_score && (
+                  <label className="block text-sm">
+                    <span className="block mb-2 font-medium">Score</span>
+                    <input
+                      type="number"
+                      className={`border rounded px-3 py-2 w-full ${
+                        review.status === "submitted"
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : ""
+                      }`}
+                      value={review.score ?? ""}
+                      onChange={(e) =>
+                        setScore(
+                          e.target.value === "" ? null : Number(e.target.value)
+                        )
+                      }
+                      placeholder="Enter score"
+                      disabled={review.status === "submitted"}
+                    />
+                  </label>
+                )}
 
-                <label className="block text-sm">
-                  <span className="block mb-2 font-medium">Comments</span>
-                  <textarea
-                    className={`border rounded px-3 py-2 w-full h-32 resize-none ${
-                      review.status === "submitted"
-                        ? "bg-gray-100 cursor-not-allowed"
-                        : ""
-                    }`}
-                    value={review.comments ?? ""}
-                    onChange={(e) => setComments(e.target.value)}
-                    placeholder="Add your review comments..."
-                    disabled={review.status === "submitted"}
-                  />
-                </label>
+                {reviewFormConfig.show_comments && (
+                  <label className="block text-sm">
+                    <span className="block mb-2 font-medium">Comments</span>
+                    <textarea
+                      className={`border rounded px-3 py-2 w-full h-32 resize-none ${
+                        review.status === "submitted"
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : ""
+                      }`}
+                      value={review.comments ?? ""}
+                      onChange={(e) => setComments(e.target.value)}
+                      placeholder="Add your review comments..."
+                      disabled={review.status === "submitted"}
+                    />
+                  </label>
+                )}
 
-                <label className="block text-sm">
-                  <span className="block mb-2 font-medium">Ratings (JSON)</span>
-                  <textarea
-                    className={`border rounded px-3 py-2 w-full h-32 font-mono text-xs resize-none ${
-                      review.status === "submitted"
-                        ? "bg-gray-100 cursor-not-allowed"
-                        : ""
-                    }`}
-                    value={JSON.stringify(review.ratings ?? {}, null, 2)}
-                    onChange={(e) => setRatingsJSON(e.target.value)}
-                    placeholder='{"q1": 5, "notes": "great"}'
-                    disabled={review.status === "submitted"}
-                  />
-                  <div className="text-xs text-gray-500 mt-1">
-                    Example: {'{ "q1": 5, "notes": "great" }'}
-                  </div>
-                </label>
+                {reviewFormConfig.show_decision && (
+                  <label className="block text-sm">
+                    <span className="block mb-2 font-medium">Decision</span>
+                    <select
+                      className={`border rounded px-3 py-2 w-full ${
+                        review.status === "submitted"
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : ""
+                      }`}
+                      value={(review as any).decision ?? ""}
+                      onChange={(e) => setDecision(e.target.value || null)}
+                      disabled={review.status === "submitted"}
+                    >
+                      <option value="">Select a decision...</option>
+                      {reviewFormConfig.decision_options.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
 
                 <div className="pt-4 border-t border-gray-200">
                   {review.status === "submitted" ? (
@@ -163,14 +222,26 @@ export default function ReviewAppPage() {
                       <div className="flex gap-2">
                         <button
                           className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-                          onClick={saveDraft}
+                          onClick={() =>
+                            saveDraft({
+                              score: review.score,
+                              comments: review.comments,
+                              decision: (review as any).decision,
+                            })
+                          }
                           disabled={saving === "saving"}
                         >
                           {saving === "saving" ? "Saving..." : "Save Draft"}
                         </button>
                         <button
                           className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                          onClick={() => submit({})}
+                          onClick={() =>
+                            submit({
+                              score: review.score,
+                              comments: review.comments,
+                              decision: (review as any).decision,
+                            })
+                          }
                           disabled={saving === "saving"}
                         >
                           Submit Review

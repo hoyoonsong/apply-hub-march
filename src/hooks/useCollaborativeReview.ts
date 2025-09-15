@@ -1,9 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "../lib/supabase-browser";
 import type { ReviewGetRow } from "../types/reviews";
+import { getProgramReviewForm } from "../lib/api";
 
 type LoaderRow = ReviewGetRow & {
   application_schema?: any;
+};
+
+type ReviewFormConfig = {
+  show_score: boolean;
+  show_comments: boolean;
+  show_decision: boolean;
+  decision_options: string[];
 };
 
 export function useCollaborativeReview(appId: string) {
@@ -12,6 +20,12 @@ export function useCollaborativeReview(appId: string) {
   const [review, setReview] = useState<ReviewGetRow["review"]>({});
   const [applicationSchema, setApplicationSchema] = useState<any>({
     fields: [],
+  });
+  const [reviewFormConfig, setReviewFormConfig] = useState<ReviewFormConfig>({
+    show_score: true,
+    show_comments: true,
+    show_decision: false,
+    decision_options: ["accept", "waitlist", "reject"],
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -70,6 +84,28 @@ export function useCollaborativeReview(appId: string) {
       setApplicationSchema(schema);
       const r = (row?.review as any) ?? {};
 
+      // Load reviewer form configuration
+      try {
+        const programId = row?.program_id;
+        if (programId) {
+          console.log("Loading reviewer form config for program:", programId);
+          const formConfig = await getProgramReviewForm(programId);
+          console.log("Loaded reviewer form config:", formConfig);
+          if (formConfig) {
+            setReviewFormConfig({
+              show_score: true,
+              show_comments: true,
+              show_decision: false,
+              decision_options: ["accept", "waitlist", "reject"],
+              ...formConfig,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error loading reviewer form config:", err);
+        // Continue with defaults
+      }
+
       // Always ensure we have a reviewer name - fetch if missing
       let reviewerName = r.reviewer_name;
       if (!reviewerName && r.reviewer_id) {
@@ -99,11 +135,16 @@ export function useCollaborativeReview(appId: string) {
         reviewerName = "No reviewer assigned";
       }
 
+      // Extract decision from ratings JSON if present
+      const ratings = r.ratings ?? {};
+      const decision = ratings.decision ?? (r as any)?.decision ?? null;
+
       setReview((prev) => ({
         application_id: appId,
         score: r.score ?? prev.score ?? null,
         comments: r.comments ?? prev.comments ?? "",
-        ratings: r.ratings ?? prev.ratings ?? {},
+        ratings: ratings,
+        decision: decision,
         status: r.status ?? prev.status ?? "draft",
         id: r.id ?? prev.id,
         reviewer_id: r.reviewer_id ?? prev.reviewer_id,
@@ -174,6 +215,31 @@ export function useCollaborativeReview(appId: string) {
       setApplicationSchema(schema);
       const r = reviewData ?? {};
 
+      // Load reviewer form configuration (fallback)
+      try {
+        const programId = appData?.program_id;
+        if (programId) {
+          console.log(
+            "Loading reviewer form config for program (fallback):",
+            programId
+          );
+          const formConfig = await getProgramReviewForm(programId);
+          console.log("Loaded reviewer form config (fallback):", formConfig);
+          if (formConfig) {
+            setReviewFormConfig({
+              show_score: true,
+              show_comments: true,
+              show_decision: false,
+              decision_options: ["accept", "waitlist", "reject"],
+              ...formConfig,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error loading reviewer form config (fallback):", err);
+        // Continue with defaults
+      }
+
       // Always ensure we have a reviewer name - fetch if missing
       let reviewerName = r.reviewer_name;
       if (!reviewerName && r.reviewer_id) {
@@ -209,11 +275,16 @@ export function useCollaborativeReview(appId: string) {
         reviewerName = "No reviewer assigned";
       }
 
+      // Extract decision from ratings JSON if present (fallback)
+      const ratings = r.ratings ?? {};
+      const decision = ratings.decision ?? (r as any)?.decision ?? null;
+
       setReview((prev) => ({
         application_id: appId,
         score: r.score ?? prev.score ?? null,
         comments: r.comments ?? prev.comments ?? "",
-        ratings: r.ratings ?? prev.ratings ?? {},
+        ratings: ratings,
+        decision: decision,
         status: r.status ?? prev.status ?? "draft",
         id: r.id ?? prev.id,
         reviewer_id: r.reviewer_id ?? prev.reviewer_id,
@@ -277,14 +348,21 @@ export function useCollaborativeReview(appId: string) {
       score?: number | null;
       comments?: string | null;
       ratings?: any;
+      decision?: string | null;
     }) => {
       setSaving(true);
       try {
-        const { error } = await supabase.rpc("upsert_review_v1", {
+        // Store decision in ratings JSON as a workaround
+        const ratingsWithDecision = {
+          ...(next.ratings ?? review?.ratings ?? {}),
+          ...(next.decision ? { decision: next.decision } : {}),
+        };
+
+        const { error } = await supabase.rpc("app_upsert_review_v1", {
           p_application_id: appId,
           p_score: next.score ?? review?.score ?? null,
           p_comments: next.comments ?? review?.comments ?? null,
-          p_ratings: next.ratings ?? review?.ratings ?? {},
+          p_ratings: ratingsWithDecision,
           p_status: null,
         });
 
@@ -298,7 +376,13 @@ export function useCollaborativeReview(appId: string) {
         setSaving(false);
       }
     },
-    [appId, review?.score, review?.comments, review?.ratings]
+    [
+      appId,
+      review?.score,
+      review?.comments,
+      review?.ratings,
+      (review as any)?.decision,
+    ]
   );
 
   // Submit review function
@@ -307,14 +391,21 @@ export function useCollaborativeReview(appId: string) {
       score?: number | null;
       comments?: string | null;
       ratings?: any;
+      decision?: string | null;
     }) => {
       setSaving(true);
       try {
-        const { error } = await supabase.rpc("upsert_review_v1", {
+        // Store decision in ratings JSON as a workaround
+        const ratingsWithDecision = {
+          ...(next.ratings ?? review?.ratings ?? {}),
+          ...(next.decision ? { decision: next.decision } : {}),
+        };
+
+        const { error } = await supabase.rpc("app_upsert_review_v1", {
           p_application_id: appId,
           p_score: next.score ?? review?.score ?? null,
           p_comments: next.comments ?? review?.comments ?? null,
-          p_ratings: next.ratings ?? review?.ratings ?? {},
+          p_ratings: ratingsWithDecision,
           p_status: "submitted",
         });
 
@@ -328,7 +419,13 @@ export function useCollaborativeReview(appId: string) {
         setSaving(false);
       }
     },
-    [appId, review?.score, review?.comments, review?.ratings]
+    [
+      appId,
+      review?.score,
+      review?.comments,
+      review?.ratings,
+      (review as any)?.decision,
+    ]
   );
 
   // Helper functions for individual field updates
@@ -349,6 +446,17 @@ export function useCollaborativeReview(appId: string) {
     }
   }, []);
 
+  const setDecision = useCallback((decision: string | null) => {
+    setReview((r) => ({
+      ...r,
+      decision,
+      ratings: {
+        ...r.ratings,
+        ...(decision ? { decision } : {}),
+      },
+    }));
+  }, []);
+
   const getRatingsJSON = useCallback(() => {
     return JSON.stringify(review?.ratings ?? {}, null, 2);
   }, [review?.ratings]);
@@ -357,6 +465,7 @@ export function useCollaborativeReview(appId: string) {
     answers,
     review,
     applicationSchema,
+    reviewFormConfig,
     loading,
     saving,
     error,
@@ -365,6 +474,7 @@ export function useCollaborativeReview(appId: string) {
     setScore,
     setComments,
     setRatingsJSON,
+    setDecision,
     getRatingsJSON,
   };
 }

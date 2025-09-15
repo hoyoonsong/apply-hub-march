@@ -17,6 +17,7 @@ import type {
 } from "../../types/application";
 import OptionsInput from "../../components/OptionsInput";
 import ApplicationPreview from "../../components/ApplicationPreview";
+import ProgramReviewerFormCard from "../../components/ProgramReviewerFormCard";
 import {
   DndContext,
   closestCenter,
@@ -902,6 +903,13 @@ export default function OrgProgramBuilder() {
           </div>
         </div>
       </div>
+
+      {/* Reviewer Form Configuration */}
+      {program && (
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+          <ProgramReviewerFormCard programId={program.id} />
+        </div>
+      )}
 
       <ApplicationPreview
         fields={fields}

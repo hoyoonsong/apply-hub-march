@@ -64,16 +64,41 @@ export async function upsertReview(params: {
   applicationId: string;
   ratings: any;
   score: number | null;
-  comments: string;
+  comments: string | null;
   status: "draft" | "submitted";
+  decision?: string | null;
 }) {
   const { data, error } = await supabase.rpc("app_upsert_review_v1", {
     p_application_id: params.applicationId,
     p_ratings: params.ratings ?? {},
     p_score: params.score ?? null,
-    p_comments: params.comments ?? "",
+    p_comments: params.comments ?? null,
     p_status: params.status,
+    p_decision: params.decision ?? null,
   });
+  if (error) throw error;
+  return data;
+}
+
+// Reviewer form configuration RPCs
+export async function getProgramReviewForm(programId: string) {
+  console.log("Calling get_program_review_form with programId:", programId);
+  const { data, error } = await supabase.rpc("get_program_review_form", {
+    p_program_id: programId,
+  });
+  console.log("get_program_review_form result:", { data, error });
+  console.log("Form config data details:", JSON.stringify(data, null, 2));
+  if (error) throw error;
+  return data;
+}
+
+export async function setProgramReviewForm(programId: string, form: any) {
+  console.log("setProgramReviewForm called with:", { programId, form });
+  const { data, error } = await supabase.rpc("set_program_review_form", {
+    p_program_id: programId,
+    p_form: form,
+  });
+  console.log("setProgramReviewForm result:", { data, error });
   if (error) throw error;
   return data;
 }
