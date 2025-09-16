@@ -333,7 +333,12 @@ export default function ApplicationForm() {
 
               {profileSnap ? (
                 <div className="mb-4">
-                  <ProfileCard profile={profileSnap} />
+                  <ProfileCard
+                    profile={profileSnap}
+                    sectionSettings={
+                      program?.metadata?.application?.profile?.sections
+                    }
+                  />
                 </div>
               ) : (
                 <div className="mb-4">

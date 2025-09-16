@@ -169,7 +169,10 @@ export default function AnswersViewer({
             This information was automatically filled from the applicant's
             profile.
           </p>
-          <ProfileCard profile={profileForReview} />
+          <ProfileCard
+            profile={profileForReview}
+            sectionSettings={program?.metadata?.application?.profile?.sections}
+          />
         </div>
       )}
 

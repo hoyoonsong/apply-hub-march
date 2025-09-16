@@ -215,6 +215,11 @@ export default function OrgProgramBuilder() {
   const [includeCoalitionCommon, setIncludeCoalitionCommon] =
     useState<boolean>(false);
   const [includeProfile, setIncludeProfile] = useState<boolean>(false);
+  const [includePersonalInfo, setIncludePersonalInfo] = useState<boolean>(true);
+  const [includeFamilyInfo, setIncludeFamilyInfo] = useState<boolean>(true);
+  const [includeWritingInfo, setIncludeWritingInfo] = useState<boolean>(true);
+  const [includeExperienceInfo, setIncludeExperienceInfo] =
+    useState<boolean>(true);
   const [fields, setFields] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -346,6 +351,13 @@ export default function OrgProgramBuilder() {
           setIncludeProfile(
             !!(appMeta?.profile?.enabled || formMeta?.include_profile)
           );
+
+          // Load individual profile section settings
+          const profileSections = appMeta?.profile?.sections || {};
+          setIncludePersonalInfo(profileSections.personal !== false); // Default to true
+          setIncludeFamilyInfo(profileSections.family !== false); // Default to true
+          setIncludeWritingInfo(profileSections.writing !== false); // Default to true
+          setIncludeExperienceInfo(profileSections.experience !== false); // Default to true
 
           // For super admin, load org data from program
           if (isSuperAdmin && !org) {
@@ -498,7 +510,15 @@ export default function OrgProgramBuilder() {
               // Update application flags
               application: {
                 ...(meta.application || {}),
-                profile: { enabled: includeProfile },
+                profile: {
+                  enabled: includeProfile,
+                  sections: {
+                    personal: includePersonalInfo,
+                    family: includeFamilyInfo,
+                    writing: includeWritingInfo,
+                    experience: includeExperienceInfo,
+                  },
+                },
               },
             },
           })
@@ -529,7 +549,15 @@ export default function OrgProgramBuilder() {
               },
               application: {
                 ...(meta.application || {}),
-                profile: { enabled: includeProfile },
+                profile: {
+                  enabled: includeProfile,
+                  sections: {
+                    personal: includePersonalInfo,
+                    family: includeFamilyInfo,
+                    writing: includeWritingInfo,
+                    experience: includeExperienceInfo,
+                  },
+                },
               },
             },
           })
@@ -777,6 +805,87 @@ export default function OrgProgramBuilder() {
                 </p>
               </div>
             </label>
+
+            {/* Profile Section Checkboxes - Only show when Profile Autofill is enabled */}
+            {includeProfile && (
+              <div className="ml-6 space-y-2 border-l-2 border-blue-200 pl-4">
+                <div className="text-xs font-medium text-gray-600 mb-2">
+                  Select which profile sections to include:
+                </div>
+
+                <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600"
+                    checked={includePersonalInfo}
+                    onChange={(e) => setIncludePersonalInfo(e.target.checked)}
+                    disabled={isDisabled}
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      Personal Information
+                    </span>
+                    <p className="text-xs text-gray-500">
+                      Name, birth date, address, phone number
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600"
+                    checked={includeFamilyInfo}
+                    onChange={(e) => setIncludeFamilyInfo(e.target.checked)}
+                    disabled={isDisabled}
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      Family & Emergency Contact
+                    </span>
+                    <p className="text-xs text-gray-500">
+                      Parent/guardian and emergency contact information
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600"
+                    checked={includeWritingInfo}
+                    onChange={(e) => setIncludeWritingInfo(e.target.checked)}
+                    disabled={isDisabled}
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      Writing & Essays
+                    </span>
+                    <p className="text-xs text-gray-500">
+                      Personal statement and written responses
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600"
+                    checked={includeExperienceInfo}
+                    onChange={(e) => setIncludeExperienceInfo(e.target.checked)}
+                    disabled={isDisabled}
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      Experience & Portfolio
+                    </span>
+                    <p className="text-xs text-gray-500">
+                      Resume and portfolio files
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
           </div>
         </div>
 

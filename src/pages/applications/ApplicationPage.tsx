@@ -361,7 +361,13 @@ export default function ApplicationPage() {
 
                         {profileSnap ? (
                           <div className="mb-4">
-                            <ProfileCard profile={profileSnap} />
+                            <ProfileCard
+                              profile={profileSnap}
+                              sectionSettings={
+                                programDetails?.metadata?.application?.profile
+                                  ?.sections
+                              }
+                            />
                           </div>
                         ) : (
                           <div className="mb-4">
