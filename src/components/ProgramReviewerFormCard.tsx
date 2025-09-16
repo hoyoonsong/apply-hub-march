@@ -87,53 +87,49 @@ export default function ProgramReviewerFormCard({
   }
 
   return (
-    <div className="bg-white rounded-lg border p-6 mt-6">
-      <h3 className="text-lg font-semibold mb-4">Reviewer Form</h3>
-      <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Score</span>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.show_score}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, show_score: e.target.checked }))
-              }
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
+    <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-8 shadow-sm">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-1 h-8 bg-purple-500 rounded-full"></div>
+        <h2 className="text-xl font-bold text-gray-900">
+          Reviewer Form Configuration
+        </h2>
+      </div>
+      <div className="space-y-4">
+        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-purple-100 hover:bg-purple-25 transition-colors">
+          <input
+            type="checkbox"
+            className="h-4 w-4 text-purple-600"
+            checked={form.show_score}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, show_score: e.target.checked }))
+            }
+          />
+          <span className="font-medium text-gray-700">Score</span>
+        </label>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Comments</span>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.show_comments}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, show_comments: e.target.checked }))
-              }
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
+        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-purple-100 hover:bg-purple-25 transition-colors">
+          <input
+            type="checkbox"
+            className="h-4 w-4 text-purple-600"
+            checked={form.show_comments}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, show_comments: e.target.checked }))
+            }
+          />
+          <span className="font-medium text-gray-700">Comments</span>
+        </label>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Decision (select)</span>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.show_decision}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, show_decision: e.target.checked }))
-              }
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
+        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-purple-100 hover:bg-purple-25 transition-colors">
+          <input
+            type="checkbox"
+            className="h-4 w-4 text-purple-600"
+            checked={form.show_decision}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, show_decision: e.target.checked }))
+            }
+          />
+          <span className="font-medium text-gray-700">Decision (select)</span>
+        </label>
 
         {form.show_decision && (
           <div className="space-y-2">
@@ -152,7 +148,7 @@ export default function ProgramReviewerFormCard({
               <button
                 type="button"
                 onClick={addOption}
-                className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                className="px-3 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
               >
                 Add
               </button>
@@ -180,7 +176,7 @@ export default function ProgramReviewerFormCard({
           <button
             disabled={saving}
             onClick={save}
-            className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save"}
           </button>

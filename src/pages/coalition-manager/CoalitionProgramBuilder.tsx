@@ -584,18 +584,6 @@ export default function CoalitionProgramBuilder() {
               <input
                 type="checkbox"
                 className="h-4 w-4 text-blue-600"
-                checked={includeApplyHubCommon}
-                onChange={(e) => setIncludeApplyHubCommon(e.target.checked)}
-                disabled={isDisabled}
-              />
-              <span className="font-medium text-gray-700">
-                Include Apply-Hub Common App
-              </span>
-            </label>
-            <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-100 hover:bg-blue-25 transition-colors">
-              <input
-                type="checkbox"
-                className="h-4 w-4 text-blue-600"
                 checked={includeCoalitionCommon}
                 onChange={(e) => setIncludeCoalitionCommon(e.target.checked)}
                 disabled={isDisabled}
@@ -885,6 +873,7 @@ export default function CoalitionProgramBuilder() {
 
       <ApplicationPreview
         fields={fields}
+        program={program}
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
       />
