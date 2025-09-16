@@ -10,6 +10,24 @@ export default function ReviewAppPage() {
     return <div className="p-6">Missing application ID</div>;
   }
 
+  const {
+    answers,
+    review,
+    applicationSchema,
+    reviewFormConfig,
+    program,
+    loading,
+    saving,
+    error,
+    saveDraft,
+    submit,
+    setScore,
+    setComments,
+    setRatingsJSON,
+    setDecision,
+    getRatingsJSON,
+  } = useCollaborativeReview(applicationId);
+
   // Color mapping for decision options (same as AllReviewsPage)
   const getDecisionColor = (decision: string) => {
     const colorMap: Record<string, { bg: string; text: string }> = {
@@ -59,21 +77,6 @@ export default function ReviewAppPage() {
     return colors[colorIndex];
   };
 
-  const {
-    loading,
-    saving,
-    error,
-    answers,
-    applicationSchema,
-    review,
-    reviewFormConfig,
-    setScore,
-    setComments,
-    setDecision,
-    saveDraft,
-    submit,
-  } = useCollaborativeReview(applicationId);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -110,6 +113,7 @@ export default function ReviewAppPage() {
               <AnswersViewer
                 applicationSchema={applicationSchema}
                 answers={answers}
+                program={program}
               />
             </div>
           </div>

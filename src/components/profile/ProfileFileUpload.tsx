@@ -52,7 +52,7 @@ export default function ProfileFileUpload({
 
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium">Profile Files</div>
+      <div className="text-sm font-medium">Portfolio and Additional Files</div>
       <input type="file" onChange={onPick} disabled={uploading} />
       <ul className="space-y-2">
         {(Array.isArray(value) ? value : []).map((fi, i) => (

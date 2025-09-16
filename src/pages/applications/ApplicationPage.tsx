@@ -98,14 +98,15 @@ export default function ApplicationPage() {
               const profile = await fetchProfileSnapshot();
               setProfileSnap(profile);
 
-              // If profile data is missing from answers, save it
-              if (profile && !app.answers?.profile) {
+              // Always update profile data to ensure it's current
+              if (profile) {
                 const mergedAnswers = mergeProfileIntoAnswers(
                   app.answers,
                   profile
                 );
                 try {
                   await saveApplication(app.id, mergedAnswers);
+                  console.log("Updated application with current profile data");
                 } catch (e) {
                   console.error("Failed to save profile data:", e);
                 }

@@ -27,6 +27,7 @@ export function useCollaborativeReview(appId: string) {
     show_decision: false,
     decision_options: ["accept", "waitlist", "reject"],
   });
+  const [program, setProgram] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,13 +66,14 @@ export function useCollaborativeReview(appId: string) {
           const programId = row?.program_id;
           if (programId) {
             const { data: programData, error: programError } = await supabase
-              .from("programs_public")
-              .select("application_schema")
+              .from("programs")
+              .select("id, name, description, organization_id, metadata")
               .eq("id", programId)
               .single();
 
             if (!programError && programData) {
-              schema = programData.application_schema ?? {};
+              schema = programData.metadata?.application_schema ?? {};
+              setProgram(programData);
               console.log("Fetched schema from program:", schema);
             } else {
               console.error("Error fetching program schema:", programError);
@@ -196,13 +198,14 @@ export function useCollaborativeReview(appId: string) {
       if (appData?.program_id) {
         try {
           const { data: programData, error: programError } = await supabase
-            .from("programs_public")
-            .select("application_schema")
+            .from("programs")
+            .select("id, name, description, organization_id, metadata")
             .eq("id", appData.program_id)
             .single();
 
           if (!programError && programData) {
-            schema = programData.application_schema ?? {};
+            schema = programData.metadata?.application_schema ?? {};
+            setProgram(programData);
             console.log("Fetched schema from program (fallback):", schema);
           }
         } catch (err) {
@@ -466,6 +469,7 @@ export function useCollaborativeReview(appId: string) {
     review,
     applicationSchema,
     reviewFormConfig,
+    program,
     loading,
     saving,
     error,

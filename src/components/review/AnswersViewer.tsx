@@ -1,6 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { FilePreview } from "../attachments/FilePreview";
 import ProfileCard from "../profile/ProfileCard";
+import {
+  fetchProfileSnapshot,
+  programUsesProfile,
+} from "../../lib/profileFill";
 
 type RawField = {
   id?: string;
@@ -53,12 +57,19 @@ function formatValue(value: any, field: Field): string {
           const fileInfo = JSON.parse(value);
           if (fileInfo && fileInfo.fileName) {
             return (
-              <div className="space-y-2">
-                <div className="text-sm text-gray-600">
-                  📎 {fileInfo.fileName} (
-                  {(fileInfo.fileSize / (1024 * 1024)).toFixed(2)} MB)
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl">📎</div>
+                  <div className="flex-1">
+                    <div className="text-base font-medium text-gray-900">
+                      {fileInfo.fileName}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {(fileInfo.fileSize / (1024 * 1024)).toFixed(2)} MB
+                    </div>
+                  </div>
                 </div>
-                <div className="border rounded-lg p-3 bg-white">
+                <div className="border rounded-lg p-3 bg-gray-50">
                   <FilePreview fileInfo={fileInfo} />
                 </div>
               </div>
@@ -119,58 +130,88 @@ function getAnswerForField(
 export default function AnswersViewer({
   applicationSchema,
   answers,
+  program,
 }: {
   applicationSchema: any;
   answers: Record<string, any>;
+  program?: any;
 }) {
   const fields = React.useMemo(
     () => normalizeSchema(applicationSchema),
     [applicationSchema]
   );
 
-  // Check for profile data in answers
-  const profileForReview = answers?.profile || answers?.common_app; // legacy read ok
+  const [currentProfile, setCurrentProfile] = useState<any>(null);
+
+  // Fetch current profile data if program uses profile autofill
+  useEffect(() => {
+    if (program && programUsesProfile(program)) {
+      fetchProfileSnapshot().then(setCurrentProfile);
+    }
+  }, [program]);
+
+  // Use current profile if available, otherwise fall back to old snapshot
+  const profileForReview =
+    currentProfile || answers?.profile || answers?.common_app;
 
   return (
-    <div className="space-y-4">
-      {/* Profile Card */}
+    <div className="space-y-6">
+      {/* Profile Autofill Section */}
       {profileForReview && (
-        <div className="mb-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm font-medium text-green-900">
-                Profile Information
-              </span>
-            </div>
-            <p className="text-xs text-green-700 mt-1">
-              This information was automatically filled from the applicant's
-              profile.
-            </p>
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+            <h3 className="text-lg font-semibold text-blue-900">
+              Applicant Profile (Autofilled)
+            </h3>
           </div>
+          <p className="text-sm text-blue-700 mb-4">
+            This information was automatically filled from the applicant's
+            profile.
+          </p>
           <ProfileCard profile={profileForReview} />
         </div>
       )}
 
-      {fields.map((field, idx) => {
-        const rawValue = getAnswerForField(field, idx, answers);
-        const display = formatValue(rawValue, field);
-
-        return (
-          <div key={field.id ?? `f-${idx}`} className="border rounded-md p-3">
-            <div className="text-xs uppercase text-gray-500 mb-1">
-              {field.label}
-            </div>
-            <div className="text-sm">{display}</div>
-          </div>
-        );
-      })}
-
-      {fields.length === 0 && (
-        <div className="text-sm text-gray-500">
-          This application doesn't include custom questions.
+      {/* Organization Application Questions Section */}
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Organization Application Questions
+          </h3>
         </div>
-      )}
+        <p className="text-sm text-gray-600 mb-4">
+          Custom questions created by this organization.
+        </p>
+
+        <div className="space-y-4">
+          {fields.map((field, idx) => {
+            const rawValue = getAnswerForField(field, idx, answers);
+            const display = formatValue(rawValue, field);
+
+            return (
+              <div
+                key={field.id ?? `f-${idx}`}
+                className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
+              >
+                <div className="text-sm font-medium text-gray-600">
+                  {field.label}
+                </div>
+                <div className="text-base text-gray-900">{display}</div>
+              </div>
+            );
+          })}
+
+          {fields.length === 0 && (
+            <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
+              <div className="text-sm text-gray-500">
+                This application doesn't include custom questions.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
