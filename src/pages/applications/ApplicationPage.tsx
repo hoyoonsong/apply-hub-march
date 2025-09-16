@@ -9,6 +9,12 @@ import {
 } from "../../lib/rpc";
 import { useApplicationAutosave } from "../../components/useApplicationAutosave";
 import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
+import ProfileCard from "../../components/profile/ProfileCard";
+import {
+  programUsesProfile,
+  fetchProfileSnapshot,
+  mergeProfileIntoAnswers,
+} from "../../lib/profileFill";
 import type { ProgramApplicationSchema } from "../../types/application";
 import { missingRequired } from "../../utils/answers";
 import {
@@ -48,6 +54,7 @@ export default function ApplicationPage() {
   const [programDeadline, setProgramDeadline] = useState<string | null>(null);
   const [programOpenDate, setProgramOpenDate] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [profileSnap, setProfileSnap] = useState<any>(null);
   const [programDetails, setProgramDetails] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
 
@@ -72,13 +79,38 @@ export default function ApplicationPage() {
         try {
           // Get program details from programs_public table
           const { data: programData, error: programError } = await supabase
-            .from("programs_public")
-            .select("id, name, description, organization_id")
+            .from("programs")
+            .select("id, name, description, organization_id, metadata")
             .eq("id", app.program_id)
             .single();
 
           if (!programError && programData) {
             setProgramDetails(programData);
+
+            // Load profile snapshot if program uses profile autofill
+            const program = {
+              id: programData.id,
+              name: programData.name,
+              metadata: programData.metadata,
+            };
+
+            if (programUsesProfile(program)) {
+              const profile = await fetchProfileSnapshot();
+              setProfileSnap(profile);
+
+              // If profile data is missing from answers, save it
+              if (profile && !app.answers?.profile) {
+                const mergedAnswers = mergeProfileIntoAnswers(
+                  app.answers,
+                  profile
+                );
+                try {
+                  await saveApplication(app.id, mergedAnswers);
+                } catch (e) {
+                  console.error("Failed to save profile data:", e);
+                }
+              }
+            }
 
             // Load organization details
             const { data: orgData, error: orgError } = await supabase
@@ -292,6 +324,60 @@ export default function ApplicationPage() {
             {/* Only show form if application is open or past deadline (for viewing submitted apps) */}
             {!isBeforeOpen && (
               <div className="space-y-6">
+                {/* Profile Autofill Notice and Card */}
+                {(() => {
+                  const program = {
+                    id: programDetails?.id,
+                    name: programDetails?.name,
+                    metadata: programDetails?.metadata,
+                  };
+
+                  return (
+                    programUsesProfile(program) && (
+                      <div className="mb-6">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span className="text-sm font-medium text-blue-900">
+                                Profile Autofill Active
+                              </span>
+                            </div>
+                            <a
+                              href="/profile"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Edit Profile →
+                            </a>
+                          </div>
+                          <p className="text-xs text-blue-700 mt-1">
+                            Your profile information has been automatically
+                            included in this application.
+                          </p>
+                        </div>
+
+                        {profileSnap ? (
+                          <div className="mb-4">
+                            <ProfileCard profile={profileSnap} />
+                          </div>
+                        ) : (
+                          <div className="mb-4">
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                              <p className="text-sm text-yellow-800">
+                                🔍 Debug: Profile autofill is enabled but no
+                                profile data loaded yet. Check console for
+                                debugging info.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  );
+                })()}
+
                 {items.length === 0 ? (
                   <div className="bg-white border rounded-lg p-6">
                     <div className="text-sm text-slate-500">

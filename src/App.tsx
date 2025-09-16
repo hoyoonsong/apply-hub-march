@@ -42,6 +42,7 @@ import CoalitionProgramBuilder from "./pages/coalition-manager/CoalitionProgramB
 import ApplicationForm from "./pages/apply/ApplicationForm";
 import ApplyProgramPage from "./pages/programs/ApplyProgramPage";
 import ApplicationPage from "./pages/applications/ApplicationPage";
+import ProfilePage from "./pages/profile";
 import QueuePage from "./pages/review/QueuePage";
 import ReviewPage from "./pages/review/ReviewPage";
 import ReviewHome from "./pages/review/ReviewHome";
@@ -227,6 +228,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <ApplicationForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
                 </ProtectedRoute>
               }
             />

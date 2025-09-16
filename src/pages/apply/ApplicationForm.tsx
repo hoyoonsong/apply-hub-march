@@ -8,6 +8,12 @@ import {
 import { missingRequired } from "../../utils/answers";
 import { supabase } from "../../lib/supabase";
 import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
+import ProfileCard from "../../components/profile/ProfileCard";
+import {
+  fetchProfileSnapshot,
+  mergeProfileIntoAnswers,
+  programUsesProfile,
+} from "../../lib/profileFill";
 
 /**
  * We expect the program builder to have saved metadata like:
@@ -72,6 +78,7 @@ export default function ApplicationForm() {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [profileSnap, setProfileSnap] = useState<any>(null);
 
   // Load app and program meta
   useEffect(() => {
@@ -111,15 +118,22 @@ export default function ApplicationForm() {
 
         // Load full program details and organization
         try {
-          // Get program details from programs_public table
+          // Get program details from programs table (not programs_public) to get metadata
           const { data: programData, error: programError } = await supabase
-            .from("programs_public")
-            .select("id, name, description, organization_id")
+            .from("programs")
+            .select("id, name, description, organization_id, metadata")
             .eq("id", data.program_id)
             .single();
 
           if (!programError && programData) {
             setProgramDetails(programData);
+
+            // Update program with full metadata including profile flags
+            setProgram({
+              id: programData.id,
+              name: programData.name || "Application",
+              metadata: programData.metadata || { form: { fields } },
+            });
 
             // Load organization details
             const { data: orgData, error: orgError } = await supabase
@@ -149,6 +163,25 @@ export default function ApplicationForm() {
     };
   }, [applicationId, navigate]);
 
+  // Load profile snapshot when program uses profile autofill
+  useEffect(() => {
+    if (!program) return;
+    console.log("🔍 Debug - Program object:", program);
+    console.log("🔍 Debug - Program metadata:", program.metadata);
+    console.log(
+      "🔍 Debug - programUsesProfile result:",
+      programUsesProfile(program)
+    );
+
+    if (!programUsesProfile(program)) return;
+    (async () => {
+      console.log("🔍 Debug - Fetching profile snapshot...");
+      const profile = await fetchProfileSnapshot();
+      console.log("🔍 Debug - Fetched profile:", profile);
+      setProfileSnap(profile);
+    })();
+  }, [program]);
+
   const fields: Field[] = useMemo(() => {
     const meta = (program?.metadata ?? {}) as ProgramMeta;
     return meta.form?.fields ?? [];
@@ -159,7 +192,10 @@ export default function ApplicationForm() {
     try {
       setSaving(true);
       setErr(null);
-      const updated = await saveApplication(applicationId, answers);
+      const mergedAnswers = programUsesProfile(program)
+        ? mergeProfileIntoAnswers(answers, profileSnap)
+        : answers ?? {};
+      const updated = await saveApplication(applicationId, mergedAnswers);
       setApp((r) => (r ? { ...r, ...updated } : (updated as any)));
     } catch (e: any) {
       setErr(e.message ?? "Save failed");
@@ -192,7 +228,10 @@ export default function ApplicationForm() {
     setSubmitting(true);
     try {
       setErr(null);
-      const updated = await saveApplication(applicationId, answers);
+      const mergedAnswers = programUsesProfile(program)
+        ? mergeProfileIntoAnswers(answers, profileSnap)
+        : answers ?? {};
+      const updated = await saveApplication(applicationId, mergedAnswers);
       setApp((r) => (r ? { ...r, ...updated } : (updated as any)));
       alert("Application submitted!");
       // Navigate back to the program
@@ -255,6 +294,61 @@ export default function ApplicationForm() {
           )}
         </div>
       </div>
+
+      {/* Profile Autofill Notice and Card */}
+      {(() => {
+        console.log(
+          "🔍 Debug - Render check - programUsesProfile:",
+          programUsesProfile(program)
+        );
+        console.log("🔍 Debug - Render check - profileSnap:", profileSnap);
+        // TEMPORARY: Force show for debugging
+        const shouldShow = programUsesProfile(program) || true;
+        console.log("🔍 Debug - shouldShow:", shouldShow);
+        return (
+          shouldShow && (
+            <div className="mb-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm font-medium text-blue-900">
+                      Profile Autofill Active
+                    </span>
+                  </div>
+                  <a
+                    href="/profile"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Edit Profile →
+                  </a>
+                </div>
+                <p className="text-xs text-blue-700 mt-1">
+                  Your profile information will be automatically included in
+                  this application.
+                </p>
+              </div>
+
+              {profileSnap ? (
+                <div className="mb-4">
+                  <ProfileCard profile={profileSnap} />
+                </div>
+              ) : (
+                <div className="mb-4">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800">
+                      🔍 Debug: Profile autofill is enabled but no profile data
+                      loaded yet. Check console for debugging info.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        );
+      })()}
 
       {/* Dynamic fields */}
       <div className="space-y-6">

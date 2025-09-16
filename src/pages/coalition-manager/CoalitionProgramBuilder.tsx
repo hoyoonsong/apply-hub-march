@@ -205,6 +205,7 @@ export default function CoalitionProgramBuilder() {
     useState<boolean>(true);
   const [includeCoalitionCommon, setIncludeCoalitionCommon] =
     useState<boolean>(false);
+  const [includeProfile, setIncludeProfile] = useState<boolean>(false);
   const [fields, setFields] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -281,8 +282,12 @@ export default function CoalitionProgramBuilder() {
       setProgram(row);
 
       const appMeta = row.metadata?.application || {};
+      const formMeta = row.metadata?.form || {};
       setIncludeApplyHubCommon(!!appMeta?.common?.applyhub);
       setIncludeCoalitionCommon(!!appMeta?.common?.coalition);
+      setIncludeProfile(
+        !!(appMeta?.profile?.enabled || formMeta?.include_profile)
+      );
 
       // Check if there are pending changes to load instead of live schema
       const meta = (row?.metadata ?? {}) as any;
@@ -333,6 +338,13 @@ export default function CoalitionProgramBuilder() {
           coalition: includeCoalitionCommon,
         },
         builder: fields,
+        form: {
+          include_profile: includeProfile,
+          include_coalition_common_app: includeCoalitionCommon,
+        },
+        application: {
+          profile: { enabled: includeProfile },
+        },
       };
 
       // Check if program is published - try multiple ways to determine this
@@ -571,6 +583,24 @@ export default function CoalitionProgramBuilder() {
               <span className="font-medium text-gray-700">
                 Include Coalition Common App (if available)
               </span>
+            </label>
+            <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-100 hover:bg-blue-25 transition-colors">
+              <input
+                type="checkbox"
+                className="h-4 w-4 text-blue-600"
+                checked={includeProfile}
+                onChange={(e) => setIncludeProfile(e.target.checked)}
+                disabled={isDisabled}
+              />
+              <div className="flex-1">
+                <span className="font-medium text-gray-700">
+                  Include Profile Autofill
+                </span>
+                <p className="text-xs text-gray-500 mt-1">
+                  Applicants' profile information will be automatically included
+                  in their applications
+                </p>
+              </div>
             </label>
           </div>
         </div>

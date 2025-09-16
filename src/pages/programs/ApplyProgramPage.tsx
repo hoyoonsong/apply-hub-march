@@ -79,6 +79,10 @@ export default function ApplyProgramPage() {
   const builder = program.metadata?.builder ?? [];
   const includeHubCommon = !!program.metadata?.include_hub_common;
   const includeCoalitionCommon = !!program.metadata?.include_coalition_common;
+  const includeProfile = !!(
+    program.metadata?.application?.profile?.enabled ||
+    program.metadata?.form?.include_profile
+  );
 
   // Check if application opens soon
   const isOpensSoon = isBeforeOpenDate(program.open_at);
@@ -125,6 +129,14 @@ export default function ApplyProgramPage() {
               <li>Apply-Hub Common App: {includeHubCommon ? "Yes" : "No"}</li>
               <li>
                 Coalition Common App: {includeCoalitionCommon ? "Yes" : "No"}
+              </li>
+              <li>
+                Profile Autofill: {includeProfile ? "Yes" : "No"}
+                {includeProfile && (
+                  <span className="text-blue-600 text-xs ml-2">
+                    (Your profile will be automatically included)
+                  </span>
+                )}
               </li>
             </ul>
           </div>

@@ -1,5 +1,6 @@
 import React from "react";
 import { FilePreview } from "../attachments/FilePreview";
+import ProfileCard from "../profile/ProfileCard";
 
 type RawField = {
   id?: string;
@@ -127,8 +128,30 @@ export default function AnswersViewer({
     [applicationSchema]
   );
 
+  // Check for profile data in answers
+  const profileForReview = answers?.profile || answers?.common_app; // legacy read ok
+
   return (
     <div className="space-y-4">
+      {/* Profile Card */}
+      {profileForReview && (
+        <div className="mb-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-sm font-medium text-green-900">
+                Profile Information
+              </span>
+            </div>
+            <p className="text-xs text-green-700 mt-1">
+              This information was automatically filled from the applicant's
+              profile.
+            </p>
+          </div>
+          <ProfileCard profile={profileForReview} />
+        </div>
+      )}
+
       {fields.map((field, idx) => {
         const rawValue = getAnswerForField(field, idx, answers);
         const display = formatValue(rawValue, field);

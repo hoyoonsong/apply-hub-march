@@ -22,6 +22,13 @@ export default function DashboardNavigation() {
           Dashboard
         </Link>
 
+        <Link
+          to="/profile"
+          className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-white hover:border-gray-400 text-gray-700 transition-all duration-200 hover:shadow-sm"
+        >
+          Profile
+        </Link>
+
         <ReviewerNavLink />
       </div>
     </div>
