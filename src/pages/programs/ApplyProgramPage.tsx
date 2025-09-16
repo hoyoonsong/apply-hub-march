@@ -12,7 +12,7 @@ type ProgramPublic = {
   id: string;
   name: string;
   description: string | null;
-  type: "audition" | "scholarship";
+  type: "audition" | "scholarship" | "application" | "competition";
   open_at: string | null;
   close_at: string | null;
   organization_id: string;

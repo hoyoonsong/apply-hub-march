@@ -71,8 +71,8 @@ function LaunchPage() {
             <span className="text-white drop-shadow-lg">Apply Hub</span>
           </h1>
           <p className="text-xl md:text-2xl mb-12 max-w-3xl mx-auto leading-relaxed text-white drop-shadow-lg">
-            Your gateway to drum corps auditions, scholarships, and
-            opportunities.
+            Your gateway to drum corps auditions, scholarships, applications,
+            and competitions.
           </p>
           <br />
 

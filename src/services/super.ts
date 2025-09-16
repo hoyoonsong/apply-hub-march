@@ -36,7 +36,7 @@ export async function listCoalitionMembers(coalitionId: string) {
 export async function createProgram(input: {
   orgId: string;
   name: string;
-  type: "audition" | "scholarship";
+  type: "audition" | "scholarship" | "application" | "competition";
   description?: string;
   openAt?: string | null; // ISO string or null
   closeAt?: string | null; // ISO string or null

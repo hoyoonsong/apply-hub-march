@@ -71,7 +71,7 @@ export async function listPrograms() {
 export async function createProgram(params: {
   organization_id: string;
   name: string;
-  type: "audition" | "scholarship";
+  type: "audition" | "scholarship" | "application" | "competition";
   description?: string;
   open_at?: string;
   close_at?: string;
@@ -99,7 +99,7 @@ export async function updateProgram(
   id: string,
   params: {
     name?: string;
-    type?: "audition" | "scholarship";
+    type?: "audition" | "scholarship" | "application" | "competition";
     description?: string;
     open_at?: string;
     close_at?: string;

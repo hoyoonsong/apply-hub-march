@@ -23,7 +23,7 @@ import {
 
 type CreateState = {
   name: string;
-  type: "audition" | "scholarship";
+  type: "audition" | "scholarship" | "application" | "competition";
   description: string;
   open_at: string; // datetime-local value
   close_at: string; // datetime-local value
@@ -285,12 +285,18 @@ export default function OrgAdminPrograms() {
                 onChange={(e) =>
                   setForm((f) => ({
                     ...f,
-                    type: e.target.value as "audition" | "scholarship",
+                    type: e.target.value as
+                      | "audition"
+                      | "scholarship"
+                      | "application"
+                      | "competition",
                   }))
                 }
               >
                 <option value="audition">Audition</option>
                 <option value="scholarship">Scholarship</option>
+                <option value="application">Application</option>
+                <option value="competition">Competition</option>
               </select>
             </div>
 

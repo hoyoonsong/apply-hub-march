@@ -2,7 +2,7 @@ export type Program = {
   id: string;
   organization_id: string;
   name: string;
-  type: "audition" | "scholarship" | string; // keep open to avoid build breaks
+  type: "audition" | "scholarship" | "application" | "competition" | string; // keep open to avoid build breaks
   description: string | null;
   published: boolean;
   open_at: string | null;

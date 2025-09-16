@@ -15,7 +15,7 @@ export type Program = {
   id: string;
   organization_id: string;
   name: string;
-  type: "audition" | "scholarship";
+  type: "audition" | "scholarship" | "application" | "competition";
   description: string | null;
   open_at: string | null;
   close_at: string | null;
@@ -71,7 +71,7 @@ export function getProgramRowReviewStatus(p?: ProgramRow | null): ReviewStatus {
 export type ProgramRow = {
   id: string;
   name: string;
-  type: "audition" | "scholarship" | string;
+  type: "audition" | "scholarship" | "application" | "competition" | string;
   description: string | null;
   open_at: string | null;
   close_at: string | null;
@@ -101,7 +101,7 @@ export async function listOrgPrograms(orgId: string): Promise<ProgramRow[]> {
 export async function orgCreateProgramDraft(args: {
   organization_id: string;
   name: string;
-  type: "audition" | "scholarship";
+  type: "audition" | "scholarship" | "application" | "competition";
   description?: string;
   open_at?: string | null;
   close_at?: string | null;
@@ -123,7 +123,7 @@ export async function orgCreateProgramDraft(args: {
 export async function orgUpdateProgramDraft(args: {
   program_id: string;
   name: string;
-  type: "audition" | "scholarship";
+  type: "audition" | "scholarship" | "application" | "competition";
   description?: string;
   open_at?: string | null;
   close_at?: string | null;
@@ -222,7 +222,7 @@ export async function superUnpublishProgram(args: {
 /* ========== Public list (optional) ========== */
 
 export async function publicListPrograms(params?: {
-  type?: "audition" | "scholarship";
+  type?: "audition" | "scholarship" | "application" | "competition";
   search?: string;
   coalition_id?: string | null;
   limit?: number;

@@ -13,7 +13,7 @@ interface Program {
   id: string;
   organization_id: string;
   name: string;
-  type: "audition" | "scholarship";
+  type: "audition" | "scholarship" | "application" | "competition";
   description: string | null;
   open_at: string | null;
   close_at: string | null;
@@ -43,7 +43,9 @@ export default function Programs() {
   const [organizationId, setOrganizationId] = useState("");
   const [orgSearchTerm, setOrgSearchTerm] = useState("");
   const [name, setName] = useState("");
-  const [type, setType] = useState<"audition" | "scholarship">("audition");
+  const [type, setType] = useState<
+    "audition" | "scholarship" | "application" | "competition"
+  >("audition");
   const [description, setDescription] = useState("");
   const [openAt, setOpenAt] = useState("");
   const [closeAt, setCloseAt] = useState("");
@@ -167,7 +169,7 @@ export default function Programs() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Programs</h1>
               <p className="mt-1 text-sm text-gray-500">
-                Manage auditions and scholarships
+                Manage auditions, scholarships, applications, and competitions
               </p>
               <label className="inline-flex items-center gap-2 text-sm mt-2">
                 <input
@@ -327,12 +329,20 @@ export default function Programs() {
                 <select
                   value={type}
                   onChange={(e) =>
-                    setType(e.target.value as "audition" | "scholarship")
+                    setType(
+                      e.target.value as
+                        | "audition"
+                        | "scholarship"
+                        | "application"
+                        | "competition"
+                    )
                   }
                   className="w-full h-10 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="audition">Audition</option>
                   <option value="scholarship">Scholarship</option>
+                  <option value="application">Application</option>
+                  <option value="competition">Competition</option>
                 </select>
               </div>
               <div>

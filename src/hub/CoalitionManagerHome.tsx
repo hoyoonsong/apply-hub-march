@@ -30,7 +30,7 @@ export default function CoalitionManagerHome() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <HubTile
             title="Create Coalition Program"
-            subtitle="Start a new coalition-run audition/scholarship"
+            subtitle="Start a new coalition-run program"
           />
           <HubTile
             title="Manage Coalition Reviewers"
