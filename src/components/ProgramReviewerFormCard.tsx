@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { getProgramReviewForm, setProgramReviewForm } from "../lib/api";
 
 type ReviewForm = {
@@ -87,10 +87,10 @@ export default function ProgramReviewerFormCard({
   }
 
   return (
-    <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-8 shadow-sm">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-1 h-8 bg-purple-500 rounded-full"></div>
-        <h2 className="text-xl font-bold text-gray-900">
+    <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-6 shadow-sm">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-1 h-6 bg-purple-500 rounded-full"></div>
+        <h2 className="text-lg font-bold text-gray-900">
           Reviewer Form Configuration
         </h2>
       </div>
@@ -172,11 +172,11 @@ export default function ProgramReviewerFormCard({
           </div>
         )}
 
-        <div className="pt-2">
+        <div className="pt-4 flex justify-end">
           <button
             disabled={saving}
             onClick={save}
-            className="px-4 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 disabled:opacity-50"
+            className="px-6 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 font-medium"
           >
             {saving ? "Saving..." : "Save"}
           </button>

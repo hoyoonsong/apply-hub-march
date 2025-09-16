@@ -270,62 +270,64 @@ export default function ApplicationPage() {
           </div>
         </div>
 
+        {/* Application Status */}
+        <div className="mb-6">
+          <div
+            className={`rounded-lg border p-4 ${
+              canEdit
+                ? "bg-green-50 border-green-200"
+                : isBeforeOpen
+                ? "bg-yellow-50 border-yellow-200"
+                : "bg-red-50 border-red-200"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">
+                {canEdit ? "📅" : isBeforeOpen ? "⏰" : "🔒"}
+              </span>
+              <div>
+                <div className="font-semibold text-gray-900">
+                  {canEdit
+                    ? "Application Open"
+                    : isBeforeOpen
+                    ? "Application Coming Soon"
+                    : "Application Closed"}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {isBeforeOpen
+                    ? getOpenDateMessage(programOpenDate)
+                    : programDeadline
+                    ? getDeadlineMessage(programDeadline)
+                    : "No deadline set"}
+                </div>
+                {appRow.status === "submitted" && canEdit && (
+                  <div className="text-sm text-green-600 mt-1">
+                    ✓ Application submitted - You can still edit until the
+                    deadline
+                  </div>
+                )}
+                {isBeforeOpen && (
+                  <div className="text-sm text-yellow-600 mt-1">
+                    Application will be available soon
+                  </div>
+                )}
+                {!canEdit && !isBeforeOpen && (
+                  <div className="text-sm text-red-600 mt-1">
+                    Application is locked - deadline has passed
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Application Card */}
         <div className="bg-white rounded-lg border shadow-sm">
           <div className="p-6">
-            {/* Application Status */}
-            <div
-              className={`rounded-lg border p-4 ${
-                canEdit
-                  ? "bg-blue-50 border-blue-200"
-                  : isBeforeOpen
-                  ? "bg-yellow-50 border-yellow-200"
-                  : "bg-red-50 border-red-200"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-xl">
-                  {canEdit ? "📅" : isBeforeOpen ? "⏰" : "🔒"}
-                </span>
-                <div>
-                  <div className="font-semibold text-gray-900">
-                    {canEdit
-                      ? "Application Open"
-                      : isBeforeOpen
-                      ? "Application Coming Soon"
-                      : "Application Closed"}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {isBeforeOpen
-                      ? getOpenDateMessage(programOpenDate)
-                      : programDeadline
-                      ? getDeadlineMessage(programDeadline)
-                      : "No deadline set"}
-                  </div>
-                  {appRow.status === "submitted" && canEdit && (
-                    <div className="text-sm text-green-600 mt-1">
-                      ✓ Application submitted - You can still edit until the
-                      deadline
-                    </div>
-                  )}
-                  {isBeforeOpen && (
-                    <div className="text-sm text-yellow-600 mt-1">
-                      Application will be available soon
-                    </div>
-                  )}
-                  {!canEdit && !isBeforeOpen && (
-                    <div className="text-sm text-red-600 mt-1">
-                      Application is locked - deadline has passed
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Only show form if application is open or past deadline (for viewing submitted apps) */}
             {!isBeforeOpen && (
               <div className="space-y-6">
-                {/* Profile Autofill Notice and Card */}
+                {/* Profile Autofill Section */}
                 {(() => {
                   const program = {
                     id: programDetails?.id,
@@ -335,14 +337,14 @@ export default function ApplicationPage() {
 
                   return (
                     programUsesProfile(program) && (
-                      <div className="mb-6">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                      <div className="mb-8">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
                               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <span className="text-sm font-medium text-blue-900">
-                                Profile Autofill Active
-                              </span>
+                              <h2 className="text-lg font-semibold text-blue-900">
+                                Applicant Profile (Autofilled)
+                              </h2>
                             </div>
                             <a
                               href="/profile"
@@ -353,14 +355,12 @@ export default function ApplicationPage() {
                               Edit Profile →
                             </a>
                           </div>
-                          <p className="text-xs text-blue-700 mt-1">
-                            Your profile information has been automatically
-                            included in this application.
+                          <p className="text-sm text-blue-700 mb-6">
+                            This information was automatically filled from the
+                            applicant's profile.
                           </p>
-                        </div>
 
-                        {profileSnap ? (
-                          <div className="mb-4">
+                          {profileSnap ? (
                             <ProfileCard
                               profile={profileSnap}
                               sectionSettings={
@@ -368,9 +368,7 @@ export default function ApplicationPage() {
                                   ?.sections
                               }
                             />
-                          </div>
-                        ) : (
-                          <div className="mb-4">
+                          ) : (
                             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                               <p className="text-sm text-yellow-800">
                                 🔍 Debug: Profile autofill is enabled but no
@@ -378,193 +376,225 @@ export default function ApplicationPage() {
                                 debugging info.
                               </p>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     )
                   );
                 })()}
 
+                {/* Organization Application Questions Section */}
                 {items.length === 0 ? (
-                  <div className="bg-white border rounded-lg p-6">
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Organization Application Questions
+                      </h2>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Custom questions created by this organization.
+                    </p>
                     <div className="text-sm text-slate-500">
                       This application doesn't include custom questions.
                     </div>
                   </div>
                 ) : (
-                  items.map((item, idx) => {
-                    const key = item.key || `q_${idx}`;
-                    const val = answers?.[key] ?? "";
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Organization Application Questions
+                      </h2>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-6">
+                      Custom questions created by this organization.
+                    </p>
+                    <div className="space-y-6">
+                      {items.map((item, idx) => {
+                        const key = item.key || `q_${idx}`;
+                        const val = answers?.[key] ?? "";
 
-                    switch (item.type) {
-                      case "short_text":
-                        return (
-                          <div
-                            key={key}
-                            className="bg-white border rounded-lg p-6 space-y-3"
-                          >
-                            <label className="block text-sm font-medium text-gray-700">
-                              {item.label}
-                              {item.required && " *"}
-                            </label>
-                            <input
-                              className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                !isFormEditable
-                                  ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                  : ""
-                              }`}
-                              value={val}
-                              maxLength={item.maxLength}
-                              onChange={(e) => update(key, e.target.value)}
-                              disabled={!isFormEditable}
-                              readOnly={!isFormEditable}
-                              style={{
-                                cursor: isFormEditable ? "text" : "not-allowed",
-                              }}
-                            />
-                          </div>
-                        );
-                      case "long_text":
-                        return (
-                          <div
-                            key={key}
-                            className="bg-white border rounded-lg p-6 space-y-3"
-                          >
-                            <label className="block text-sm font-medium text-gray-700">
-                              {item.label}
-                              {item.required && " *"}
-                            </label>
-                            <textarea
-                              className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                !isFormEditable
-                                  ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                  : ""
-                              }`}
-                              value={val}
-                              maxLength={item.maxLength ?? 2000}
-                              onChange={(e) => update(key, e.target.value)}
-                              disabled={!isFormEditable}
-                              readOnly={!isFormEditable}
-                              style={{
-                                cursor: isFormEditable ? "text" : "not-allowed",
-                              }}
-                            />
-                          </div>
-                        );
-                      case "checkbox":
-                        return (
-                          <div
-                            key={key}
-                            className="bg-white border rounded-lg p-6"
-                          >
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="checkbox"
-                                checked={!!val}
-                                onChange={(e) => update(key, e.target.checked)}
-                                disabled={!isFormEditable}
-                                className={`h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
-                                  !isFormEditable ? "opacity-50" : ""
-                                }`}
-                                style={{
-                                  cursor: isFormEditable
-                                    ? "pointer"
-                                    : "not-allowed",
-                                }}
-                              />
-                              <label className="text-sm font-medium text-gray-700">
-                                {item.label}
-                                {item.required && " *"}
-                              </label>
-                            </div>
-                          </div>
-                        );
-                      case "date":
-                        return (
-                          <div
-                            key={key}
-                            className="bg-white border rounded-lg p-6 space-y-3"
-                          >
-                            <label className="block text-sm font-medium text-gray-700">
-                              {item.label}
-                              {item.required && " *"}
-                            </label>
-                            <input
-                              type="date"
-                              className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                !isFormEditable
-                                  ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                  : ""
-                              }`}
-                              value={val}
-                              onChange={(e) => update(key, e.target.value)}
-                              disabled={!isFormEditable}
-                              readOnly={!isFormEditable}
-                              style={{
-                                cursor: isFormEditable ? "text" : "not-allowed",
-                              }}
-                            />
-                          </div>
-                        );
-                      case "select":
-                        return (
-                          <div
-                            key={key}
-                            className="bg-white border rounded-lg p-6 space-y-3"
-                          >
-                            <label className="block text-sm font-medium text-gray-700">
-                              {item.label}
-                              {item.required && " *"}
-                            </label>
-                            <select
-                              className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                !isFormEditable
-                                  ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                  : ""
-                              }`}
-                              value={val}
-                              onChange={(e) => update(key, e.target.value)}
-                              disabled={!isFormEditable}
-                              style={{
-                                cursor: isFormEditable
-                                  ? "pointer"
-                                  : "not-allowed",
-                              }}
-                            >
-                              <option value="" disabled>
-                                Select…
-                              </option>
-                              {(item.options || []).map((opt) => (
-                                <option key={opt} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        );
-                      case "file":
-                        return (
-                          <div
-                            key={key}
-                            className="bg-white border rounded-lg p-6 space-y-3"
-                          >
-                            <label className="block text-sm font-medium text-gray-700">
-                              {item.label}
-                              {item.required && " *"}
-                            </label>
-                            <SimpleFileUpload
-                              applicationId={appId!}
-                              fieldId={key}
-                              value={answers[key] || ""}
-                              onChange={(value) => update(key, value)}
-                              disabled={!isFormEditable}
-                            />
-                          </div>
-                        );
-                      default:
-                        return null;
-                    }
-                  })
+                        switch (item.type) {
+                          case "short_text":
+                            return (
+                              <div
+                                key={key}
+                                className="bg-white border border-gray-200 rounded-lg p-6"
+                              >
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                  {item.label}
+                                  {item.required && " *"}
+                                </label>
+                                <input
+                                  className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                    !isFormEditable
+                                      ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                      : ""
+                                  }`}
+                                  value={val}
+                                  maxLength={item.maxLength}
+                                  onChange={(e) => update(key, e.target.value)}
+                                  disabled={!isFormEditable}
+                                  readOnly={!isFormEditable}
+                                  style={{
+                                    cursor: isFormEditable
+                                      ? "text"
+                                      : "not-allowed",
+                                  }}
+                                />
+                              </div>
+                            );
+                          case "long_text":
+                            return (
+                              <div
+                                key={key}
+                                className="bg-white border border-gray-200 rounded-lg p-6"
+                              >
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                  {item.label}
+                                  {item.required && " *"}
+                                </label>
+                                <textarea
+                                  className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                    !isFormEditable
+                                      ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                      : ""
+                                  }`}
+                                  value={val}
+                                  maxLength={item.maxLength ?? 2000}
+                                  onChange={(e) => update(key, e.target.value)}
+                                  disabled={!isFormEditable}
+                                  readOnly={!isFormEditable}
+                                  style={{
+                                    cursor: isFormEditable
+                                      ? "text"
+                                      : "not-allowed",
+                                  }}
+                                  rows={4}
+                                />
+                              </div>
+                            );
+                          case "checkbox":
+                            return (
+                              <div
+                                key={key}
+                                className="bg-white border border-gray-200 rounded-lg p-6"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!val}
+                                    onChange={(e) =>
+                                      update(key, e.target.checked)
+                                    }
+                                    disabled={!isFormEditable}
+                                    className={`h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
+                                      !isFormEditable ? "opacity-50" : ""
+                                    }`}
+                                    style={{
+                                      cursor: isFormEditable
+                                        ? "pointer"
+                                        : "not-allowed",
+                                    }}
+                                  />
+                                  <label className="text-sm font-medium text-gray-700">
+                                    {item.label}
+                                    {item.required && " *"}
+                                  </label>
+                                </div>
+                              </div>
+                            );
+                          case "date":
+                            return (
+                              <div
+                                key={key}
+                                className="bg-white border border-gray-200 rounded-lg p-6"
+                              >
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                  {item.label}
+                                  {item.required && " *"}
+                                </label>
+                                <input
+                                  type="date"
+                                  className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                    !isFormEditable
+                                      ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                      : ""
+                                  }`}
+                                  value={val}
+                                  onChange={(e) => update(key, e.target.value)}
+                                  disabled={!isFormEditable}
+                                  readOnly={!isFormEditable}
+                                  style={{
+                                    cursor: isFormEditable
+                                      ? "text"
+                                      : "not-allowed",
+                                  }}
+                                />
+                              </div>
+                            );
+                          case "select":
+                            return (
+                              <div
+                                key={key}
+                                className="bg-white border border-gray-200 rounded-lg p-6"
+                              >
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                  {item.label}
+                                  {item.required && " *"}
+                                </label>
+                                <select
+                                  className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                    !isFormEditable
+                                      ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                      : ""
+                                  }`}
+                                  value={val}
+                                  onChange={(e) => update(key, e.target.value)}
+                                  disabled={!isFormEditable}
+                                  style={{
+                                    cursor: isFormEditable
+                                      ? "pointer"
+                                      : "not-allowed",
+                                  }}
+                                >
+                                  <option value="">
+                                    {item.placeholder || "Select an option..."}
+                                  </option>
+                                  {item.options?.map((option: string) => (
+                                    <option key={option} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            );
+                          case "file":
+                            return (
+                              <div
+                                key={key}
+                                className="bg-white border border-gray-200 rounded-lg p-6"
+                              >
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                  {item.label}
+                                  {item.required && " *"}
+                                </label>
+                                <SimpleFileUpload
+                                  applicationId={appId!}
+                                  fieldId={key}
+                                  value={answers[key] || ""}
+                                  onChange={(value) => update(key, value)}
+                                  disabled={!isFormEditable}
+                                />
+                              </div>
+                            );
+                          default:
+                            return null;
+                        }
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
             )}

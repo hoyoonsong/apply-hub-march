@@ -570,302 +570,349 @@ export default function CoalitionProgramBuilder() {
         return null;
       })()}
 
-      <div className="max-w-6xl mx-auto mt-6 px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* Toggles */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-8 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-8 bg-blue-500 rounded-full"></div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Common Application Options
-            </h2>
-          </div>
-          <div className="space-y-4">
-            <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-100 hover:bg-blue-25 transition-colors">
-              <input
-                type="checkbox"
-                className="h-4 w-4 text-blue-600"
-                checked={includeCoalitionCommon}
-                onChange={(e) => setIncludeCoalitionCommon(e.target.checked)}
-                disabled={isDisabled}
-              />
-              <span className="font-medium text-gray-700">
-                Include Coalition Common App (if available)
-              </span>
-            </label>
-            <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-100 hover:bg-blue-25 transition-colors">
-              <input
-                type="checkbox"
-                className="h-4 w-4 text-blue-600"
-                checked={includeProfile}
-                onChange={(e) => setIncludeProfile(e.target.checked)}
-                disabled={isDisabled}
-              />
-              <div className="flex-1">
-                <span className="font-medium text-gray-700">
-                  Include Profile Autofill
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-row gap-4 sm:gap-6 lg:gap-8">
+          {/* Main Content - Approval Required Sections */}
+          <div className="flex-1 min-w-0">
+            {/* Approval Notice */}
+            <div className="flex items-center justify-center py-4">
+              <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-full">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span>
+                  Note: changes to Common Application Options and Application
+                  Builder require super admin approval
                 </span>
-                <p className="text-xs text-gray-500 mt-1">
-                  Applicants' profile information will be automatically included
-                  in their applications
-                </p>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               </div>
-            </label>
+            </div>
 
-            {/* Profile Section Checkboxes - Only show when Profile Autofill is enabled */}
-            {includeProfile && (
-              <div className="ml-6 space-y-2 border-l-2 border-blue-200 pl-4">
-                <div className="text-xs font-medium text-gray-600 mb-2">
-                  Select which profile sections to include:
+            {/* Common Application Options */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-t-xl p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Common Application Options
+                </h2>
+              </div>
+              <div className="space-y-4">
+                <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-100 hover:bg-blue-25 transition-colors">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600"
+                    checked={includeCoalitionCommon}
+                    onChange={(e) =>
+                      setIncludeCoalitionCommon(e.target.checked)
+                    }
+                    disabled={isDisabled}
+                  />
+                  <span className="font-medium text-gray-700">
+                    Include Coalition Common App (if available)
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-100 hover:bg-blue-25 transition-colors">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600"
+                    checked={includeProfile}
+                    onChange={(e) => setIncludeProfile(e.target.checked)}
+                    disabled={isDisabled}
+                  />
+                  <div className="flex-1">
+                    <span className="font-medium text-gray-700">
+                      Include Profile Autofill
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Applicants' profile information will be automatically
+                      included in their applications
+                    </p>
+                  </div>
+                </label>
+
+                {/* Profile Section Checkboxes - Only show when Profile Autofill is enabled */}
+                {includeProfile && (
+                  <div className="ml-6 space-y-2 border-l-2 border-blue-200 pl-4">
+                    <div className="text-xs font-medium text-gray-600 mb-2">
+                      Select which profile sections to include:
+                    </div>
+
+                    <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 text-blue-600"
+                        checked={includePersonalInfo}
+                        onChange={(e) =>
+                          setIncludePersonalInfo(e.target.checked)
+                        }
+                        disabled={isDisabled}
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-700">
+                          Personal Information
+                        </span>
+                        <p className="text-xs text-gray-500">
+                          Name, birth date, address, phone number
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 text-blue-600"
+                        checked={includeFamilyInfo}
+                        onChange={(e) => setIncludeFamilyInfo(e.target.checked)}
+                        disabled={isDisabled}
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-700">
+                          Family & Emergency Contact
+                        </span>
+                        <p className="text-xs text-gray-500">
+                          Parent/guardian and emergency contact information
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 text-blue-600"
+                        checked={includeWritingInfo}
+                        onChange={(e) =>
+                          setIncludeWritingInfo(e.target.checked)
+                        }
+                        disabled={isDisabled}
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-700">
+                          Writing & Essays
+                        </span>
+                        <p className="text-xs text-gray-500">
+                          Personal statement and written responses
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 text-blue-600"
+                        checked={includeExperienceInfo}
+                        onChange={(e) =>
+                          setIncludeExperienceInfo(e.target.checked)
+                        }
+                        disabled={isDisabled}
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-700">
+                          Experience & Portfolio
+                        </span>
+                        <p className="text-xs text-gray-500">
+                          Resume and portfolio files
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Application Builder */}
+            <div className="bg-green-50 border-2 border-green-200 border-t-0 rounded-b-xl p-8 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-1 h-8 bg-green-500 rounded-full"></div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Application Builder
+                </h2>
+              </div>
+              <p className="text-gray-600 mb-8">
+                Add questions to your application form.
+              </p>
+
+              {/* Field Type Selection Section */}
+              <div className="bg-white rounded-lg p-3 mb-4 shadow-sm border">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                  <button
+                    onClick={() => addField("short_text")}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
+                    disabled={isDisabled}
+                  >
+                    <div className="text-lg">📝</div>
+                    <span className="text-xs font-medium text-gray-700">
+                      Short Text
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => addField("long_text")}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
+                    disabled={isDisabled}
+                  >
+                    <div className="text-lg">📄</div>
+                    <span className="text-xs font-medium text-gray-700">
+                      Long Text
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => addField("date")}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
+                    disabled={isDisabled}
+                  >
+                    <div className="text-lg">📅</div>
+                    <span className="text-xs font-medium text-gray-700">
+                      Date
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => addField("select")}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
+                    disabled={isDisabled}
+                  >
+                    <div className="text-lg">📋</div>
+                    <span className="text-xs font-medium text-gray-700">
+                      Select
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => addField("checkbox")}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
+                    disabled={isDisabled}
+                  >
+                    <div className="text-lg">☑️</div>
+                    <span className="text-xs font-medium text-gray-700">
+                      Checkbox
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => addField("file")}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
+                    disabled={isDisabled}
+                  >
+                    <div className="text-lg">📎</div>
+                    <span className="text-xs font-medium text-gray-700">
+                      File Upload
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Configured Questions Section */}
+              <div className="bg-white rounded-lg p-6 shadow-sm border">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1 h-8 bg-green-500 rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Your Questions
+                    </h3>
+                  </div>
+                  <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                    {fields.length} question{fields.length !== 1 ? "s" : ""}{" "}
+                    added
+                  </div>
                 </div>
 
-                <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600"
-                    checked={includePersonalInfo}
-                    onChange={(e) => setIncludePersonalInfo(e.target.checked)}
-                    disabled={isDisabled}
-                  />
-                  <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-700">
-                      Personal Information
-                    </span>
-                    <p className="text-xs text-gray-500">
-                      Name, birth date, address, phone number
+                {fields.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl">
+                    <div className="text-4xl mb-4">📝</div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">
+                      No questions yet
+                    </h4>
+                    <p className="text-gray-600">
+                      Click the buttons above to add your first question
                     </p>
                   </div>
-                </label>
-
-                <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600"
-                    checked={includeFamilyInfo}
-                    onChange={(e) => setIncludeFamilyInfo(e.target.checked)}
-                    disabled={isDisabled}
-                  />
-                  <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-700">
-                      Family & Emergency Contact
-                    </span>
-                    <p className="text-xs text-gray-500">
-                      Parent/guardian and emergency contact information
-                    </p>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600"
-                    checked={includeWritingInfo}
-                    onChange={(e) => setIncludeWritingInfo(e.target.checked)}
-                    disabled={isDisabled}
-                  />
-                  <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-700">
-                      Writing & Essays
-                    </span>
-                    <p className="text-xs text-gray-500">
-                      Personal statement and written responses
-                    </p>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600"
-                    checked={includeExperienceInfo}
-                    onChange={(e) => setIncludeExperienceInfo(e.target.checked)}
-                    disabled={isDisabled}
-                  />
-                  <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-700">
-                      Experience & Portfolio
-                    </span>
-                    <p className="text-xs text-gray-500">
-                      Resume and portfolio files
-                    </p>
-                  </div>
-                </label>
+                ) : (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={fields.map(
+                        (field, idx) => field.key || `field-${idx}`
+                      )}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-4">
+                        {fields.map((field, idx) => (
+                          <SortableField
+                            key={field.key || `field-${idx}`}
+                            field={field}
+                            idx={idx}
+                            isDisabled={isDisabled}
+                            onUpdateField={handleUpdateField}
+                            onRemoveField={handleRemoveField}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Builder */}
-        <div className="bg-green-50 border-2 border-green-200 rounded-xl p-8 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-8 bg-green-500 rounded-full"></div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Application Builder
-            </h2>
-          </div>
-          <p className="text-gray-600 mb-8">
-            Add questions to your application form.
-          </p>
-
-          {/* Field Type Selection Section */}
-          <div className="bg-white rounded-lg p-3 mb-4 shadow-sm border">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-              <button
-                onClick={() => addField("short_text")}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
-                disabled={isDisabled}
-              >
-                <div className="text-lg">📝</div>
-                <span className="text-xs font-medium text-gray-700">
-                  Short Text
-                </span>
-              </button>
-              <button
-                onClick={() => addField("long_text")}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
-                disabled={isDisabled}
-              >
-                <div className="text-lg">📄</div>
-                <span className="text-xs font-medium text-gray-700">
-                  Long Text
-                </span>
-              </button>
-              <button
-                onClick={() => addField("date")}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
-                disabled={isDisabled}
-              >
-                <div className="text-lg">📅</div>
-                <span className="text-xs font-medium text-gray-700">Date</span>
-              </button>
-              <button
-                onClick={() => addField("select")}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
-                disabled={isDisabled}
-              >
-                <div className="text-lg">📋</div>
-                <span className="text-xs font-medium text-gray-700">
-                  Select
-                </span>
-              </button>
-              <button
-                onClick={() => addField("checkbox")}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
-                disabled={isDisabled}
-              >
-                <div className="text-lg">☑️</div>
-                <span className="text-xs font-medium text-gray-700">
-                  Checkbox
-                </span>
-              </button>
-              <button
-                onClick={() => addField("file")}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 w-full"
-                disabled={isDisabled}
-              >
-                <div className="text-lg">📎</div>
-                <span className="text-xs font-medium text-gray-700">
-                  File Upload
-                </span>
-              </button>
             </div>
-          </div>
 
-          {/* Configured Questions Section */}
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-1 h-8 bg-green-500 rounded-full"></div>
+            {/* Shared Action Buttons for Both Sections */}
+            <div className="bg-gradient-to-r from-blue-50 to-green-50 border-2 border-gray-300 border-t-0 rounded-b-xl p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-1 h-6 bg-indigo-500 rounded-full"></div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Your Questions
+                  Submit for Approval
                 </h3>
               </div>
-              <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
-                {fields.length} question{fields.length !== 1 ? "s" : ""} added
+              <p className="text-sm text-gray-600 mb-4">
+                Changes to Common Application Options and Application Builder
+                require super admin approval.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button
+                    onClick={() => setShowPreview(true)}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 hover:shadow-md transition-all duration-200 font-medium"
+                  >
+                    <span className="text-lg">👁️</span>
+                    Preview Application
+                  </button>
+                  <button
+                    disabled={saving || isDisabled}
+                    onClick={onSave}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                  >
+                    <span className="text-lg">{saving ? "⏳" : "💾"}</span>
+                    {saving ? "Saving..." : "Save Draft"}
+                  </button>
+                  <button
+                    disabled={saving || (isSubmitted && !isEditing)}
+                    onClick={onSubmitForReview}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                    title={
+                      hasPendingChanges
+                        ? "Submit pending changes for super admin review"
+                        : ""
+                    }
+                  >
+                    <span className="text-lg">📤</span>
+                    {hasPendingChanges
+                      ? "Submit Pending Changes for Review"
+                      : isSubmitted
+                      ? "Resubmit for Review"
+                      : "Submit for Review"}
+                  </button>
+                </div>
+
+                {msg && (
+                  <div className="text-sm text-gray-600 bg-gray-50 px-4 py-3 rounded-lg border">
+                    {msg}
+                  </div>
+                )}
               </div>
             </div>
-
-            {fields.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl">
-                <div className="text-4xl mb-4">📝</div>
-                <h4 className="text-lg font-medium text-gray-900 mb-2">
-                  No questions yet
-                </h4>
-                <p className="text-gray-600">
-                  Click the buttons above to add your first question
-                </p>
-              </div>
-            ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={fields.map(
-                    (field, idx) => field.key || `field-${idx}`
-                  )}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-4">
-                    {fields.map((field, idx) => (
-                      <SortableField
-                        key={field.key || `field-${idx}`}
-                        field={field}
-                        idx={idx}
-                        isDisabled={isDisabled}
-                        onUpdateField={handleUpdateField}
-                        onRemoveField={handleRemoveField}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="mt-8 bg-white rounded-lg p-6 shadow-sm border">
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={() => setShowPreview(true)}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 hover:shadow-md transition-all duration-200 font-medium"
-                >
-                  <span className="text-lg">👁️</span>
-                  Preview Application
-                </button>
-                <button
-                  disabled={saving || isDisabled}
-                  onClick={onSave}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-                >
-                  <span className="text-lg">{saving ? "⏳" : "💾"}</span>
-                  {saving ? "Saving..." : "Save Draft"}
-                </button>
-                <button
-                  disabled={saving || (isSubmitted && !isEditing)}
-                  onClick={onSubmitForReview}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-                  title={
-                    hasPendingChanges
-                      ? "Submit pending changes for super admin review"
-                      : ""
-                  }
-                >
-                  <span className="text-lg">📤</span>
-                  {hasPendingChanges
-                    ? "Submit Pending Changes for Review"
-                    : isSubmitted
-                    ? "Resubmit for Review"
-                    : "Submit for Review"}
-                </button>
-              </div>
-
-              {msg && (
-                <div className="text-sm text-gray-600 bg-gray-50 px-4 py-3 rounded-lg border">
-                  {msg}
-                </div>
-              )}
+          {/* Sidebar - Reviewer Form Configuration */}
+          <div className="w-80 flex-shrink-0">
+            {/* Spacer to match approval notice height exactly - py-4 (32px) + inner py-2 (16px) + text height */}
+            <div style={{ height: "68px" }}></div>
+            <div className="sticky" style={{ top: "68px" }}>
+              {program && <ProgramReviewerFormCard programId={program.id} />}
             </div>
           </div>
         </div>
@@ -873,7 +920,7 @@ export default function CoalitionProgramBuilder() {
 
       <ApplicationPreview
         fields={fields}
-        program={program}
+        program={program as any}
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
       />
