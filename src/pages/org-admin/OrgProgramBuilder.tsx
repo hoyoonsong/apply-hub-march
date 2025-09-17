@@ -6,6 +6,7 @@ import {
   setBuilderSchema,
   type ApplicationSchema,
 } from "../../data/api";
+import { loadApplicationSchema } from "../../lib/schemaLoader";
 import {
   orgSubmitProgramForReview,
   type ProgramApplicationDraft,
@@ -373,61 +374,21 @@ export default function OrgProgramBuilder() {
           }
         }
 
-        // Load builder schema separately
+        // Load builder schema using centralized loader
         try {
-          let s;
-          if (isSuperAdmin) {
-            // For super admin, get schema from programs_public table
-            const { data: programData, error: programError } = await supabase
-              .from("programs_public")
-              .select("application_schema")
-              .eq("id", programId)
-              .single();
-
-            if (!programError && programData) {
-              s = programData.application_schema;
-            } else {
-              // Fallback to program metadata
-              const appMeta = row.metadata?.application || {};
-              if (appMeta.schema) {
-                s = appMeta.schema;
-              } else {
-                // Last resort - try RPC call
-                s = await getBuilderSchema(programId);
-              }
-            }
-          } else {
-            s = await getBuilderSchema(programId);
-          }
+          const schema = await loadApplicationSchema(row);
 
           if (mounted) {
-            // Check if there are pending changes to load instead of live schema
-            const meta = (row?.metadata ?? {}) as any;
-            const hasPendingChanges = meta?.review_status === "pending_changes";
-            const pendingSchema = meta?.pending_schema;
-
-            if (hasPendingChanges && pendingSchema) {
-              // Load pending changes for editing
-              setSchema(pendingSchema);
-              const loadedFields = pendingSchema?.fields || [];
-              const fieldsWithKeys = loadedFields.map((field, idx) => ({
-                ...field,
-                key: field.key || `field-${idx}-${Date.now()}`,
-              }));
-              setFields(fieldsWithKeys);
-            } else {
-              // Load live schema
-              setSchema(s ?? { fields: [] });
-              const loadedFields = s?.fields || [];
-              const fieldsWithKeys = loadedFields.map((field, idx) => ({
-                ...field,
-                key: field.key || `field-${idx}-${Date.now()}`,
-              }));
-              setFields(fieldsWithKeys);
-            }
+            setSchema(schema);
+            const loadedFields = schema.fields || [];
+            const fieldsWithKeys = loadedFields.map((field, idx) => ({
+              ...field,
+              key: field.key || `field-${idx}-${Date.now()}`,
+            }));
+            setFields(fieldsWithKeys);
           }
         } catch (e) {
-          // First time - no schema exists yet, or RPC failed for super admin
+          console.error("Failed to load schema:", e);
           if (mounted) {
             setSchema({ fields: [] });
             setFields([]);
@@ -536,19 +497,16 @@ export default function OrgProgramBuilder() {
         await setBuilderSchema(programId, updatedSchema);
         setSchema(updatedSchema);
 
-        // Also update the program metadata with form flags
+        // Also update the program metadata with form flags AND schema
         const { error: metaError } = await supabase
           .from("programs")
           .update({
             metadata: {
               ...meta,
-              form: {
-                ...(meta.form || {}),
-                include_profile: includeProfile,
-                include_coalition_common_app: includeCoalitionCommon,
-              },
+              // Save the schema in metadata.application.schema for easy loading
               application: {
                 ...(meta.application || {}),
+                schema: updatedSchema, // This is the key fix!
                 profile: {
                   enabled: includeProfile,
                   sections: {
@@ -558,6 +516,11 @@ export default function OrgProgramBuilder() {
                     experience: includeExperienceInfo,
                   },
                 },
+              },
+              form: {
+                ...(meta.form || {}),
+                include_profile: includeProfile,
+                include_coalition_common_app: includeCoalitionCommon,
               },
             },
           })

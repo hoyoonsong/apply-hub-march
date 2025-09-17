@@ -8,6 +8,7 @@ import {
   type ProgramApplicationDraft,
   getCoalitionTemplate,
 } from "../../lib/programs";
+import { loadApplicationSchema } from "../../lib/schemaLoader";
 import type {
   ProgramApplicationSchema,
   AppItem,
@@ -301,29 +302,18 @@ export default function CoalitionProgramBuilder() {
       setIncludeWritingInfo(profileSections.writing !== false); // Default to true
       setIncludeExperienceInfo(profileSections.experience !== false); // Default to true
 
-      // Check if there are pending changes to load instead of live schema
-      const meta = (row?.metadata ?? {}) as any;
-      const hasPendingChanges = meta?.review_status === "pending_changes";
-      const pendingSchema = meta?.pending_schema;
-
-      if (hasPendingChanges && pendingSchema) {
-        // Load pending changes for editing
-        const loadedFields = pendingSchema?.builder || [];
+      // Load schema using centralized loader
+      try {
+        const schema = await loadApplicationSchema(row);
+        const loadedFields = schema.fields || [];
         const fieldsWithKeys = loadedFields.map((field, idx) => ({
           ...field,
           key: field.key || `field-${idx}-${Date.now()}`,
         }));
         setFields(fieldsWithKeys);
-      } else {
-        // Load live schema
-        const loadedFields = Array.isArray(appMeta?.builder)
-          ? appMeta.builder
-          : [];
-        const fieldsWithKeys = loadedFields.map((field, idx) => ({
-          ...field,
-          key: field.key || `field-${idx}-${Date.now()}`,
-        }));
-        setFields(fieldsWithKeys);
+      } catch (e) {
+        console.error("Failed to load schema:", e);
+        setFields([]);
       }
     })();
   }, [programId, navigate]);

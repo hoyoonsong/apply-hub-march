@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  getApplication,
-  saveApplication,
-  getProgramSchema,
-} from "../../lib/rpc";
+import { getApplication, saveApplication } from "../../lib/rpc";
+import { loadApplicationSchemaById } from "../../lib/schemaLoader";
 import { missingRequired } from "../../utils/answers";
 import { supabase } from "../../lib/supabase";
 import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
@@ -13,6 +10,8 @@ import {
   fetchProfileSnapshot,
   mergeProfileIntoAnswers,
   programUsesProfile,
+  getRequiredProfileSections,
+  validateProfileSections,
 } from "../../lib/profileFill";
 
 /**
@@ -91,29 +90,15 @@ export default function ApplicationForm() {
         setApp(data);
         setAnswers(data.answers ?? {});
 
-        // Extract fields from the application schema
-        let fields = [];
-        if (data.application_schema) {
-          if (Array.isArray(data.application_schema)) {
-            fields = data.application_schema;
-          } else if (
-            data.application_schema.fields &&
-            Array.isArray(data.application_schema.fields)
-          ) {
-            fields = data.application_schema.fields;
-          } else if (
-            data.application_schema.builder &&
-            Array.isArray(data.application_schema.builder)
-          ) {
-            fields = data.application_schema.builder;
-          }
-        }
+        // Load schema using centralized loader
+        const schema = await loadApplicationSchemaById(data.program_id);
+        console.log("🔍 ApplicationForm - Loaded schema:", schema);
 
-        // Set program data from application_schema
+        // Set program data with loaded schema
         setProgram({
           id: data.program_id,
           name: data.program_name || "Application",
-          metadata: { form: { fields } },
+          metadata: { form: { fields: schema.fields } },
         });
 
         // Load full program details and organization
@@ -166,18 +151,10 @@ export default function ApplicationForm() {
   // Load profile snapshot when program uses profile autofill
   useEffect(() => {
     if (!program) return;
-    console.log("🔍 Debug - Program object:", program);
-    console.log("🔍 Debug - Program metadata:", program.metadata);
-    console.log(
-      "🔍 Debug - programUsesProfile result:",
-      programUsesProfile(program)
-    );
 
     if (!programUsesProfile(program)) return;
     (async () => {
-      console.log("🔍 Debug - Fetching profile snapshot...");
       const profile = await fetchProfileSnapshot();
-      console.log("🔍 Debug - Fetched profile:", profile);
       setProfileSnap(profile);
     })();
   }, [program]);
@@ -223,6 +200,24 @@ export default function ApplicationForm() {
         `Please complete the following required fields: ${missing.join(", ")}`
       );
       return;
+    }
+
+    // Validate profile sections if program uses profile autofill
+    if (programUsesProfile(program)) {
+      const requiredSections = getRequiredProfileSections(program);
+      const profileValidation = validateProfileSections(
+        profileSnap,
+        requiredSections
+      );
+
+      if (!profileValidation.isValid) {
+        setErr(
+          `Please complete the following required profile sections:\n${profileValidation.missingSections.join(
+            "\n"
+          )}`
+        );
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -297,14 +292,7 @@ export default function ApplicationForm() {
 
       {/* Profile Autofill Notice and Card */}
       {(() => {
-        console.log(
-          "🔍 Debug - Render check - programUsesProfile:",
-          programUsesProfile(program)
-        );
-        console.log("🔍 Debug - Render check - profileSnap:", profileSnap);
-        // TEMPORARY: Force show for debugging
-        const shouldShow = programUsesProfile(program) || true;
-        console.log("🔍 Debug - shouldShow:", shouldShow);
+        const shouldShow = programUsesProfile(program);
         return (
           shouldShow && (
             <div className="mb-6">

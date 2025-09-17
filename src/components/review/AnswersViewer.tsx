@@ -1,10 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { FilePreview } from "../attachments/FilePreview";
 import ProfileCard from "../profile/ProfileCard";
-import {
-  fetchProfileSnapshot,
-  programUsesProfile,
-} from "../../lib/profileFill";
 
 type RawField = {
   id?: string;
@@ -141,18 +137,9 @@ export default function AnswersViewer({
     [applicationSchema]
   );
 
-  const [currentProfile, setCurrentProfile] = useState<any>(null);
-
-  // Fetch current profile data if program uses profile autofill
-  useEffect(() => {
-    if (program && programUsesProfile(program)) {
-      fetchProfileSnapshot().then(setCurrentProfile);
-    }
-  }, [program]);
-
-  // Use current profile if available, otherwise fall back to old snapshot
-  const profileForReview =
-    currentProfile || answers?.profile || answers?.common_app;
+  // Use the applicant's profile data that was saved when they submitted their application
+  // This is the correct profile data to display to reviewers
+  const profileForReview = answers?.profile;
 
   return (
     <div className="space-y-6">

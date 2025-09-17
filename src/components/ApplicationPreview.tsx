@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { ApplicationFileViewer } from "./attachments/ApplicationFileViewer";
 import { SimpleFileUpload } from "./attachments/SimpleFileUpload";
-import { getBuilderSchema } from "../data/api";
 import { Program } from "../lib/programs";
 import ProfileCard from "./profile/ProfileCard";
 import { FilePreview } from "./attachments/FilePreview";
+import { loadApplicationSchema } from "../lib/schemaLoader";
 
 interface Field {
   id: string;
@@ -49,38 +49,8 @@ export default function ApplicationPreview({
 
     setLoading(true);
     try {
-      // First check if there are pending changes to show
-      const meta = program.metadata || {};
-      const hasPendingChanges =
-        meta.review_status === "pending_changes" ||
-        meta.review_status === "submitted";
-      const pendingSchema = meta.pending_schema;
-
-      console.log("Preview - program metadata:", meta);
-      console.log("Preview - hasPendingChanges:", hasPendingChanges);
-      console.log("Preview - pendingSchema:", pendingSchema);
-
-      if (hasPendingChanges && pendingSchema) {
-        // Show pending changes for super admin review
-        console.log("Showing pending changes in preview:", pendingSchema);
-        setFields(pendingSchema.fields || []);
-      } else {
-        // Show live schema
-        const { data: schemaData, error: schemaError } = await supabase
-          .from("programs_public")
-          .select("application_schema")
-          .eq("id", program.id)
-          .single();
-
-        if (!schemaError && schemaData) {
-          const schema = schemaData.application_schema;
-          setFields(schema?.fields || []);
-        } else {
-          // Fallback to RPC call
-          const schema = await getBuilderSchema(program.id);
-          setFields(schema.fields || []);
-        }
-      }
+      const schema = await loadApplicationSchema(program);
+      setFields(schema.fields);
     } catch (e) {
       console.error("Failed to load fields:", e);
       setFields([]);

@@ -29,7 +29,9 @@ export function useCollaborativeReview(appId: string) {
   });
   const [program, setProgram] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [saving, setSaving] = useState<boolean>(false);
+  const [saving, setSaving] = useState<"idle" | "saving" | "saved" | "error">(
+    "idle"
+  );
   const [error, setError] = useState<string | null>(null);
 
   // ---------- MAIN LOAD FUNCTION ----------
@@ -55,6 +57,10 @@ export function useCollaborativeReview(appId: string) {
       console.log("Row data:", row);
       console.log("Applicant answers:", row?.applicant_answers);
       console.log("Application schema:", row?.application_schema);
+      console.log(
+        "🔍 Debug - Profile in applicant_answers:",
+        row?.applicant_answers?.profile
+      );
       setAnswers((row?.applicant_answers as any) ?? {});
 
       // If RPC doesn't return application_schema, fetch it from program metadata
@@ -353,7 +359,7 @@ export function useCollaborativeReview(appId: string) {
       ratings?: any;
       decision?: string | null;
     }) => {
-      setSaving(true);
+      setSaving("saving");
       try {
         // Store decision in ratings JSON as a workaround
         const ratingsWithDecision = {
@@ -374,9 +380,12 @@ export function useCollaborativeReview(appId: string) {
           (window as any).lastSaveTime = Date.now();
           // Refresh data to get updated reviewer_name and updated_at
           await loadRef.current();
+          setSaving("saved");
+        } else {
+          setSaving("error");
         }
-      } finally {
-        setSaving(false);
+      } catch (error) {
+        setSaving("error");
       }
     },
     [
@@ -396,7 +405,7 @@ export function useCollaborativeReview(appId: string) {
       ratings?: any;
       decision?: string | null;
     }) => {
-      setSaving(true);
+      setSaving("saving");
       try {
         // Store decision in ratings JSON as a workaround
         const ratingsWithDecision = {
@@ -417,9 +426,12 @@ export function useCollaborativeReview(appId: string) {
           (window as any).lastSaveTime = Date.now();
           // Refresh data to get updated reviewer_name and updated_at
           await loadRef.current();
+          setSaving("saved");
+        } else {
+          setSaving("error");
         }
-      } finally {
-        setSaving(false);
+      } catch (error) {
+        setSaving("error");
       }
     },
     [

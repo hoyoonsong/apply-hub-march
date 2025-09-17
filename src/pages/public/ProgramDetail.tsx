@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getProgramSchema, startOrGetApplication } from "../../lib/rpc";
+import { startOrGetApplication } from "../../lib/rpc";
+import { loadApplicationSchemaById } from "../../lib/schemaLoader";
+import { supabase } from "../../lib/supabase";
 
 type ProgramPublic = {
   id: string;
@@ -12,7 +14,7 @@ type ProgramPublic = {
   published_at?: string;
   open_at?: string;
   close_at?: string;
-  application_schema: any;
+  application_schema?: any;
 };
 
 function Row({ label, value }: { label: string; value?: string | null }) {
@@ -46,8 +48,19 @@ export default function ProgramDetail() {
       setLoading(true);
       setError(null);
       try {
-        const data = await getProgramSchema(programId);
-        setProgram(data);
+        // Load program details and schema
+        const { data: programData, error: programError } = await supabase
+          .from("programs_public")
+          .select("id, name, type, description, open_at, close_at")
+          .eq("id", programId)
+          .single();
+
+        if (programError) throw programError;
+        setProgram(programData);
+
+        // Load schema using centralized loader
+        const schema = await loadApplicationSchemaById(programId);
+        console.log("🔍 ProgramDetail - Loaded schema:", schema);
       } catch (e: any) {
         setError(e.message);
       } finally {

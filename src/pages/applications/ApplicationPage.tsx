@@ -3,10 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { isUUID } from "../../lib/id";
 import {
   getApplication,
-  getProgramSchema,
   submitApplication,
   saveApplication,
 } from "../../lib/rpc";
+import { loadApplicationSchemaById } from "../../lib/schemaLoader";
 import { useApplicationAutosave } from "../../components/useApplicationAutosave";
 import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
 import ProfileCard from "../../components/profile/ProfileCard";
@@ -14,6 +14,8 @@ import {
   programUsesProfile,
   fetchProfileSnapshot,
   mergeProfileIntoAnswers,
+  getRequiredProfileSections,
+  validateProfileSections,
 } from "../../lib/profileFill";
 import type { ProgramApplicationSchema } from "../../types/application";
 import { missingRequired } from "../../utils/answers";
@@ -64,13 +66,26 @@ export default function ApplicationPage() {
       try {
         const app = await getApplication(appId!);
         setAppRow(app);
-        const prog = await getProgramSchema(app.program_id);
-        console.log("Program data:", prog);
-        console.log("Open at:", prog?.open_at);
-        console.log("Close at:", prog?.close_at);
-        setSchema(prog?.application_schema ?? { fields: [] });
-        setProgramDeadline(prog?.close_at || null);
-        setProgramOpenDate(prog?.open_at || null);
+
+        // Load schema using centralized loader
+        const schema = await loadApplicationSchemaById(app.program_id);
+        console.log("🔍 ApplicationPage - Loaded schema:", schema);
+        setSchema(schema);
+
+        // Get program details for deadline info
+        const { data: progData, error: progError } = await supabase
+          .from("programs_public")
+          .select("open_at, close_at")
+          .eq("id", app.program_id)
+          .single();
+
+        if (!progError && progData) {
+          console.log("Program data:", progData);
+          console.log("Open at:", progData?.open_at);
+          console.log("Close at:", progData?.close_at);
+          setProgramDeadline(progData?.close_at || null);
+          setProgramOpenDate(progData?.open_at || null);
+        }
 
         // Set editing mode: draft apps are editable, submitted apps are read-only by default
         setIsEditing(app.status === "draft");
@@ -106,6 +121,8 @@ export default function ApplicationPage() {
                 );
                 try {
                   await saveApplication(app.id, mergedAnswers);
+                  // Update the answers state with the merged profile data
+                  setAnswers(mergedAnswers);
                   console.log("Updated application with current profile data");
                 } catch (e) {
                   console.error("Failed to save profile data:", e);
@@ -182,6 +199,24 @@ export default function ApplicationPage() {
       if (missing.length > 0) {
         alert(
           `Please complete the following required fields: ${missing.join(", ")}`
+        );
+        return;
+      }
+    }
+
+    // Validate profile sections if program uses profile autofill
+    if (programDetails && programUsesProfile(programDetails)) {
+      const requiredSections = getRequiredProfileSections(programDetails);
+      const profileValidation = validateProfileSections(
+        profileSnap,
+        requiredSections
+      );
+
+      if (!profileValidation.isValid) {
+        alert(
+          `Please complete the following required profile sections:\n${profileValidation.missingSections.join(
+            "\n"
+          )}`
         );
         return;
       }

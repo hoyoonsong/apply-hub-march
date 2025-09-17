@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { getBuilderSchema, type ApplicationSchema } from "../../data/api";
+import { loadApplicationSchemaById } from "../../lib/schemaLoader";
 import ApplicationPreview from "../../components/ApplicationPreview";
 
 type Program = {
@@ -56,28 +57,10 @@ export default function ProgramPreview() {
       if (orgError) throw orgError;
       setOrg(orgData);
 
-      // Load application schema - use programs_public table for super admin
+      // Load application schema using centralized loader
       try {
-        const { data: schemaData, error: schemaError } = await supabase
-          .from("programs_public")
-          .select("application_schema")
-          .eq("id", programId)
-          .single();
-
-        if (!schemaError && schemaData) {
-          const schema = schemaData.application_schema;
-          setFields(schema?.fields || []);
-        } else {
-          // Fallback to program metadata
-          const appMeta = programData?.metadata?.application || {};
-          if (appMeta.schema) {
-            setFields(appMeta.schema.fields || []);
-          } else {
-            // Last resort - try RPC call
-            const schema = await getBuilderSchema(programId);
-            setFields(schema.fields || []);
-          }
-        }
+        const schema = await loadApplicationSchemaById(programId);
+        setFields(schema.fields);
       } catch (e) {
         console.error("Failed to load schema:", e);
         setFields([]);
