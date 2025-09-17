@@ -92,18 +92,20 @@ export default function SuperProgramsReview() {
 
       const meta = program.metadata || {};
 
-      // Clear pending changes and set status to changes_requested
+      // Clear pending changes but preserve working schema, set status to changes_requested
       const { error } = await supabase
         .from("programs")
         .update({
           metadata: {
             ...meta,
-            // Clear pending changes
+            // Clear pending changes but keep working schema intact
             pending_schema: null,
             review_status: "changes_requested",
             review_note: note.trim(),
             last_changes_requested_at: new Date().toISOString(),
             last_changes_requested_by: "super_admin",
+            // Preserve the working schema in application.schema
+            // Don't touch this - it contains the org admin's working changes
           },
         })
         .eq("id", program.id);

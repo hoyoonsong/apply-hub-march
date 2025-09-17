@@ -29,10 +29,12 @@ export async function loadApplicationSchema(
   }
 
   console.log("🔍 SchemaLoader - Loading schema for program:", program.id);
-  console.log("🔍 SchemaLoader - Program metadata:", program.metadata);
 
   const meta = program.metadata || {};
   const appMeta = meta.application || {};
+
+  console.log("🔍 SchemaLoader - Review status:", meta.review_status);
+  console.log("🔍 SchemaLoader - App meta schema:", appMeta.schema);
 
   // Check multiple possible locations for the schema in order of preference
   let schema = null;
@@ -46,6 +48,16 @@ export async function loadApplicationSchema(
   if (hasPendingChanges && pendingSchema) {
     console.log("🔍 SchemaLoader - Using pending schema:", pendingSchema);
     return { fields: pendingSchema.fields || [] };
+  }
+
+  // 1b. Check for changes requested - show working schema (not live schema)
+  const hasChangesRequested = meta.review_status === "changes_requested";
+  if (hasChangesRequested && appMeta.schema) {
+    console.log(
+      "🔍 SchemaLoader - Using working schema for changes_requested:",
+      appMeta.schema
+    );
+    return { fields: appMeta.schema.fields || [] };
   }
 
   // 2. Check metadata.application.schema (most reliable for unpublished programs)

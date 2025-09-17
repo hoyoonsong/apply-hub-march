@@ -318,6 +318,59 @@ export default function CoalitionProgramBuilder() {
     })();
   }, [programId, navigate]);
 
+  // Realtime subscription to refresh program data when metadata changes
+  useEffect(() => {
+    if (!programId) return;
+
+    const channel = supabase
+      .channel(`program-${programId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "programs",
+          filter: `id=eq.${programId}`,
+        },
+        (payload) => {
+          console.log("🔍 Program metadata updated:", payload);
+          // Reload the program data to get the latest metadata
+          const reloadProgram = async () => {
+            try {
+              const { data, error } = await supabase.rpc("cm_get_program_v1", {
+                p_program_id: programId,
+              });
+
+              if (!error && data) {
+                const row = Array.isArray(data) ? data[0] : data;
+                setProgram(row);
+
+                // Reload schema with updated program data
+                const schema = await loadApplicationSchema(row);
+                const loadedFields = schema.fields || [];
+                const fieldsWithKeys = loadedFields.map((field, idx) => ({
+                  ...field,
+                  key: field.key || `field-${idx}-${Date.now()}`,
+                }));
+                setFields(fieldsWithKeys);
+              }
+            } catch (e) {
+              console.error(
+                "Failed to reload program after realtime update:",
+                e
+              );
+            }
+          };
+          reloadProgram();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [programId]);
+
   // simple field add helper
   function addField(type: AppItem["type"]) {
     const label = type
@@ -363,8 +416,11 @@ export default function CoalitionProgramBuilder() {
         program?.metadata?.published ||
         program?.metadata?.review_status === "published";
 
-      // Check if program is published
-      if (isPublished) {
+      // Check if program is published or has changes requested
+      const hasChangesRequested =
+        program?.metadata?.review_status === "changes_requested";
+
+      if (isPublished || hasChangesRequested) {
         // If published, save changes as draft and mark as pending
         // Don't update the live schema - keep it separate
         const meta = (program?.metadata ?? {}) as any;
@@ -379,6 +435,20 @@ export default function CoalitionProgramBuilder() {
               review_status: "pending_changes",
               pending_changes_at: new Date().toISOString(),
               pending_changes_by: "coalition_manager",
+              // Update application flags AND save working schema
+              application: {
+                ...(meta.application || {}),
+                schema: updatedSchema, // CRITICAL: Save working schema here too!
+                profile: {
+                  enabled: includeProfile,
+                  sections: {
+                    personal: includePersonalInfo,
+                    family: includeFamilyInfo,
+                    writing: includeWritingInfo,
+                    experience: includeExperienceInfo,
+                  },
+                },
+              },
             },
           })
           .eq("id", program?.id);
