@@ -59,65 +59,79 @@ export default function ProfileCard({
           {expandedSections.personal && (
             <div className="bg-gray-50 rounded-lg rounded-t-none p-3 space-y-2">
               {/* Name */}
-              {profile?.full_name && (
-                <div className="bg-white rounded border p-2 space-y-1">
-                  <div className="text-xs font-medium text-gray-600">Name</div>
-                  <div className="text-sm text-gray-900 font-medium">
-                    {profile.full_name}
-                  </div>
+              <div className="bg-white rounded border p-2 space-y-1">
+                <div className="text-xs font-medium text-gray-600">Name</div>
+                <div className="text-sm text-gray-900 font-medium">
+                  {profile?.full_name || (
+                    <span className="text-gray-500 italic">Not provided</span>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Birth Date */}
-              {profile?.date_of_birth && (
-                <div className="bg-white rounded border p-2 space-y-1">
-                  <div className="text-xs font-medium text-gray-600">
-                    Birth Date
-                  </div>
-                  <div className="text-sm text-gray-900">
-                    {new Date(profile.date_of_birth).toLocaleDateString(
+              <div className="bg-white rounded border p-2 space-y-1">
+                <div className="text-xs font-medium text-gray-600">
+                  Birth Date
+                </div>
+                <div className="text-sm text-gray-900">
+                  {profile?.date_of_birth ? (
+                    new Date(profile.date_of_birth).toLocaleDateString(
                       "en-US",
                       {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
                       }
-                    )}
-                  </div>
+                    )
+                  ) : (
+                    <span className="text-gray-500 italic">Not provided</span>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Address */}
-              {(addr?.line1 ||
-                addr?.city ||
-                addr?.state ||
-                addr?.postal_code ||
-                addr?.country) && (
-                <div className="bg-white rounded border p-2 space-y-1">
-                  <div className="text-xs font-medium text-gray-600">
-                    Address
-                  </div>
-                  <div className="text-sm text-gray-900">
-                    {[addr.line1, addr.line2].filter(Boolean).join(" ")}
-                    <br />
-                    {[addr.city, addr.state].filter(Boolean).join(", ")}{" "}
-                    {addr.postal_code || ""}
-                    {addr.country ? ` · ${addr.country}` : ""}
-                  </div>
+              <div className="bg-white rounded border p-2 space-y-1">
+                <div className="text-xs font-medium text-gray-600">Address</div>
+                <div className="text-sm text-gray-900">
+                  {addr?.line1 ||
+                  addr?.city ||
+                  addr?.state ||
+                  addr?.postal_code ||
+                  addr?.country ? (
+                    <>
+                      {[addr.line1, addr.line2].filter(Boolean).join(" ")}
+                      <br />
+                      {[addr.city, addr.state].filter(Boolean).join(", ")}{" "}
+                      {addr.postal_code || ""}
+                      {addr.country ? ` · ${addr.country}` : ""}
+                    </>
+                  ) : (
+                    <span className="text-gray-500 italic">Not provided</span>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Phone Number */}
-              {profile?.phone_number && (
-                <div className="bg-white rounded border p-2 space-y-1">
-                  <div className="text-xs font-medium text-gray-600">
-                    Phone Number
-                  </div>
-                  <div className="text-sm text-gray-900">
-                    {profile.phone_number}
-                  </div>
+              <div className="bg-white rounded border p-2 space-y-1">
+                <div className="text-xs font-medium text-gray-600">
+                  Phone Number
                 </div>
-              )}
+                <div className="text-sm text-gray-900">
+                  {profile?.phone_number || (
+                    <span className="text-gray-500 italic">Not provided</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="bg-white rounded border p-2 space-y-1">
+                <div className="text-xs font-medium text-gray-600">Email</div>
+                <div className="text-sm text-gray-900">
+                  {profile?.email || (
+                    <span className="text-gray-500 italic">Not provided</span>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -144,108 +158,86 @@ export default function ProfileCard({
           {expandedSections.family && (
             <div className="bg-gray-50 rounded-lg rounded-t-none p-3 space-y-2">
               {/* Parent/Guardian Information */}
-              {(profile?.parent_guardian?.name ||
-                profile?.parent_guardian?.email ||
-                profile?.parent_guardian?.phone) && (
-                <div className="bg-white rounded border p-3 space-y-2">
-                  <div className="text-xs font-medium text-gray-600">
-                    Parent/Guardian Information
+              <div className="bg-white rounded border p-3 space-y-2">
+                <div className="text-xs font-medium text-gray-600">
+                  Parent/Guardian Information
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-gray-500">Name</div>
+                  <div className="text-sm text-gray-900">
+                    {profile?.parent_guardian_name || (
+                      <span className="text-gray-500 italic">Not provided</span>
+                    )}
                   </div>
-                  {profile?.parent_guardian?.name && (
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-gray-500">Email</div>
+                  <div className="text-sm text-gray-900">
+                    {profile?.parent_guardian_email || (
+                      <span className="text-gray-500 italic">Not provided</span>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-gray-500">Phone</div>
+                  <div className="text-sm text-gray-900">
+                    {profile?.parent_guardian_phone || (
+                      <span className="text-gray-500 italic">Not provided</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency Contact Information */}
+              <div className="bg-white rounded border p-3 space-y-2">
+                <div className="text-xs font-medium text-gray-600">
+                  Emergency Contact
+                </div>
+                {profile?.emergency_contact_is_parent ? (
+                  <div className="text-sm text-gray-900">
+                    Same as parent/guardian above
+                  </div>
+                ) : (
+                  <div className="space-y-2">
                     <div className="space-y-1">
                       <div className="text-xs font-medium text-gray-500">
                         Name
                       </div>
                       <div className="text-sm text-gray-900">
-                        {profile.parent_guardian.name}
+                        {profile?.emergency_contact_name || (
+                          <span className="text-gray-500 italic">
+                            Not provided
+                          </span>
+                        )}
                       </div>
                     </div>
-                  )}
-                  {profile?.parent_guardian?.email && (
                     <div className="space-y-1">
                       <div className="text-xs font-medium text-gray-500">
                         Email
                       </div>
                       <div className="text-sm text-gray-900">
-                        {profile.parent_guardian.email}
+                        {profile?.emergency_contact_email || (
+                          <span className="text-gray-500 italic">
+                            Not provided
+                          </span>
+                        )}
                       </div>
                     </div>
-                  )}
-                  {profile?.parent_guardian?.phone && (
                     <div className="space-y-1">
                       <div className="text-xs font-medium text-gray-500">
                         Phone
                       </div>
                       <div className="text-sm text-gray-900">
-                        {profile.parent_guardian.phone}
+                        {profile?.emergency_contact_phone || (
+                          <span className="text-gray-500 italic">
+                            Not provided
+                          </span>
+                        )}
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Emergency Contact Information */}
-              {profile?.emergency_contact && (
-                <div className="bg-white rounded border p-3 space-y-2">
-                  <div className="text-xs font-medium text-gray-600">
-                    Emergency Contact
-                  </div>
-                  {profile.emergency_contact.is_parent ? (
-                    <div className="text-sm text-gray-900">
-                      Same as parent/guardian above
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {profile.emergency_contact.name && (
-                        <div className="space-y-1">
-                          <div className="text-xs font-medium text-gray-500">
-                            Name
-                          </div>
-                          <div className="text-sm text-gray-900">
-                            {profile.emergency_contact.name}
-                          </div>
-                        </div>
-                      )}
-                      {profile.emergency_contact.email && (
-                        <div className="space-y-1">
-                          <div className="text-xs font-medium text-gray-500">
-                            Email
-                          </div>
-                          <div className="text-sm text-gray-900">
-                            {profile.emergency_contact.email}
-                          </div>
-                        </div>
-                      )}
-                      {profile.emergency_contact.phone && (
-                        <div className="space-y-1">
-                          <div className="text-xs font-medium text-gray-500">
-                            Phone
-                          </div>
-                          <div className="text-sm text-gray-900">
-                            {profile.emergency_contact.phone}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Show placeholder if no family/emergency contact info */}
-              {!profile?.parent_guardian?.name &&
-                !profile?.parent_guardian?.email &&
-                !profile?.parent_guardian?.phone &&
-                !profile?.emergency_contact && (
-                  <div className="bg-white rounded border p-3 text-center text-gray-500">
-                    <div className="text-3xl mb-2">👨‍👩‍👧‍👦</div>
-                    <div className="text-xs font-medium mb-1">
-                      No Contact Information
-                    </div>
-                    <div className="text-xs">
-                      Family and emergency contact information not provided
                     </div>
                   </div>
                 )}
+              </div>
             </div>
           )}
         </div>
@@ -317,26 +309,14 @@ export default function ProfileCard({
           {expandedSections.experience && (
             <div className="bg-gray-50 rounded-lg rounded-t-none p-3 space-y-2">
               {/* Resume */}
-              {profile?.resume ? (
+              {profile?.resume_file ? (
                 <div className="bg-white rounded border p-3 space-y-2">
                   <div className="text-xs font-medium text-gray-600">
                     Resume
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-lg">📄</div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-900">
-                        {profile.resume.fileName}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {profile.resume.fileSize
-                          ? (profile.resume.fileSize / (1024 * 1024)).toFixed(2)
-                          : "0"}{" "}
-                        MB
-                      </div>
-                    </div>
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <FilePreview fileInfo={profile.resume_file} />
                   </div>
-                  <FilePreview fileInfo={profile.resume} />
                 </div>
               ) : (
                 <div className="bg-white rounded border p-3">
@@ -351,38 +331,23 @@ export default function ProfileCard({
               )}
 
               {/* Portfolio and additional files */}
-              {files.length > 0 ? (
-                <div className="bg-white rounded border p-3">
-                  <div className="space-y-3">
-                    <div className="text-xs font-medium text-gray-600">
-                      Portfolio and Additional Files
-                    </div>
-                    <div className="space-y-3">
-                      {files.map((fi, i) => (
-                        <div key={i} className="bg-gray-50 rounded border p-2">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="text-lg">📎</div>
-                            <div className="flex-1">
-                              <div className="text-sm font-medium text-gray-900">
-                                {fi.fileName}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {fi.fileSize
-                                  ? (fi.fileSize / (1024 * 1024)).toFixed(2)
-                                  : "0"}{" "}
-                                MB
-                              </div>
-                            </div>
-                          </div>
-                          <FilePreview fileInfo={fi} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+              <div className="bg-white rounded border p-3">
+                <div className="text-xs font-medium text-gray-600">
+                  Portfolio and Additional Files
                 </div>
-              ) : (
-                <div className="bg-white rounded border p-3">
-                  <div className="text-center text-gray-500">
+                {profile?.profile_files && profile.profile_files.length > 0 ? (
+                  <div className="space-y-4 mt-2">
+                    {profile.profile_files.map((fi, i) => (
+                      <div
+                        key={i}
+                        className="border border-gray-200 rounded-lg overflow-hidden"
+                      >
+                        <FilePreview fileInfo={fi} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 mt-2">
                     <div className="text-3xl mb-2">📁</div>
                     <div className="text-xs font-medium mb-1">
                       No Files Uploaded
@@ -392,8 +357,8 @@ export default function ProfileCard({
                       files
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
         </div>

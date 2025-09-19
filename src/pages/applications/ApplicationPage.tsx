@@ -110,23 +110,22 @@ export default function ApplicationPage() {
             };
 
             if (programUsesProfile(program)) {
-              const profile = await fetchProfileSnapshot();
-              setProfileSnap(profile);
-
-              // Always update profile data to ensure it's current
-              if (profile) {
-                const mergedAnswers = mergeProfileIntoAnswers(
-                  app.answers,
-                  profile
+              // If application is submitted, use the snapshot from answers
+              // If application is draft, use live profile data
+              if (app.status === "submitted" && app.answers?.profile) {
+                // Use the snapshot that was saved when submitted
+                setProfileSnap(app.answers.profile);
+                console.log(
+                  "Using profile snapshot from submitted application"
                 );
-                try {
-                  await saveApplication(app.id, mergedAnswers);
-                  // Update the answers state with the merged profile data
-                  setAnswers(mergedAnswers);
-                  console.log("Updated application with current profile data");
-                } catch (e) {
-                  console.error("Failed to save profile data:", e);
-                }
+              } else {
+                // For draft applications, just load the profile for display
+                // Don't merge or save it until submission
+                const profile = await fetchProfileSnapshot();
+                setProfileSnap(profile);
+                console.log(
+                  "Loaded live profile data for draft application (not saved yet)"
+                );
               }
             }
 
@@ -225,8 +224,24 @@ export default function ApplicationPage() {
     setSubmitting(true);
     try {
       if (appRow.status === "draft") {
-        // First time submitting
-        await submitApplication(appId, answers);
+        // First time submitting - take fresh profile snapshot
+        let finalAnswers = answers;
+        if (programDetails && programUsesProfile(programDetails)) {
+          // Fetch fresh profile data at submission time to capture any recent edits
+          const freshProfile = await fetchProfileSnapshot();
+          if (freshProfile) {
+            finalAnswers = mergeProfileIntoAnswers(answers, freshProfile);
+            console.log(
+              "🔍 ApplicationPage - Taking fresh profile snapshot at submission time"
+            );
+          } else {
+            console.warn(
+              "🔍 ApplicationPage - Profile enabled but no profile data found"
+            );
+          }
+        }
+
+        await submitApplication(appId, finalAnswers);
         // Reload application data to get updated status and answers
         const updatedApp = await getApplication(appId);
         setAppRow(updatedApp);
@@ -391,8 +406,9 @@ export default function ApplicationPage() {
                             </a>
                           </div>
                           <p className="text-sm text-blue-700 mb-6">
-                            This information was automatically filled from the
-                            applicant's profile.
+                            {appRow?.status === "submitted"
+                              ? "This information was automatically filled from your profile at the time of submission and is now locked."
+                              : "This information was automatically filled from your profile and will be updated as you make changes."}
                           </p>
 
                           {profileSnap ? (

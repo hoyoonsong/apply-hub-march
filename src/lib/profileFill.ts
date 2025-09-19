@@ -71,13 +71,25 @@ export function getRequiredProfileSections(program: any): {
   writing: boolean;
   experience: boolean;
 } {
+  // Check if profile is enabled at all
+  const profileEnabled =
+    program?.metadata?.application?.profile?.enabled !== false;
+  if (!profileEnabled) {
+    return {
+      personal: false,
+      family: false,
+      writing: false,
+      experience: false,
+    };
+  }
+
   const profileSections =
     program?.metadata?.application?.profile?.sections || {};
   return {
-    personal: profileSections.personal !== false, // Default to true
-    family: profileSections.family !== false, // Default to true
-    writing: profileSections.writing !== false, // Default to true
-    experience: profileSections.experience !== false, // Default to true
+    personal: profileSections.personal === true, // Must be explicitly true
+    family: profileSections.family === true, // Must be explicitly true
+    writing: profileSections.writing === true, // Must be explicitly true
+    experience: profileSections.experience === true, // Must be explicitly true
   };
 }
 
@@ -90,11 +102,34 @@ export function validateProfileSections(
     experience: boolean;
   }
 ): { isValid: boolean; missingSections: string[] } {
-  if (!profile) {
-    return { isValid: false, missingSections: ["Profile not found"] };
+  const missingSections: string[] = [];
+
+  // If no profile is required, return valid
+  const hasAnyRequiredSections = Object.values(requiredSections).some(Boolean);
+  if (!hasAnyRequiredSections) {
+    return { isValid: true, missingSections: [] };
   }
 
-  const missingSections: string[] = [];
+  // If profile is required but not found, return invalid
+  if (!profile) {
+    const requiredSectionNames: string[] = [];
+    if (requiredSections.personal)
+      requiredSectionNames.push("Personal Information");
+    if (requiredSections.family)
+      requiredSectionNames.push("Family/Emergency Contact");
+    if (requiredSections.writing) requiredSectionNames.push("Writing & Essays");
+    if (requiredSections.experience)
+      requiredSectionNames.push("Experience & Portfolio");
+
+    return {
+      isValid: false,
+      missingSections: [
+        `Profile not found. Please complete: ${requiredSectionNames.join(
+          ", "
+        )}`,
+      ],
+    };
+  }
 
   // Personal Information validation
   if (requiredSections.personal) {
@@ -151,14 +186,14 @@ export function validateProfileSections(
       !profile.personal_statement ||
       profile.personal_statement.trim() === ""
     ) {
-      missingSections.push("Writing: Personal Statement");
+      missingSections.push("Writing & Essays: Personal Statement");
     }
   }
 
   // Experience/Portfolio validation
   if (requiredSections.experience) {
     if (!profile.resume_file) {
-      missingSections.push("Experience/Portfolio: Resume");
+      missingSections.push("Experience & Portfolio: Resume");
     }
   }
 

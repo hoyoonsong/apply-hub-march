@@ -63,7 +63,7 @@ export function useCollaborativeReview(appId: string) {
       );
       setAnswers((row?.applicant_answers as any) ?? {});
 
-      // If RPC doesn't return application_schema, fetch it from program metadata
+      // If RPC doesn't return application_schema, fetch it using centralized loader
       let schema = (row?.application_schema as any) ?? {};
       if (!schema || Object.keys(schema).length === 0) {
         console.log("No schema from RPC, fetching from program metadata...");
@@ -71,6 +71,14 @@ export function useCollaborativeReview(appId: string) {
           // Get the program_id from the row data
           const programId = row?.program_id;
           if (programId) {
+            // Use the centralized schema loader
+            const { loadApplicationSchemaById } = await import(
+              "../lib/schemaLoader"
+            );
+            schema = await loadApplicationSchemaById(programId);
+            console.log("Fetched schema using centralized loader:", schema);
+
+            // Also fetch program data for other metadata
             const { data: programData, error: programError } = await supabase
               .from("programs")
               .select("id, name, description, organization_id, metadata")
@@ -78,11 +86,7 @@ export function useCollaborativeReview(appId: string) {
               .single();
 
             if (!programError && programData) {
-              schema = programData.metadata?.application_schema ?? {};
               setProgram(programData);
-              console.log("Fetched schema from program:", schema);
-            } else {
-              console.error("Error fetching program schema:", programError);
             }
           }
         } catch (err) {

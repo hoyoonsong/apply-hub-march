@@ -117,7 +117,13 @@ export default function ApplicationForm() {
             setProgram({
               id: programData.id,
               name: programData.name || "Application",
-              metadata: programData.metadata || { form: { fields } },
+              metadata: {
+                ...programData.metadata,
+                form: {
+                  ...programData.metadata?.form,
+                  fields: schema.fields, // Preserve the loaded schema fields
+                },
+              },
             });
 
             // Load organization details
@@ -150,14 +156,24 @@ export default function ApplicationForm() {
 
   // Load profile snapshot when program uses profile autofill
   useEffect(() => {
-    if (!program) return;
+    if (!program || !app) return;
 
     if (!programUsesProfile(program)) return;
     (async () => {
-      const profile = await fetchProfileSnapshot();
-      setProfileSnap(profile);
+      // If application is submitted, use the snapshot from answers
+      // If application is draft, use live profile data
+      if (app.status === "submitted" && app.answers?.profile) {
+        // Use the snapshot that was saved when submitted
+        setProfileSnap(app.answers.profile);
+        console.log("Using profile snapshot from submitted application");
+      } else {
+        // For draft applications, fetch live profile
+        const profile = await fetchProfileSnapshot();
+        setProfileSnap(profile);
+        console.log("Using live profile data for draft application");
+      }
     })();
-  }, [program]);
+  }, [program, app]);
 
   const fields: Field[] = useMemo(() => {
     const meta = (program?.metadata ?? {}) as ProgramMeta;
@@ -169,10 +185,8 @@ export default function ApplicationForm() {
     try {
       setSaving(true);
       setErr(null);
-      const mergedAnswers = programUsesProfile(program)
-        ? mergeProfileIntoAnswers(answers, profileSnap)
-        : answers ?? {};
-      const updated = await saveApplication(applicationId, mergedAnswers);
+      // Don't merge profile data for draft saves - only save the actual form answers
+      const updated = await saveApplication(applicationId, answers);
       setApp((r) => (r ? { ...r, ...updated } : (updated as any)));
     } catch (e: any) {
       setErr(e.message ?? "Save failed");
@@ -223,10 +237,25 @@ export default function ApplicationForm() {
     setSubmitting(true);
     try {
       setErr(null);
-      const mergedAnswers = programUsesProfile(program)
-        ? mergeProfileIntoAnswers(answers, profileSnap)
-        : answers ?? {};
-      const updated = await saveApplication(applicationId, mergedAnswers);
+
+      // For profile-enabled programs, take a fresh snapshot at submission time
+      let finalAnswers = answers ?? {};
+      if (programUsesProfile(program)) {
+        // Fetch fresh profile data at submission time to capture any recent edits
+        const freshProfile = await fetchProfileSnapshot();
+        if (freshProfile) {
+          finalAnswers = mergeProfileIntoAnswers(answers, freshProfile);
+          console.log(
+            "🔍 ApplicationForm - Taking fresh profile snapshot at submission time"
+          );
+        } else {
+          console.warn(
+            "🔍 ApplicationForm - Profile enabled but no profile data found"
+          );
+        }
+      }
+
+      const updated = await saveApplication(applicationId, finalAnswers);
       setApp((r) => (r ? { ...r, ...updated } : (updated as any)));
       alert("Application submitted!");
       // Navigate back to the program
@@ -314,8 +343,9 @@ export default function ApplicationForm() {
                   </a>
                 </div>
                 <p className="text-xs text-blue-700 mt-1">
-                  Your profile information will be automatically included in
-                  this application.
+                  {app?.status === "submitted"
+                    ? "Your profile information was included at submission time and is now locked."
+                    : "Your profile information will be automatically included in this application."}
                 </p>
               </div>
 

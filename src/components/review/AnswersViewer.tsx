@@ -16,6 +16,23 @@ type RawField = {
 type Field = RawField & { id: string; label: string; type: string };
 
 function normalizeSchema(raw: any): Field[] {
+  // Validate that we have schema data, not profile data
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    // Check if this looks like profile data (has profile-specific fields)
+    if (
+      raw.full_name ||
+      raw.email ||
+      raw.phone_number ||
+      raw.profile_files ||
+      raw.resume_file
+    ) {
+      console.warn(
+        "🔍 AnswersViewer - Received profile data instead of schema, returning empty fields"
+      );
+      return [];
+    }
+  }
+
   const arr: RawField[] = Array.isArray(raw?.fields)
     ? raw.fields
     : Array.isArray(raw)
@@ -80,7 +97,21 @@ function formatValue(value: any, field: Field): string {
       }
       return String(value);
     default:
-      return typeof value === "object" ? JSON.stringify(value) : String(value);
+      if (typeof value === "object" && value !== null) {
+        // If it's profile data, don't show it
+        if (value.__source === "profile") return "—";
+        // If it's a file object, show the filename
+        if (value.fileName) return value.fileName;
+        // If it has a name or label, use that
+        if (value.name || value.label) return value.name ?? value.label;
+        // For any other object, show a clean summary instead of raw JSON
+        if (value.full_name) return value.full_name;
+        if (value.email) return value.email;
+        if (value.phone_number) return value.phone_number;
+        // Last resort: show a clean message instead of raw JSON
+        return "—";
+      }
+      return String(value);
   }
 }
 
@@ -98,12 +129,42 @@ function getAnswerForField(
   if (!answers || typeof answers !== "object") return undefined;
 
   // 1) direct id
-  if (field.id in answers) return answers[field.id];
+  if (field.id in answers) {
+    const value = answers[field.id];
+    // Check if this is profile data being returned as a field value
+    if (
+      field.id === "profile" &&
+      value &&
+      typeof value === "object" &&
+      value.__source === "profile"
+    ) {
+      console.warn(
+        "🔍 AnswersViewer - Field 'profile' is returning profile data instead of a field answer"
+      );
+      return undefined; // Don't render profile data as a field
+    }
+    return value;
+  }
 
   // 2) other raw keys
   const candidates = [field.key, field.name].filter(Boolean) as string[];
   for (const c of candidates) {
-    if (c in answers) return (answers as any)[c];
+    if (c in answers) {
+      const value = (answers as any)[c];
+      // Check if this is profile data being returned as a field value
+      if (
+        c === "profile" &&
+        value &&
+        typeof value === "object" &&
+        value.__source === "profile"
+      ) {
+        console.warn(
+          "🔍 AnswersViewer - Field key 'profile' is returning profile data instead of a field answer"
+        );
+        return undefined; // Don't render profile data as a field
+      }
+      return value;
+    }
   }
 
   // 3) fallback by index (q_0, q_1, ...)

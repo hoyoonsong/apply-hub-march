@@ -126,17 +126,42 @@ export async function loadApplicationSchemaById(
   }
 
   try {
-    // First try to get the full program data
+    // First try to get the full program data from programs table
     const { data: programData, error: programError } = await supabase
       .from("programs")
-      .select("id, metadata")
+      .select("id, name, metadata")
       .eq("id", programId)
       .single();
 
     if (!programError && programData) {
+      console.log(
+        "🔍 SchemaLoader - Found program in programs table:",
+        programData.id
+      );
       return await loadApplicationSchema(programData);
     } else {
-      // Fallback to RPC call
+      console.log(
+        "🔍 SchemaLoader - Program not found in programs table, trying programs_public"
+      );
+
+      // Try programs_public table as fallback
+      const { data: publicData, error: publicError } = await supabase
+        .from("programs_public")
+        .select("id, name, application_schema")
+        .eq("id", programId)
+        .single();
+
+      if (!publicError && publicData) {
+        console.log(
+          "🔍 SchemaLoader - Found program in programs_public table:",
+          publicData.id
+        );
+        if (publicData.application_schema) {
+          return { fields: publicData.application_schema.fields || [] };
+        }
+      }
+
+      // Final fallback to RPC call
       console.log(
         "🔍 SchemaLoader - Fallback to RPC call for programId:",
         programId
