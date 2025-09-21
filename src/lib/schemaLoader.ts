@@ -1,6 +1,37 @@
 import { supabase } from "./supabase";
 import { getBuilderSchema } from "../data/api";
 
+// Simple in-memory cache for schema data
+const schemaCache = new Map<string, { fields: any[]; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Clean up expired cache entries every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of schemaCache.entries()) {
+    if (now - value.timestamp > CACHE_DURATION) {
+      schemaCache.delete(key);
+    }
+  }
+}, 10 * 60 * 1000);
+
+function getCachedSchema(programId: string): { fields: any[] } | null {
+  const cached = schemaCache.get(programId);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    console.log("🔍 SchemaLoader - Using cached schema for:", programId);
+    return { fields: cached.fields };
+  }
+  return null;
+}
+
+function setCachedSchema(programId: string, schema: { fields: any[] }) {
+  schemaCache.set(programId, {
+    fields: schema.fields,
+    timestamp: Date.now(),
+  });
+  console.log("🔍 SchemaLoader - Cached schema for:", programId);
+}
+
 export interface ProgramWithMetadata {
   id: string;
   metadata?: {
@@ -125,6 +156,12 @@ export async function loadApplicationSchemaById(
     return { fields: [] };
   }
 
+  // Check cache first
+  const cached = getCachedSchema(programId);
+  if (cached) {
+    return cached;
+  }
+
   try {
     // First try to get the full program data from programs table
     const { data: programData, error: programError } = await supabase
@@ -138,7 +175,9 @@ export async function loadApplicationSchemaById(
         "🔍 SchemaLoader - Found program in programs table:",
         programData.id
       );
-      return await loadApplicationSchema(programData);
+      const schema = await loadApplicationSchema(programData);
+      setCachedSchema(programId, schema);
+      return schema;
     } else {
       console.log(
         "🔍 SchemaLoader - Program not found in programs table, trying programs_public"
@@ -157,7 +196,9 @@ export async function loadApplicationSchemaById(
           publicData.id
         );
         if (publicData.application_schema) {
-          return { fields: publicData.application_schema.fields || [] };
+          const schema = { fields: publicData.application_schema.fields || [] };
+          setCachedSchema(programId, schema);
+          return schema;
         }
       }
 
@@ -168,7 +209,9 @@ export async function loadApplicationSchemaById(
       );
       try {
         const schema = await getBuilderSchema(programId);
-        return { fields: schema?.fields || [] };
+        const result = { fields: schema?.fields || [] };
+        setCachedSchema(programId, result);
+        return result;
       } catch (rpcError) {
         console.error("🔍 SchemaLoader - RPC call failed:", rpcError);
         return { fields: [] };

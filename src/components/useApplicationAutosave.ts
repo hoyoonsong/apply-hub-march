@@ -15,7 +15,10 @@ export function useApplicationAutosave(
     try {
       const local = localStorage.getItem(storageKey);
       if (!local) return initialServerAnswers || {};
-      const parsed = JSON.parse(local) as { answers: Answers; updatedAt: string };
+      const parsed = JSON.parse(local) as {
+        answers: Answers;
+        updatedAt: string;
+      };
       const serverAt = initialServerUpdatedAt
         ? new Date(initialServerUpdatedAt).getTime()
         : 0;
@@ -42,37 +45,34 @@ export function useApplicationAutosave(
   // Track last pushed payload to avoid redundant RPCs
   const lastPushed = useRef<string>("");
 
-  const pushToServer = useMemo(
-    () => {
-      const debounced = (data: Answers) => {
-        const json = JSON.stringify(data);
-        if (json === lastPushed.current) return;
-        saveApplication(applicationId, data)
-          .then(() => {
-            lastPushed.current = json;
-          })
-          .catch((e) => {
-            console.warn("Autosave failed", e);
-          });
-      };
-      
-      let timeoutId: NodeJS.Timeout;
-      return {
-        call: (data: Answers) => {
-          clearTimeout(timeoutId);
-          timeoutId = setTimeout(() => debounced(data), 10000);
-        },
-        flush: () => {
-          clearTimeout(timeoutId);
-          debounced(answers);
-        },
-        cancel: () => {
-          clearTimeout(timeoutId);
-        }
-      };
-    },
-    [applicationId, answers]
-  );
+  const pushToServer = useMemo(() => {
+    const debounced = (data: Answers) => {
+      const json = JSON.stringify(data);
+      if (json === lastPushed.current) return;
+      saveApplication(applicationId, data)
+        .then(() => {
+          lastPushed.current = json;
+        })
+        .catch((e) => {
+          console.warn("Autosave failed", e);
+        });
+    };
+
+    let timeoutId: NodeJS.Timeout;
+    return {
+      call: (data: Answers) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => debounced(data), 30000); // Increased from 10s to 30s
+      },
+      flush: () => {
+        clearTimeout(timeoutId);
+        debounced(answers);
+      },
+      cancel: () => {
+        clearTimeout(timeoutId);
+      },
+    };
+  }, [applicationId, answers]);
 
   useEffect(() => {
     pushToServer.call(answers);
