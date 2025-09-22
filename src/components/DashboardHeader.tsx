@@ -23,8 +23,8 @@ export default function DashboardHeader({
       <div className="absolute top-2 left-2 sm:top-2 sm:left-4 z-10">
         <Link to="/" className="flex items-center">
           <img
-            src="/Apply-Hub.png"
-            alt="Apply Hub Logo"
+            src="/Omnipply.png"
+            alt="Omnipply Logo"
             className="h-24 w-auto sm:h-32 md:h-40"
           />
         </Link>

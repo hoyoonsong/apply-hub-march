@@ -1,4 +1,4 @@
-# Apply Hub
+# Omnipply
 
 A blank React website built with TypeScript and Tailwind CSS.
 

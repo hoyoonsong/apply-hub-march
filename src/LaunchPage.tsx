@@ -16,8 +16,8 @@ function LaunchPage() {
         {/* Logo positioned absolutely at top-left corner with responsive sizing */}
         <div className="absolute top-2 left-2 sm:top-2 sm:left-4 z-10">
           <img
-            src="/Apply-Hub.png"
-            alt="Apply Hub Logo"
+            src="/Omnipply.png"
+            alt="Omnipply Logo"
             className="h-24 w-auto sm:h-32 md:h-40"
           />
         </div>
@@ -68,7 +68,7 @@ function LaunchPage() {
         <div className="relative z-10 text-center text-white">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 drop-shadow-lg">
             Welcome to{" "}
-            <span className="text-white drop-shadow-lg">Apply Hub</span>
+            <span className="text-white drop-shadow-lg">Omnipply</span>
           </h1>
           <p className="text-xl md:text-2xl mb-12 max-w-3xl mx-auto leading-relaxed text-white drop-shadow-lg">
             Your gateway to drum corps auditions, scholarships, applications,
@@ -95,7 +95,7 @@ function LaunchPage() {
       {/* Features Section */}
       <div className="max-w-6xl mx-auto px-6 py-20">
         <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-16">
-          What Apply Hub Offers
+          What Omnipply Offers
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -183,7 +183,7 @@ function LaunchPage() {
       <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-6xl mx-auto px-6 text-center">
           <p className="text-gray-400">
-            © 2024 Apply Hub. Connecting drum corps talent with opportunities
+            © 2024 Omnipply. Connecting drum corps talent with opportunities
             worldwide.
           </p>
         </div>

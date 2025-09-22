@@ -11,8 +11,8 @@ export default function NotFound() {
       <div className="mb-8">
         <Link to="/" className="flex items-center">
           <img
-            src="/Apply-Hub.png"
-            alt="Apply Hub Logo"
+            src="/Omnipply.png"
+            alt="Omnipply Logo"
             className="h-20 w-auto"
           />
         </Link>

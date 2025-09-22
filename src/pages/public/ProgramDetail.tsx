@@ -167,7 +167,7 @@ export default function ProgramDetail() {
                   </h3>
                   <ul className="list-disc ml-6 text-sm text-gray-600">
                     <li>
-                      Apply-Hub Common App:{" "}
+                      Omnipply Common App:{" "}
                       {program.application_schema.common?.applyhub
                         ? "Yes"
                         : "No"}

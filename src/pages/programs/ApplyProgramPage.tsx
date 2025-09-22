@@ -126,7 +126,7 @@ export default function ApplyProgramPage() {
           <div className="rounded border bg-white p-4">
             <div className="font-medium mb-2">Common Application Options</div>
             <ul className="list-disc ml-5 text-sm">
-              <li>Apply-Hub Common App: {includeHubCommon ? "Yes" : "No"}</li>
+              <li>Omnipply Common App: {includeHubCommon ? "Yes" : "No"}</li>
               <li>
                 Coalition Common App: {includeCoalitionCommon ? "Yes" : "No"}
               </li>

@@ -308,7 +308,7 @@ export default function ApplicationForm() {
         <div className="flex gap-2 text-sm">
           {(program.metadata?.form?.include_common_app ?? false) && (
             <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded">
-              Apply-Hub Common App
+              Omnipply Common App
             </span>
           )}
           {(program.metadata?.form?.include_coalition_common_app ?? false) && (
