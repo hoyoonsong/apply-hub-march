@@ -6,6 +6,7 @@ import { missingRequired } from "../../utils/answers";
 import { supabase } from "../../lib/supabase";
 import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
 import ProfileCard from "../../components/profile/ProfileCard";
+import WordLimitedTextarea from "../../components/WordLimitedTextarea";
 import {
   fetchProfileSnapshot,
   mergeProfileIntoAnswers,
@@ -44,6 +45,7 @@ type Field =
       label: string;
       required?: boolean;
       maxLength?: number;
+      maxWords?: number;
     }
   | { id: string; type: "date"; label: string; required?: boolean }
   | {
@@ -413,16 +415,13 @@ export default function ApplicationForm() {
                   key={f.id}
                   className="bg-white border rounded-lg p-6 space-y-3"
                 >
-                  <label className="block text-sm font-medium text-gray-700">
-                    {f.label}
-                    {f.required && " *"}
-                  </label>
-                  <textarea
-                    className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    rows={5}
-                    maxLength={f.maxLength}
+                  <WordLimitedTextarea
+                    label={f.label}
                     value={val ?? ""}
-                    onChange={(e) => setVal(e.target.value)}
+                    onChange={setVal}
+                    maxWords={f.maxWords ?? 100}
+                    rows={5}
+                    required={f.required}
                   />
                 </div>
               );

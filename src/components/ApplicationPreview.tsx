@@ -6,6 +6,7 @@ import { Program } from "../lib/programs";
 import ProfileCard from "./profile/ProfileCard";
 import { FilePreview } from "./attachments/FilePreview";
 import { loadApplicationSchema } from "../lib/schemaLoader";
+import WordLimitedTextarea from "./WordLimitedTextarea";
 
 interface Field {
   id: string;
@@ -14,6 +15,7 @@ interface Field {
   required?: boolean;
   options?: string[];
   maxLength?: number;
+  maxWords?: number;
 }
 
 interface ApplicationPreviewProps {
@@ -557,15 +559,13 @@ export default function ApplicationPreview({
       case "long_text":
         return (
           <div className="bg-white border rounded-lg p-6 space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
-              {field.label}
-              {field.required && " *"}
-            </label>
-            <textarea
-              className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              rows={4}
+            <WordLimitedTextarea
+              label={field.label}
               value={val ?? ""}
-              onChange={(e) => setVal(field.id, e.target.value)}
+              onChange={(value) => setVal(field.id, value)}
+              maxWords={field.maxWords ?? 100}
+              rows={4}
+              required={field.required}
             />
           </div>
         );

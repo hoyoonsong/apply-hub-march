@@ -10,6 +10,7 @@ import { loadApplicationSchemaById } from "../../lib/schemaLoader";
 import { useApplicationAutosave } from "../../components/useApplicationAutosave";
 import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
 import ProfileCard from "../../components/profile/ProfileCard";
+import WordLimitedTextarea from "../../components/WordLimitedTextarea";
 import {
   programUsesProfile,
   fetchProfileSnapshot,
@@ -502,27 +503,14 @@ export default function ApplicationPage() {
                                 key={key}
                                 className="bg-white border border-gray-200 rounded-lg p-6"
                               >
-                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                  {item.label}
-                                  {item.required && " *"}
-                                </label>
-                                <textarea
-                                  className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                    !isFormEditable
-                                      ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                      : ""
-                                  }`}
+                                <WordLimitedTextarea
+                                  label={item.label}
                                   value={val}
-                                  maxLength={item.maxLength ?? 2000}
-                                  onChange={(e) => update(key, e.target.value)}
-                                  disabled={!isFormEditable}
-                                  readOnly={!isFormEditable}
-                                  style={{
-                                    cursor: isFormEditable
-                                      ? "text"
-                                      : "not-allowed",
-                                  }}
+                                  onChange={(value) => update(key, value)}
+                                  maxWords={item.maxWords ?? 100}
                                   rows={4}
+                                  required={item.required}
+                                  disabled={!isFormEditable}
                                 />
                               </div>
                             );

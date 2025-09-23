@@ -692,26 +692,59 @@ export default function SuperProgramsReview() {
                             </div>
                           ) : st === "pending_changes" ? (
                             <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                              <button
-                                onClick={() => handlePreviewProgram(p)}
-                                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
-                              >
-                                Preview
-                              </button>
-                              <button
-                                onClick={() => handleApproveChanges(p)}
-                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
-                                title="Update live page with changes"
-                              >
-                                Update Live Page
-                              </button>
-                              <button
-                                onClick={() => handleRequestChanges(p)}
-                                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
-                                title="Request changes from org admin"
-                              >
-                                Change Request
-                              </button>
+                              {/* Check if this program was ever published (has published_at) */}
+                              {p.published_at ? (
+                                // Previously published program - Preview, Update Live Page and Change Request
+                                <>
+                                  <button
+                                    onClick={() => handlePreviewProgram(p)}
+                                    className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+                                  >
+                                    Preview
+                                  </button>
+                                  <button
+                                    onClick={() => handleApproveChanges(p)}
+                                    className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
+                                    title="Update live page with changes"
+                                  >
+                                    Update Live Page
+                                  </button>
+                                  <button
+                                    onClick={() => handleRequestChanges(p)}
+                                    className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
+                                    title="Request changes from org admin"
+                                  >
+                                    Change Request
+                                  </button>
+                                </>
+                              ) : (
+                                // Never published program - Publish and Change Request
+                                <>
+                                  <button
+                                    onClick={() => handlePublish(p, "org")}
+                                    className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
+                                    title="Publish to organization (approves program)"
+                                  >
+                                    Publish (Org)
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handlePublish(p, "coalition")
+                                    }
+                                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded"
+                                    title="Publish to coalition (approves program)"
+                                  >
+                                    Publish (Coalition)
+                                  </button>
+                                  <button
+                                    onClick={() => handleRequestChanges(p)}
+                                    className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
+                                    title="Request changes from org admin"
+                                  >
+                                    Change Request
+                                  </button>
+                                </>
+                              )}
                               <button
                                 onClick={() => handleDelete(p)}
                                 className="text-red-600 hover:text-red-800 p-1"
@@ -763,9 +796,9 @@ export default function SuperProgramsReview() {
                             </div>
                           ) : (
                             <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                              {/* Check if this is a resubmission (has been published before) */}
-                              {p.published || p.published_at ? (
-                                // Resubmission actions - Update Live Page and Change Request
+                              {/* Check if this program was ever published (has published_at) */}
+                              {p.published_at ? (
+                                // Previously published program - Update Live Page and Change Request
                                 <>
                                   <button
                                     onClick={() => handleApproveChanges(p)}
@@ -783,7 +816,7 @@ export default function SuperProgramsReview() {
                                   </button>
                                 </>
                               ) : (
-                                // First-time submission actions - standard review buttons
+                                // Never published program - standard review buttons
                                 <>
                                   <button
                                     onClick={() =>

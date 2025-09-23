@@ -12,6 +12,7 @@ export type AppField = {
   type: FieldType;
   required?: boolean;
   maxLength?: number; // for LONG_TEXT
+  maxWords?: number; // for LONG_TEXT
   options?: string[]; // for SELECT
 };
 
@@ -53,6 +54,7 @@ export type AppItem =
       key?: string;
       required?: boolean;
       maxLength?: number;
+      maxWords?: number;
     }
   | { type: "checkbox"; label: string; key?: string; required?: boolean }
   | { type: "date"; label: string; key?: string; required?: boolean }

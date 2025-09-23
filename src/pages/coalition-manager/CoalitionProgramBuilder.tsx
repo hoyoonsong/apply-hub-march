@@ -157,18 +157,18 @@ function SortableField({
             {field.type === "long_text" && (
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                  Max characters:
+                  Max words:
                 </label>
                 <input
                   className="w-20 border border-gray-300 rounded px-2 py-2 text-sm disabled:opacity-50 disabled:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   type="number"
-                  placeholder="500"
-                  value={field.maxLength ?? ""}
+                  placeholder="100"
+                  value={field.maxWords ?? ""}
                   onChange={(e) => {
                     const val = e.target.value
                       ? Number(e.target.value)
                       : undefined;
-                    onUpdateField(idx, { maxLength: val });
+                    onUpdateField(idx, { maxWords: val });
                   }}
                   disabled={isDisabled}
                 />

@@ -248,6 +248,7 @@ export type BuilderField = {
   required?: boolean;
   options?: string[];
   max?: number;
+  maxWords?: number;
 };
 
 export type ProgramApplicationDraft = {
