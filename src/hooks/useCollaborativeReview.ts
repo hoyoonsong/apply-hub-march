@@ -105,11 +105,14 @@ export function useCollaborativeReview(appId: string) {
           console.log("Loaded reviewer form config:", formConfig);
           if (formConfig) {
             setReviewFormConfig({
-              show_score: true,
-              show_comments: true,
-              show_decision: false,
-              decision_options: ["accept", "waitlist", "reject"],
-              ...formConfig,
+              show_score: formConfig.show_score ?? true,
+              show_comments: formConfig.show_comments ?? true,
+              show_decision: formConfig.show_decision ?? false,
+              decision_options: formConfig.decision_options ?? [
+                "accept",
+                "waitlist",
+                "reject",
+              ],
             });
           }
         }

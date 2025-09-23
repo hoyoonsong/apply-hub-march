@@ -89,11 +89,14 @@ export default function ReviewerApplication() {
           const formConfig = await getProgramReviewForm(data.program.id);
           console.log("Loaded form config:", formConfig);
           setReviewForm({
-            show_score: true,
-            show_comments: true,
-            show_decision: false,
-            decision_options: ["accept", "waitlist", "reject"],
-            ...formConfig,
+            show_score: formConfig.show_score ?? true,
+            show_comments: formConfig.show_comments ?? true,
+            show_decision: formConfig.show_decision ?? false,
+            decision_options: formConfig.decision_options ?? [
+              "accept",
+              "waitlist",
+              "reject",
+            ],
           });
         } catch (e) {
           console.error("Failed to load reviewer form config:", e);
