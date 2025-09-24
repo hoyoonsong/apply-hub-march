@@ -84,17 +84,10 @@ export async function removeProgramAdmin(programId: string, userEmail: string) {
 export async function listProgramAssignments(
   programId: string
 ): Promise<ProgramAssignments> {
-  console.log(
-    "listProgramAssignments - Calling RPC with programId:",
-    programId
-  );
   const { data, error } = await supabase.rpc("org_list_program_assignments", {
     p_program_id: programId,
   });
 
-  console.log("listProgramAssignments - RPC response:", { data, error });
   if (error) throw error;
-  const result = data || { reviewers: [], admins: [] };
-  console.log("listProgramAssignments - Returning:", result);
-  return result;
+  return data || { reviewers: [], admins: [] };
 }

@@ -46,14 +46,8 @@ export default function ProgramAssignmentManager({
       setLoading(true);
       setError(null);
       const data = await listProgramAssignments(programId);
-      console.log("ProgramAssignmentManager - Raw data from API:", data);
-      console.log("ProgramAssignmentManager - Program ID:", programId);
       // Ensure we always have valid arrays
       setAssignments({
-        reviewers: data?.reviewers || [],
-        admins: data?.admins || [],
-      });
-      console.log("ProgramAssignmentManager - Processed assignments:", {
         reviewers: data?.reviewers || [],
         admins: data?.admins || [],
       });
@@ -70,43 +64,49 @@ export default function ProgramAssignmentManager({
     }
   }
 
-  async function handleLookupUser() {
-    if (!userEmail.trim()) return;
-
-    try {
-      setError(null);
-      const user = await findUserByEmail(userEmail.trim());
-      setFoundUser(user);
-
-      if (user) {
-        setUserName(user.full_name || "");
-      } else {
-        setError("User not found. They need to sign up first.");
-      }
-    } catch (err: any) {
-      setError(err.message);
-      setFoundUser(null);
-    }
-  }
-
   async function handleAddUser() {
-    if (!foundUser || !userEmail.trim()) return;
+    if (!userEmail.trim()) return;
 
     setIsAdding(true);
     setError(null);
 
     try {
+      // First, lookup the user
+      const user = await findUserByEmail(userEmail.trim());
+
+      if (!user) {
+        setError("User not found. They need to sign up first.");
+        return;
+      }
+
+      // Validate name match if name is provided
+      if (
+        userName.trim() &&
+        user.full_name &&
+        userName.trim() !== user.full_name
+      ) {
+        setError(
+          "Name doesn't match the user's profile. Please use the correct name or leave empty."
+        );
+        return;
+      }
+
+      // Set the found user data
+      setFoundUser(user);
+      setUserName(user.full_name || "");
+
+      // Then add the user (use the found user's name, not the entered name)
       const result =
         addFormType === "reviewer"
           ? await addProgramReviewer(
               programId,
               userEmail.trim(),
-              userName.trim() || undefined
+              user.full_name || undefined
             )
           : await addProgramAdmin(
               programId,
               userEmail.trim(),
-              userName.trim() || undefined
+              user.full_name || undefined
             );
 
       if (result.success) {
@@ -227,22 +227,13 @@ export default function ProgramAssignmentManager({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Email Address *
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={userEmail}
-                  onChange={(e) => setUserEmail(e.target.value)}
-                  placeholder="user@example.com"
-                  className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <button
-                  onClick={handleLookupUser}
-                  disabled={!userEmail.trim()}
-                  className="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                >
-                  Lookup
-                </button>
-              </div>
+              <input
+                type="email"
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                placeholder="user@example.com"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
 
             <div>
@@ -271,7 +262,7 @@ export default function ProgramAssignmentManager({
           <div className="flex gap-2">
             <button
               onClick={handleAddUser}
-              disabled={!foundUser || isAdding}
+              disabled={!userEmail.trim() || isAdding}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {isAdding
