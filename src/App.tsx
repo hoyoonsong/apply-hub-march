@@ -6,7 +6,7 @@ import LaunchPage from "./LaunchPage";
 import Dashboard from "./Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedSuperRoute from "./components/ProtectedSuperRoute";
-import PostAuth from "./postauth";
+import PostAuth from "./pages/PostAuth";
 import Onboarding from "./Onboarding";
 import NotFound from "./components/NotFound";
 import Unauthorized from "./pages/Unauthorized";
