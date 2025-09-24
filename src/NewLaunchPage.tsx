@@ -53,9 +53,12 @@ function NewLaunchPage() {
       </nav>
 
       {/* Hero Section */}
-      <div className="relative max-w-6xl mx-auto px-6 py-20">
-        {/* Background Image with Shade */}
-        <div className="absolute inset-0 rounded-2xl overflow-hidden">
+      <div className="relative w-full py-32 bg-white">
+        {/* Background Image with Shade - Hidden initially */}
+        <div
+          className="absolute inset-0 overflow-hidden opacity-0 transition-opacity duration-1000"
+          id="hero-bg"
+        >
           <img
             src="/Santaclaravanguard08.jpg"
             alt="Santa Clara Vanguard Drum Corps"
@@ -65,26 +68,35 @@ function NewLaunchPage() {
         </div>
 
         {/* Overlay Content */}
-        <div className="relative z-10 text-center text-white">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 drop-shadow-lg">
-            Welcome to{" "}
-            <span className="text-white drop-shadow-lg">Omnipply</span>
+        <div
+          className="relative z-10 text-center text-gray-900 max-w-6xl mx-auto px-6"
+          id="hero-content"
+        >
+          <h1 className="text-6xl md:text-8xl font-bold mb-8">
+            Welcome to <span className="text-gray-900">Omnipply</span>
           </h1>
-          <p className="text-xl md:text-2xl mb-12 max-w-3xl mx-auto leading-relaxed text-white drop-shadow-lg">
+          <p className="text-2xl md:text-3xl mb-16 max-w-4xl mx-auto leading-relaxed text-gray-600 font-light">
             Making forms easier for both applicants and organizations.
           </p>
-          <br />
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
             {/* Get Started button - different behavior based on auth state */}
             <button
               onClick={() => (user ? navigate("/dashboard") : setOpen(true))}
-              className="bg-white hover:bg-gray-50 text-blue-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-10 rounded-2xl text-xl transition-all duration-300 transform hover:scale-110 shadow-2xl hover:shadow-3xl"
             >
               {user ? "Go to Dashboard" : "Get Started"}
             </button>
-            <button className="bg-transparent hover:bg-white hover:text-blue-600 text-white font-bold py-4 px-8 rounded-xl text-lg border-2 border-white transition-all duration-200 transform hover:scale-105">
+            <button
+              onClick={() => {
+                // Just scroll to features - keep white background
+                document
+                  .getElementById("features")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="bg-transparent hover:bg-gray-900 hover:text-white text-gray-900 font-bold py-5 px-10 rounded-2xl text-xl border-2 border-gray-900 transition-all duration-300 transform hover:scale-110 hover:shadow-2xl"
+            >
               Learn More
             </button>
           </div>
@@ -106,52 +118,54 @@ function NewLaunchPage() {
       </div> */}
 
       {/* Feature Cards Section */}
-      <div className="py-20 bg-gray-50">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="space-y-20">
-            {/* Central Application Feature */}
-            <div className="mb-32">
-              <div className="text-center mb-16">
-                <h3 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                  One Application, Multiple Programs
-                </h3>
-                <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
-                  Create your profile once and submit to multiple programs with
-                  a single click. Your personal information, essays, and
-                  portfolio automatically populate across all applications.
-                </p>
-              </div>
+      <div id="features" className="pt-48 space-y-8">
+        {/* Central Application Feature */}
+        <div className="bg-gray-200 border-t border-gray-300 pt-16 pb-20">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="text-center mb-20">
+              <h3 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                One Application, Multiple Programs
+              </h3>
+              <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
+                Create your profile once and submit to multiple programs with a
+                single click. Your personal information, essays, and portfolio
+                automatically populate across all applications.
+              </p>
+            </div>
 
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-8 md:p-12">
-                <img
-                  src="/ApplicationBoth.png"
-                  alt="Application interface showing both applicant and organization views"
-                  className="w-full h-auto rounded-2xl shadow-2xl mx-auto mb-8"
-                />
-                <div className="text-center">
-                  <div className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-full text-sm font-semibold">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Choose what auto-fills: Personal Info • Emergency Contact •
-                    Essays • Portfolio
-                  </div>
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-8 md:p-12">
+              <img
+                src="/ApplicationBoth.png"
+                alt="Application interface showing both applicant and organization views"
+                className="w-full h-auto rounded-2xl shadow-2xl mx-auto mb-8"
+              />
+              <div className="text-center">
+                <div className="inline-flex items-center gap-3 bg-blue-600 text-white px-6 py-3 rounded-full text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Choose what auto-fills: Personal Info • Emergency Contact •
+                  Essays • Portfolio
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Organization Supplementals Feature */}
-            <div className="mb-32">
+        {/* Organization Supplementals Feature */}
+        <div className="bg-gray-200 border-t border-gray-300 pt-16 pb-20">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="mb-16">
               <div className="text-center mb-16">
                 <h3 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
                   Organization-Specific Questions
@@ -171,7 +185,7 @@ function NewLaunchPage() {
                   className="w-full h-auto rounded-2xl shadow-2xl mx-auto mb-8"
                 />
                 <div className="text-center">
-                  <div className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-full text-sm font-semibold">
+                  <div className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-full text-base font-semibold">
                     <svg
                       className="w-4 h-4"
                       fill="none"
@@ -191,9 +205,13 @@ function NewLaunchPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Coalition Applications Feature */}
-            <div className="mb-32">
+        {/* Coalition Applications Feature */}
+        <div className="bg-gray-200 border-t border-gray-300 pt-16 pb-20">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="mb-16">
               <div className="text-center mb-16">
                 <h3 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
                   Coalition Applications
@@ -213,7 +231,7 @@ function NewLaunchPage() {
                   className="w-full h-auto rounded-2xl shadow-2xl mx-auto mb-8"
                 />
                 <div className="text-center">
-                  <div className="inline-flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-full text-sm font-semibold">
+                  <div className="inline-flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-full text-base font-semibold">
                     <svg
                       className="w-4 h-4"
                       fill="none"
@@ -233,9 +251,13 @@ function NewLaunchPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Collaborative Review Feature */}
-            <div className="mb-32">
+        {/* Collaborative Review Feature */}
+        <div className="bg-gray-200 border-t border-gray-300 pt-16 pb-20">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="mb-16">
               <div className="text-center mb-16">
                 <h3 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
                   Collaborative Review Process
@@ -254,7 +276,7 @@ function NewLaunchPage() {
                   className="w-full h-auto rounded-2xl shadow-2xl mx-auto mb-8"
                 />
                 <div className="text-center">
-                  <div className="inline-flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-full text-sm font-semibold">
+                  <div className="inline-flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-full text-base font-semibold">
                     <svg
                       className="w-4 h-4"
                       fill="none"
@@ -405,6 +427,37 @@ function NewLaunchPage() {
         </div>
       </div>
       */}
+
+      {/* Call-to-Action Section */}
+      <div className="py-20 bg-blue-600">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            Ready to Get Started?
+          </h2>
+          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+            Join organizations and applicants who are already making their
+            application process easier with Omnipply.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <button
+              onClick={() => (user ? navigate("/dashboard") : setOpen(true))}
+              className="bg-white hover:bg-gray-50 text-blue-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
+            >
+              {user ? "Go to Dashboard" : "Get Started Free"}
+            </button>
+            <button
+              onClick={() =>
+                document
+                  .getElementById("features")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="bg-transparent hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl text-lg border-2 border-white transition-all duration-200 transform hover:scale-105"
+            >
+              Learn More
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
