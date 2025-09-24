@@ -49,6 +49,8 @@ import ReviewHome from "./pages/review/ReviewHome";
 import ReviewAppPage from "./pages/review/ReviewAppPage";
 import AllReviewsPage from "./pages/review/AllReviewsPage";
 import OrgReviewsPage from "./pages/org/admin/OrgReviewsPage";
+import OrgManageReviewers from "./pages/org-admin/OrgManageReviewers";
+import OrgTeamManagement from "./pages/org-admin/OrgTeamManagement";
 
 export default function App() {
   return (
@@ -169,6 +171,26 @@ export default function App() {
                 <ProtectedRoute>
                   <ProtectedOrgAdminRoute>
                     <OrgProgramBuilder />
+                  </ProtectedOrgAdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/:orgSlug/admin/reviewers"
+              element={
+                <ProtectedRoute>
+                  <ProtectedOrgAdminRoute>
+                    <OrgManageReviewers />
+                  </ProtectedOrgAdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/:orgSlug/admin/team"
+              element={
+                <ProtectedRoute>
+                  <ProtectedOrgAdminRoute>
+                    <OrgTeamManagement />
                   </ProtectedOrgAdminRoute>
                 </ProtectedRoute>
               }

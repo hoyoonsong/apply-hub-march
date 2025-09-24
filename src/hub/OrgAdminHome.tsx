@@ -38,10 +38,14 @@ export default function OrgAdminHome() {
               onClick={() => {}}
             />
           </Link>
-          <HubTile
-            title="Manage Reviewers"
-            subtitle="Assign reviewers to org/program scopes"
-          />
+          <Link to={`/org/${orgSlug}/admin/reviewers`} className="block">
+            <HubTile
+              title="Manage Reviewers"
+              subtitle="Assign reviewers to org/program scopes"
+              disabled={false}
+              onClick={() => {}}
+            />
+          </Link>
           <HubTile
             title="Applications Inbox"
             subtitle="Review and change statuses"
@@ -50,7 +54,14 @@ export default function OrgAdminHome() {
             title="Published Programs"
             subtitle="Quick overview of what's live"
           />
-          <HubTile title="Team (Org Admins)" subtitle="Add/remove org admins" />
+          <Link to={`/org/${orgSlug}/admin/team`} className="block">
+            <HubTile
+              title="Team (Org Admins)"
+              subtitle="Add/remove org admins"
+              disabled={false}
+              onClick={() => {}}
+            />
+          </Link>
           <HubTile
             title="Organization Settings"
             subtitle="Name, slug, description"
