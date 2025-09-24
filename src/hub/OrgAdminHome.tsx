@@ -1,3 +1,4 @@
+import React from "react";
 import { Link, useParams } from "react-router-dom";
 import HubTile from "../components/HubTile";
 
@@ -50,18 +51,6 @@ export default function OrgAdminHome() {
             title="Applications Inbox"
             subtitle="Review and change statuses"
           />
-          <HubTile
-            title="Published Programs"
-            subtitle="Quick overview of what's live"
-          />
-          <Link to={`/org/${orgSlug}/admin/team`} className="block">
-            <HubTile
-              title="Team (Org Admins)"
-              subtitle="Add/remove org admins"
-              disabled={false}
-              onClick={() => {}}
-            />
-          </Link>
           <HubTile
             title="Organization Settings"
             subtitle="Name, slug, description"
