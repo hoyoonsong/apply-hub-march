@@ -1,9 +1,42 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import HubTile from "../components/HubTile";
+import { assignOrgAdminAsReviewer } from "../lib/orgAdminReviewers";
+import { supabase } from "../lib/supabase";
 
 export default function OrgAdminHome() {
   const { orgSlug } = useParams<{ orgSlug: string }>();
+
+  // Auto-sync org admin reviewers when component mounts
+  useEffect(() => {
+    const syncReviewers = async () => {
+      try {
+        // Get the current user
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Get organization ID from slug
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("id")
+          .eq("slug", orgSlug)
+          .single();
+
+        if (org) {
+          // Assign current user as reviewer for all programs in this org
+          await assignOrgAdminAsReviewer(org.id, user.id);
+        }
+      } catch (error) {
+        console.error("Failed to sync org admin reviewers:", error);
+        // Don't show error to user, just log it
+      }
+    };
+
+    syncReviewers();
+  }, [orgSlug]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -47,10 +80,14 @@ export default function OrgAdminHome() {
               onClick={() => {}}
             />
           </Link>
-          <HubTile
-            title="Applications Inbox"
-            subtitle="Review and change statuses"
-          />
+          <Link to="/review/all" className="block">
+            <HubTile
+              title="Applications Inbox"
+              subtitle="Review and change statuses"
+              disabled={false}
+              onClick={() => {}}
+            />
+          </Link>
           <HubTile
             title="Organization Settings"
             subtitle="Name, slug, description"
