@@ -2,7 +2,8 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthProvider";
 import { ScopeProvider } from "./auth/ScopeProvider";
-import LaunchPage from "./LaunchPage";
+import NewLaunchPage from "./NewLaunchPage";
+import Features from "./pages/Features";
 import Dashboard from "./Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedSuperRoute from "./components/ProtectedSuperRoute";
@@ -57,7 +58,8 @@ export default function App() {
       <ScopeProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<LaunchPage />} />
+            <Route path="/" element={<NewLaunchPage />} />
+            <Route path="/features" element={<Features />} />
             <Route path="/post-auth" element={<PostAuth />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route
