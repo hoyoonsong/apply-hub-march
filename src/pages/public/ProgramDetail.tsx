@@ -51,11 +51,21 @@ export default function ProgramDetail() {
         // Load program details and schema
         const { data: programData, error: programError } = await supabase
           .from("programs_public")
-          .select("id, name, type, description, open_at, close_at")
+          .select("id, name, type, description, open_at, close_at, published")
           .eq("id", programId)
           .single();
 
-        if (programError) throw programError;
+        if (programError || !programData) {
+          // If program not found, redirect to unauthorized
+          navigate("/unauthorized");
+          return;
+        }
+
+        // Check if program is published
+        if (!programData.published) {
+          navigate("/unauthorized");
+          return;
+        }
         setProgram(programData);
 
         // Load schema using centralized loader

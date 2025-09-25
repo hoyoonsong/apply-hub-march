@@ -73,20 +73,32 @@ export default function ApplicationPage() {
         console.log("🔍 ApplicationPage - Loaded schema:", schema);
         setSchema(schema);
 
-        // Get program details for deadline info
+        // Get program details for deadline info - check if program is published
         const { data: progData, error: progError } = await supabase
           .from("programs_public")
-          .select("open_at, close_at")
+          .select("open_at, close_at, published")
           .eq("id", app.program_id)
           .single();
 
-        if (!progError && progData) {
-          console.log("Program data:", progData);
-          console.log("Open at:", progData?.open_at);
-          console.log("Close at:", progData?.close_at);
-          setProgramDeadline(progData?.close_at || null);
-          setProgramOpenDate(progData?.open_at || null);
+        if (progError || !progData) {
+          // Program not found
+          console.log("Program not found:", progError);
+          navigate("/unauthorized");
+          return;
         }
+
+        // Check if program is published
+        if (!progData.published) {
+          console.log("Program is not published");
+          navigate("/unauthorized");
+          return;
+        }
+
+        console.log("Program data:", progData);
+        console.log("Open at:", progData?.open_at);
+        console.log("Close at:", progData?.close_at);
+        setProgramDeadline(progData?.close_at || null);
+        setProgramOpenDate(progData?.open_at || null);
 
         // Set editing mode: draft apps are editable, submitted apps are read-only by default
         setIsEditing(app.status === "draft");

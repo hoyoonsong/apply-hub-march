@@ -47,7 +47,13 @@ export default function ApplyProgramPage() {
         .single();
 
       if (error || !data) {
-        navigate("/"); // not published or invalid id
+        navigate("/unauthorized"); // not found
+        return;
+      }
+
+      // Check if program is published
+      if (!data.published) {
+        navigate("/unauthorized"); // not published
         return;
       }
       setProgram(data as ProgramPublic);
