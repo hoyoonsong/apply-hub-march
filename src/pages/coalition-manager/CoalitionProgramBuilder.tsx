@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../auth/AuthProvider";
 import { isUUID } from "../../lib/id";
 import {
   saveBuilderSchema,
@@ -199,6 +200,7 @@ export default function CoalitionProgramBuilder() {
     programId: string;
   }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [coalition, setCoalition] = useState<Coalition | null>(null);
   const [program, setProgram] = useState<Program | null>(null);
@@ -383,7 +385,7 @@ export default function CoalitionProgramBuilder() {
   }
 
   async function onSave() {
-    if (!program || !isUUID(programId)) return; // Guard against undefined ID
+    if (!program || !isUUID(programId) || !user) return; // Guard against undefined ID
     setSaving(true);
     setMsg(null);
     try {
@@ -419,8 +421,11 @@ export default function CoalitionProgramBuilder() {
       // Check if program is published or has changes requested
       const hasChangesRequested =
         program?.metadata?.review_status === "changes_requested";
+      const requiresSuperApproval =
+        program?.metadata?.requires_super_approval === true;
 
-      if (isPublished || hasChangesRequested) {
+      // Only use pending changes logic for published programs that don't require super approval
+      if ((isPublished || hasChangesRequested) && !requiresSuperApproval) {
         // If published, save changes as draft and mark as pending
         // Don't update the live schema - keep it separate
         const meta = (program?.metadata ?? {}) as any;
@@ -434,7 +439,7 @@ export default function CoalitionProgramBuilder() {
               pending_schema: updatedSchema,
               review_status: "pending_changes",
               pending_changes_at: new Date().toISOString(),
-              pending_changes_by: "coalition_manager",
+              pending_changes_by: user.id,
               // Update application flags AND save working schema
               application: {
                 ...(meta.application || {}),
@@ -455,12 +460,52 @@ export default function CoalitionProgramBuilder() {
 
         if (updateError) throw new Error(updateError.message);
 
+        // Force refresh the program data to update the UI
+        const { data: refreshedData, error: refreshError } = await supabase.rpc(
+          "cm_get_program_v1",
+          {
+            p_program_id: programId,
+          }
+        );
+
+        if (!refreshError && refreshedData) {
+          const row = Array.isArray(refreshedData)
+            ? refreshedData[0]
+            : refreshedData;
+          setProgram(row);
+
+          // Reload schema with updated program data
+          const schema = await loadApplicationSchema(row);
+          const loadedFields = schema.fields || [];
+          const fieldsWithKeys = loadedFields.map((field, idx) => ({
+            ...field,
+            key: field.key || `field-${idx}-${Date.now()}`,
+          }));
+          setFields(fieldsWithKeys);
+        }
+
         setMsg(
           "Changes saved as draft! These changes require super admin approval before going live."
         );
       } else {
         // If not published, save normally to the live schema
         await saveBuilderSchema(program.id, updatedSchema);
+
+        // Force refresh the program data to update the UI
+        const { data: refreshedData, error: refreshError } = await supabase.rpc(
+          "cm_get_program_v1",
+          {
+            p_program_id: programId,
+          }
+        );
+
+        if (!refreshError && refreshedData) {
+          const row = Array.isArray(refreshedData)
+            ? refreshedData[0]
+            : refreshedData;
+          setProgram(row);
+        }
+
         setMsg("Saved.");
       }
     } catch (e: any) {
@@ -470,38 +515,85 @@ export default function CoalitionProgramBuilder() {
     }
   }
 
-  async function onSubmitForReview() {
-    if (!program || !coalition || !isUUID(programId)) return; // Guard against undefined ID
+  async function onPublish() {
+    if (!program || !coalition || !isUUID(programId) || !user) return; // Guard against undefined ID
     setSaving(true);
     setMsg(null);
     try {
-      // First, save any current changes to ensure super admin sees latest version
-      console.log("Auto-saving current changes before submit...");
+      // First, save any current changes
+      console.log("Auto-saving current changes before publish...");
       await onSave();
 
-      // onSave() already handled the saving logic, now just submit for review
-
-      await orgSubmitProgramForReview({
-        program_id: program.id,
-        note: isSubmitted
-          ? "Coalition manager resubmitted for review"
-          : "Coalition manager submitted for review",
-      });
-      const hasPendingChanges =
-        program?.metadata?.review_status === "pending_changes";
-      setMsg(
-        hasPendingChanges
-          ? "Pending changes submitted for review. Superadmin will review & publish."
-          : isSubmitted
-          ? "Resubmitted for review. Superadmin will review & publish."
-          : "Submitted for review. Superadmin will review & publish."
+      // Refresh program data to get the latest saved state
+      const { data: refreshedData, error: refreshError } = await supabase.rpc(
+        "cm_get_program_v1",
+        {
+          p_program_id: programId,
+        }
       );
-      // Navigate back to programs list after successful submission
+
+      if (refreshError) {
+        console.error("Failed to refresh program data:", refreshError);
+        throw new Error("Failed to refresh program data");
+      }
+
+      const refreshedProgram = Array.isArray(refreshedData)
+        ? refreshedData[0]
+        : refreshedData;
+      const meta = (refreshedProgram?.metadata ?? {}) as any;
+      const requiresSuperApproval = meta?.requires_super_approval === true;
+
+      if (requiresSuperApproval) {
+        // If super approval is required, submit for review instead of publishing directly
+        const { error } = await supabase
+          .from("programs")
+          .update({
+            metadata: {
+              ...meta,
+              review_status: "submitted",
+              last_submitted_at: new Date().toISOString(),
+              last_submitted_by: user.id,
+            },
+          })
+          .eq("id", refreshedProgram.id);
+
+        if (error) throw error;
+
+        setMsg(
+          "Program submitted for super admin approval. It will be published once approved."
+        );
+      } else {
+        // Normal publish flow - publish directly
+        const { error } = await supabase
+          .from("programs")
+          .update({
+            published: true,
+            published_at: new Date().toISOString(),
+            published_scope: "coalition",
+            published_by: user.id,
+            published_coalition_id: coalition.id,
+            metadata: {
+              ...meta,
+              review_status: "published",
+              last_published_at: new Date().toISOString(),
+              last_published_by: user.id,
+            },
+          })
+          .eq("id", refreshedProgram.id);
+
+        if (error) throw error;
+
+        setMsg(
+          "Program published successfully! It's now live and visible to applicants."
+        );
+      }
+
+      // Navigate back to programs list after successful publish/submit
       setTimeout(() => {
         navigate(`/coalition/${coalitionSlug}/admin/programs`);
       }, 1500);
     } catch (e: any) {
-      setMsg(e.message || "Request failed.");
+      setMsg(e.message || "Publish failed.");
     } finally {
       setSaving(false);
     }
@@ -915,12 +1007,12 @@ export default function CoalitionProgramBuilder() {
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-1 h-6 bg-indigo-500 rounded-full"></div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Submit for Approval
+                  Publish Program
                 </h3>
               </div>
               <p className="text-sm text-gray-600 mb-4">
-                Changes to Common Application Options and Application Builder
-                require super admin approval.
+                Publish your program to make it visible to applicants. You can
+                make changes anytime.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -941,20 +1033,14 @@ export default function CoalitionProgramBuilder() {
                   </button>
                   <button
                     disabled={saving || (isSubmitted && !isEditing)}
-                    onClick={onSubmitForReview}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-                    title={
-                      hasPendingChanges
-                        ? "Submit pending changes for super admin review"
-                        : ""
-                    }
+                    onClick={onPublish}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-green-600 text-white hover:bg-green-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                    title="Publish this program to make it visible to applicants"
                   >
-                    <span className="text-lg">📤</span>
-                    {hasPendingChanges
-                      ? "Submit Pending Changes for Review"
-                      : isSubmitted
-                      ? "Resubmit for Review"
-                      : "Submit for Review"}
+                    <span className="text-lg">🚀</span>
+                    {program?.published
+                      ? "Update Live Page"
+                      : "Publish Program"}
                   </button>
                 </div>
 

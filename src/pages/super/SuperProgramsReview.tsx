@@ -13,8 +13,10 @@ import {
 import { supabase } from "../../lib/supabase";
 import { softDeleteProgram, restoreProgram } from "../../services/super";
 import ApplicationPreview from "../../components/ApplicationPreview";
+import { useAuth } from "../../auth/AuthProvider";
 
 export default function SuperProgramsReview() {
+  const { user } = useAuth();
   const [list, setList] = useState<Program[]>([]);
   const [deletedList, setDeletedList] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,48 +40,9 @@ export default function SuperProgramsReview() {
     setPreviewProgram(null);
   };
 
-  const handleApproveChanges = async (program: Program) => {
-    try {
-      setLoading(true);
-      const meta = program.metadata || {};
-      const pendingSchema = meta.pending_schema;
-
-      if (pendingSchema) {
-        // Move pending schema to live schema
-        const { error } = await supabase
-          .from("programs")
-          .update({
-            published: true,
-            metadata: {
-              ...meta,
-              // Move pending schema to live schema
-              application_schema: pendingSchema,
-              // Clear pending changes
-              pending_schema: null,
-              review_status: "approved",
-              last_approved_at: new Date().toISOString(),
-              last_approved_by: "super_admin",
-            },
-          })
-          .eq("id", program.id);
-
-        if (error) throw error;
-        setSuccess(
-          `Live page updated for ${program.name}. Changes are now live!`
-        );
-      } else {
-        setError("No pending changes found to approve");
-      }
-
-      await refresh(); // Reload data
-    } catch (e: any) {
-      setError(e.message || "Failed to approve changes");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleRequestChanges = async (program: Program) => {
+    if (!user) return;
+
     try {
       setLoading(true);
       const note =
@@ -92,10 +55,16 @@ export default function SuperProgramsReview() {
 
       const meta = program.metadata || {};
 
-      // Clear pending changes but preserve working schema, set status to changes_requested
+      // Unpublish the program and require super admin approval for republishing
       const { error } = await supabase
         .from("programs")
         .update({
+          // Unpublish the program immediately
+          published: false,
+          published_at: null,
+          published_scope: null,
+          published_by: null,
+          published_coalition_id: null,
           metadata: {
             ...meta,
             // Clear pending changes but keep working schema intact
@@ -103,7 +72,11 @@ export default function SuperProgramsReview() {
             review_status: "changes_requested",
             review_note: note.trim(),
             last_changes_requested_at: new Date().toISOString(),
-            last_changes_requested_by: "super_admin",
+            last_changes_requested_by: user.id,
+            // Add flag to require super admin approval for republishing
+            requires_super_approval: true,
+            last_unpublished_at: new Date().toISOString(),
+            last_unpublished_by: user.id,
             // Preserve the working schema in application.schema
             // Don't touch this - it contains the org admin's working changes
           },
@@ -113,11 +86,53 @@ export default function SuperProgramsReview() {
       if (error) throw error;
 
       setSuccess(
-        `Change request sent for ${program.name}. Org admin will be notified.`
+        `Change request sent for ${program.name}. Program has been unpublished and requires super admin approval to republish.`
       );
       await refresh(); // Reload data
     } catch (e: any) {
       setError(e.message || "Failed to request changes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApproveProgram = async (program: Program) => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+
+      // Use the existing superPublishProgram RPC function
+      const publishedProgram = await superPublishProgram({
+        program_id: program.id,
+        scope: program.published_scope === "coalition" ? "coalition" : "org",
+        coalition_id: program.published_coalition_id,
+      });
+
+      // Clear the super approval requirement and pending changes
+      const meta = program.metadata || {};
+      await supabase
+        .from("programs")
+        .update({
+          metadata: {
+            ...meta,
+            // Clear pending changes since they're now approved
+            pending_schema: null,
+            // Clear the super approval requirement
+            requires_super_approval: false,
+            // Update approval tracking
+            last_approved_at: new Date().toISOString(),
+            last_approved_by: user.id,
+            // Clear any pending changes status
+            review_status: "published",
+          },
+        })
+        .eq("id", program.id);
+
+      setSuccess(`Program ${program.name} has been approved and published.`);
+      await refresh(); // Reload data
+    } catch (e: any) {
+      setError(e.message || "Failed to approve program");
     } finally {
       setLoading(false);
     }
@@ -228,62 +243,6 @@ export default function SuperProgramsReview() {
       }
       return newSet;
     });
-  }
-
-  async function handleReview(
-    p: Program,
-    action: "approve" | "request_changes"
-  ) {
-    setError(null);
-    setSuccess(null);
-    try {
-      const note =
-        action === "request_changes"
-          ? (
-              prompt("Add a note for the org admin (what needs fixing)?") || ""
-            ).trim()
-          : null;
-
-      await superReviewProgram({ program_id: p.id, action, note });
-      setSuccess(action === "approve" ? "Approved" : "Requested changes");
-      await refresh();
-    } catch (e: any) {
-      setError(e.message);
-    }
-  }
-
-  async function handlePublish(
-    p: Program,
-    scope: "org" | "coalition",
-    coalition_id?: string | null
-  ) {
-    setError(null);
-    setSuccess(null);
-    try {
-      await superPublishProgram({
-        program_id: p.id,
-        scope,
-        coalition_id: coalition_id ?? null,
-      });
-      setSuccess(
-        scope === "coalition" ? "Published to coalition" : "Published to org"
-      );
-      await refresh();
-    } catch (e: any) {
-      setError(e.message);
-    }
-  }
-
-  async function handleUnpublish(p: Program) {
-    setError(null);
-    setSuccess(null);
-    try {
-      await superUnpublishProgram({ program_id: p.id, note: null });
-      setSuccess("Unpublished");
-      await refresh();
-    } catch (e: any) {
-      setError(e.message);
-    }
   }
 
   async function handleDelete(p: Program) {
@@ -692,59 +651,51 @@ export default function SuperProgramsReview() {
                             </div>
                           ) : st === "pending_changes" ? (
                             <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                              {/* Check if this program was ever published (has published_at) */}
-                              {p.published_at ? (
-                                // Previously published program - Preview, Update Live Page and Change Request
-                                <>
-                                  <button
-                                    onClick={() => handlePreviewProgram(p)}
-                                    className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
-                                  >
-                                    Preview
-                                  </button>
-                                  <button
-                                    onClick={() => handleApproveChanges(p)}
-                                    className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
-                                    title="Update live page with changes"
-                                  >
-                                    Update Live Page
-                                  </button>
-                                  <button
-                                    onClick={() => handleRequestChanges(p)}
-                                    className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
-                                    title="Request changes from org admin"
-                                  >
-                                    Change Request
-                                  </button>
-                                </>
-                              ) : (
-                                // Never published program - Publish and Change Request
-                                <>
-                                  <button
-                                    onClick={() => handlePublish(p, "org")}
-                                    className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
-                                    title="Publish to organization (approves program)"
-                                  >
-                                    Publish (Org)
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handlePublish(p, "coalition")
-                                    }
-                                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded"
-                                    title="Publish to coalition (approves program)"
-                                  >
-                                    Publish (Coalition)
-                                  </button>
-                                  <button
-                                    onClick={() => handleRequestChanges(p)}
-                                    className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
-                                    title="Request changes from org admin"
-                                  >
-                                    Change Request
-                                  </button>
-                                </>
-                              )}
+                              {/* Super admin can request changes on any program */}
+                              <button
+                                onClick={() => handleRequestChanges(p)}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
+                                title="Request changes from org admin"
+                              >
+                                Request Changes
+                              </button>
+                              <button
+                                onClick={() => handleDelete(p)}
+                                className="text-red-600 hover:text-red-800 p-1"
+                                title="Delete program"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : st === "submitted" ? (
+                            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                              {/* Submitted programs awaiting super admin approval */}
+                              <button
+                                onClick={() => handleApproveProgram(p)}
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
+                                title="Approve and publish program"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleRequestChanges(p)}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
+                                title="Request changes from org admin"
+                              >
+                                Request Changes
+                              </button>
                               <button
                                 onClick={() => handleDelete(p)}
                                 className="text-red-600 hover:text-red-800 p-1"
@@ -767,12 +718,13 @@ export default function SuperProgramsReview() {
                             </div>
                           ) : p.published ? (
                             <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                              {/* Only show Unpublish for published programs */}
+                              {/* Published programs - show request changes and delete */}
                               <button
-                                onClick={() => handleUnpublish(p)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded"
+                                onClick={() => handleRequestChanges(p)}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
+                                title="Request changes from org admin"
                               >
-                                Unpublish
+                                Request Changes
                               </button>
                               <button
                                 onClick={() => handleDelete(p)}
@@ -796,56 +748,14 @@ export default function SuperProgramsReview() {
                             </div>
                           ) : (
                             <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                              {/* Check if this program was ever published (has published_at) */}
-                              {p.published_at ? (
-                                // Previously published program - Update Live Page and Change Request
-                                <>
-                                  <button
-                                    onClick={() => handleApproveChanges(p)}
-                                    className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
-                                    title="Update live page with changes"
-                                  >
-                                    Update Live Page
-                                  </button>
-                                  <button
-                                    onClick={() => handleRequestChanges(p)}
-                                    className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
-                                    title="Request changes from org admin"
-                                  >
-                                    Change Request
-                                  </button>
-                                </>
-                              ) : (
-                                // Never published program - standard review buttons
-                                <>
-                                  <button
-                                    onClick={() =>
-                                      handleReview(p, "request_changes")
-                                    }
-                                    className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
-                                  >
-                                    Request Changes
-                                  </button>
-
-                                  {/* Publish Actions (publishing = approving) */}
-                                  <button
-                                    onClick={() => handlePublish(p, "org")}
-                                    className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded"
-                                    title="Publish to organization (approves program)"
-                                  >
-                                    Publish (Org)
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      handlePublish(p, "coalition");
-                                    }}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded"
-                                    title="Publish to coalition (approves program)"
-                                  >
-                                    Publish (Coalition)
-                                  </button>
-                                </>
-                              )}
+                              {/* Super admin can request changes on any program */}
+                              <button
+                                onClick={() => handleRequestChanges(p)}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-1.5 rounded"
+                                title="Request changes from org admin"
+                              >
+                                Request Changes
+                              </button>
                               <button
                                 onClick={() => handleDelete(p)}
                                 className="text-red-600 hover:text-red-800 p-1"

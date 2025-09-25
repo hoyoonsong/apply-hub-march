@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../auth/AuthProvider";
 import {
   getBuilderSchema,
   setBuilderSchema,
@@ -200,6 +201,7 @@ function SortableField({
 export default function OrgProgramBuilder() {
   const params = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const orgSlug = useMemo(() => (params?.orgSlug as string) || "", [params]);
   const programId = useMemo(
     () => (params?.programId as string) || "",
@@ -476,7 +478,7 @@ export default function OrgProgramBuilder() {
   }
 
   async function onSave() {
-    if (!programId) return;
+    if (!programId || !user) return;
     setSaving(true);
     setMsg(null);
     try {
@@ -497,8 +499,11 @@ export default function OrgProgramBuilder() {
       // Check if program is published or has changes requested
       const hasChangesRequested =
         program?.metadata?.review_status === "changes_requested";
+      const requiresSuperApproval =
+        program?.metadata?.requires_super_approval === true;
 
-      if (isPublished || hasChangesRequested) {
+      // Only use pending changes logic for published programs that don't require super approval
+      if ((isPublished || hasChangesRequested) && !requiresSuperApproval) {
         // If published or changes requested, save changes as draft and mark as pending
         // Don't update the live schema - keep it separate
         const meta = (program?.metadata ?? {}) as any;
@@ -518,7 +523,7 @@ export default function OrgProgramBuilder() {
               pending_schema: updatedSchema,
               review_status: "pending_changes",
               pending_changes_at: new Date().toISOString(),
-              pending_changes_by: "org_admin",
+              pending_changes_by: user.id,
               // Update form flags
               form: {
                 ...(meta.form || {}),
@@ -546,6 +551,31 @@ export default function OrgProgramBuilder() {
         if (updateError) throw new Error(updateError.message);
 
         console.log("Successfully saved pending changes");
+
+        // Force refresh the program data to update the UI
+        const { data: refreshedData, error: refreshError } = await supabase.rpc(
+          "org_get_program_v1",
+          {
+            p_program_id: programId,
+          }
+        );
+
+        if (!refreshError && refreshedData) {
+          const row = Array.isArray(refreshedData)
+            ? refreshedData[0]
+            : refreshedData;
+          setProgram(row);
+
+          // Reload schema with updated program data
+          const schema = await loadApplicationSchema(row);
+          setSchema(schema);
+          const loadedFields = schema.fields || [];
+          const fieldsWithKeys = loadedFields.map((field, idx) => ({
+            ...field,
+            key: field.key || `field-${idx}-${Date.now()}`,
+          }));
+          setFields(fieldsWithKeys);
+        }
 
         setMsg(
           "Changes saved as draft! These changes require super admin approval before going live."
@@ -588,6 +618,21 @@ export default function OrgProgramBuilder() {
           console.error("Failed to update metadata:", metaError);
         }
 
+        // Force refresh the program data to update the UI
+        const { data: refreshedData, error: refreshError } = await supabase.rpc(
+          "org_get_program_v1",
+          {
+            p_program_id: programId,
+          }
+        );
+
+        if (!refreshError && refreshedData) {
+          const row = Array.isArray(refreshedData)
+            ? refreshedData[0]
+            : refreshedData;
+          setProgram(row);
+        }
+
         setMsg("Saved!");
       }
     } catch (e: any) {
@@ -598,39 +643,79 @@ export default function OrgProgramBuilder() {
     }
   }
 
-  async function onSubmitForReview() {
-    if (!program || !programId) return;
+  async function onPublish() {
+    if (!program || !programId || !user) return;
     setSaving(true);
     setMsg(null);
     try {
-      // First, save the current changes to ensure super admin sees latest version
-      console.log("Auto-saving current changes before submit...");
+      // First, save the current changes
+      console.log("Auto-saving current changes before publish...");
       await onSave();
 
-      const meta = (program?.metadata ?? {}) as any;
-      const hasPendingChanges = meta?.review_status === "pending_changes";
+      // Refresh program data to get the latest saved state
+      const { data: refreshedData, error: refreshError } = await supabase.rpc(
+        "org_get_program_v1",
+        {
+          p_program_id: programId,
+        }
+      );
 
-      if (hasPendingChanges) {
-        // For pending changes, just submit the existing pending schema
-        console.log("Submitting pending changes for review...");
-        const result = await orgSubmitProgramForReview({
-          program_id: program.id,
-          note: "Pending changes submitted for review",
-        });
-        console.log("Submit result:", result);
-        setMsg(
-          "Pending changes submitted for review. Superadmin will review & publish."
-        );
-      } else {
-        // For new submissions, submit for review (onSave already handled the saving)
-        await orgSubmitProgramForReview({
-          program_id: program.id,
-          note: "Program submitted for review",
-        });
-        setMsg("Submitted for review. Superadmin will review & publish.");
+      if (refreshError) {
+        console.error("Failed to refresh program data:", refreshError);
+        throw new Error("Failed to refresh program data");
       }
 
-      // Navigate back to programs list after successful submission
+      const refreshedProgram = Array.isArray(refreshedData)
+        ? refreshedData[0]
+        : refreshedData;
+      const meta = (refreshedProgram?.metadata ?? {}) as any;
+      const requiresSuperApproval = meta?.requires_super_approval === true;
+
+      if (requiresSuperApproval) {
+        // If super approval is required, submit for review instead of publishing directly
+        const { error } = await supabase
+          .from("programs")
+          .update({
+            metadata: {
+              ...meta,
+              review_status: "submitted",
+              last_submitted_at: new Date().toISOString(),
+              last_submitted_by: user.id,
+            },
+          })
+          .eq("id", refreshedProgram.id);
+
+        if (error) throw error;
+
+        setMsg(
+          "Program submitted for super admin approval. It will be published once approved."
+        );
+      } else {
+        // Normal publish flow - publish directly
+        const { error } = await supabase
+          .from("programs")
+          .update({
+            published: true,
+            published_at: new Date().toISOString(),
+            published_scope: "org",
+            published_by: user.id,
+            metadata: {
+              ...meta,
+              review_status: "published",
+              last_published_at: new Date().toISOString(),
+              last_published_by: user.id,
+            },
+          })
+          .eq("id", refreshedProgram.id);
+
+        if (error) throw error;
+
+        setMsg(
+          "Program published successfully! It's now live and visible to applicants."
+        );
+      }
+
+      // Navigate back to programs list after successful publish/submit
       setTimeout(() => {
         if (isSuperAdmin) {
           navigate("/super/programs");
@@ -639,7 +724,7 @@ export default function OrgProgramBuilder() {
         }
       }, 1500);
     } catch (e: any) {
-      setMsg(e.message || "Request failed.");
+      setMsg(e.message || "Publish failed.");
     } finally {
       setSaving(false);
     }
@@ -704,8 +789,11 @@ export default function OrgProgramBuilder() {
           return (
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
               <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md">
-                <div className="font-semibold">Changes requested</div>
-                <div className="text-sm whitespace-pre-wrap">{note}</div>
+                <div className="font-semibold">Changes requested. </div>
+                <div className="text-sm whitespace-pre-wrap">
+                  {note} <br /> <br /> This form has been unpublished and will
+                  require super admin approval to republish.
+                </div>
               </div>
             </div>
           );
@@ -778,17 +866,7 @@ export default function OrgProgramBuilder() {
         <div className="flex flex-row gap-4 sm:gap-6 lg:gap-8">
           {/* Main Content - Approval Required Sections */}
           <div className="flex-1 min-w-0">
-            {/* Approval Notice */}
-            <div className="flex items-center justify-center py-4">
-              <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-full">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>
-                  Note: changes to Common Application Options and Application
-                  Builder require super admin approval
-                </span>
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              </div>
-            </div>
+            <br />
 
             {/* Common Application Options */}
             <div className="bg-blue-50 border-2 border-blue-200 rounded-t-xl p-6 shadow-sm">
@@ -1058,12 +1136,12 @@ export default function OrgProgramBuilder() {
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-1 h-6 bg-indigo-500 rounded-full"></div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Submit for Approval
+                  Publish Program
                 </h3>
               </div>
               <p className="text-sm text-gray-600 mb-4">
-                Changes to Common Application Options and Application Builder
-                require super admin approval.
+                Publish your program to make it visible to applicants. You can
+                make changes anytime.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -1086,20 +1164,14 @@ export default function OrgProgramBuilder() {
                       </button>
                       <button
                         disabled={saving || (isSubmitted && !isEditing)}
-                        onClick={onSubmitForReview}
-                        className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-                        title={
-                          hasPendingChanges
-                            ? "Submit pending changes for super admin review"
-                            : ""
-                        }
+                        onClick={onPublish}
+                        className="flex items-center gap-2 px-6 py-3 rounded-xl bg-green-600 text-white hover:bg-green-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                        title="Publish this program to make it visible to applicants"
                       >
-                        <span className="text-lg">📤</span>
-                        {hasPendingChanges
-                          ? "Submit Pending Changes for Review"
-                          : isSubmitted
-                          ? "Resubmit for Review"
-                          : "Submit for Review"}
+                        <span className="text-lg">🚀</span>
+                        {program?.published
+                          ? "Update Live Page"
+                          : "Publish Program"}
                       </button>
                     </>
                   )}
@@ -1116,9 +1188,9 @@ export default function OrgProgramBuilder() {
 
           {/* Sidebar - Reviewer Form Configuration */}
           <div className="w-80 flex-shrink-0">
-            {/* Spacer to match approval notice height exactly - py-4 (32px) + inner py-2 (16px) + text height */}
-            <div style={{ height: "68px" }}></div>
-            <div className="sticky" style={{ top: "68px" }}>
+            {/* Spacer to match the <br /> spacing from the main content */}
+            <div style={{ height: "24px" }}></div>
+            <div className="sticky" style={{ top: "24px" }}>
               {program && <ProgramReviewerFormCard programId={program.id} />}
             </div>
           </div>
