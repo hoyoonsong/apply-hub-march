@@ -325,7 +325,7 @@ export default function SuperProgramsReview() {
                   value: "changes_requested" as ReviewStatus,
                   label: "Changes Requested",
                 },
-                { value: "approved" as ReviewStatus, label: "Approved" },
+                { value: "published" as ReviewStatus, label: "Published" },
                 { value: "unpublished" as ReviewStatus, label: "Unpublished" },
                 {
                   value: "draft" as ReviewStatus,
@@ -420,17 +420,14 @@ export default function SuperProgramsReview() {
                                     ? "bg-orange-100 text-orange-800"
                                     : st === "changes_requested"
                                     ? "bg-yellow-100 text-yellow-800"
-                                    : st === "approved" || st === "published"
+                                    : st === "published"
                                     ? "bg-green-100 text-green-800"
                                     : st === "unpublished"
                                     ? "bg-purple-100 text-purple-800"
                                     : "bg-gray-100 text-gray-800"
                                 }`}
                               >
-                                {(st === "published" ? "approved" : st).replace(
-                                  "_",
-                                  " "
-                                )}
+                                {st.replace("_", " ")}
                               </span>
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -564,19 +561,17 @@ export default function SuperProgramsReview() {
                                 ? "bg-orange-100 text-orange-800"
                                 : st === "changes_requested"
                                 ? "bg-yellow-100 text-yellow-800"
-                                : st === "approved" || st === "published"
+                                : st === "published"
                                 ? "bg-green-100 text-green-800"
                                 : st === "unpublished"
                                 ? "bg-purple-100 text-purple-800"
                                 : "bg-gray-100 text-gray-800")
                             }
                           >
-                            {(st === "published"
-                              ? "approved"
-                              : st === "pending_changes"
-                              ? "update"
-                              : st
-                            ).replace("_", " ")}
+                            {(st === "pending_changes" ? "update" : st).replace(
+                              "_",
+                              " "
+                            )}
                           </span>
                         </td>
                         <td className="px-4 py-4 text-center">

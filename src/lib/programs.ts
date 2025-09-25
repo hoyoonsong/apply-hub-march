@@ -43,9 +43,10 @@ export function getReviewStatus(p?: Program | null): ReviewStatus {
     "published",
     "pending_changes",
   ];
-  return (
-    allowed.includes(raw as ReviewStatus) ? raw : "draft"
-  ) as ReviewStatus;
+  const status = allowed.includes(raw as ReviewStatus) ? raw : "draft";
+
+  // Map "approved" to "published" for consistency with new system
+  return (status === "approved" ? "published" : status) as ReviewStatus;
 }
 
 export function getProgramRowReviewStatus(p?: ProgramRow | null): ReviewStatus {
@@ -61,9 +62,10 @@ export function getProgramRowReviewStatus(p?: ProgramRow | null): ReviewStatus {
     "published",
     "pending_changes",
   ];
-  return (
-    allowed.includes(raw as ReviewStatus) ? raw : "draft"
-  ) as ReviewStatus;
+  const status = allowed.includes(raw as ReviewStatus) ? raw : "draft";
+
+  // Map "approved" to "published" for consistency with new system
+  return (status === "approved" ? "published" : status) as ReviewStatus;
 }
 
 /* ========== Admin-side RPCs ========== */
