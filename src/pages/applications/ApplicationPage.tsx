@@ -5,6 +5,7 @@ import {
   getApplication,
   submitApplication,
   saveApplication,
+  startOrGetApplication,
 } from "../../lib/rpc";
 import { loadApplicationSchemaById } from "../../lib/schemaLoader";
 import { useApplicationAutosave } from "../../components/useApplicationAutosave";
@@ -138,13 +139,96 @@ export default function ApplicationPage() {
         }
 
         // Authenticated user flow - load full application
+        console.log(
+          "🔍 ApplicationPage - Loading application for appId:",
+          appId
+        );
         const app = await getApplication(appId!);
-        setAppRow(app);
+        console.log("🔍 ApplicationPage - Loaded application:", app);
 
-        // Load schema using centralized loader
-        const schema = await loadApplicationSchemaById(app.program_id);
-        console.log("🔍 ApplicationPage - Loaded schema:", schema);
-        setSchema({ items: schema.fields || [] });
+        // If no application found, this might be a program ID - try to start/create an application
+        if (!app || !app.id) {
+          console.log(
+            "🔍 ApplicationPage - No application found, trying to start new application for program:",
+            appId
+          );
+          try {
+            const newApp = await startOrGetApplication(appId!);
+            console.log(
+              "🔍 ApplicationPage - Started new application:",
+              newApp
+            );
+            setAppRow(newApp);
+
+            // Load schema using the program ID directly
+            const schema = await loadApplicationSchemaById(appId!);
+            console.log("🔍 ApplicationPage - Loaded schema:", schema);
+            setSchema({ items: schema.fields || [] });
+          } catch (error) {
+            console.error(
+              "🔍 ApplicationPage - Failed to start application:",
+              error
+            );
+            // If we can't create an application, fall back to preview mode for authenticated users
+            console.log(
+              "🔍 ApplicationPage - Falling back to preview mode for authenticated user"
+            );
+
+            // Try to get program data using the public RPC function (same as preview mode)
+            try {
+              const { data: progData, error: progError } = await supabase.rpc(
+                "public_get_program_from_app_id",
+                { p_app_id: appId! }
+              );
+
+              if (progError || !progData || progData.length === 0) {
+                console.log("Cannot access program data:", progError);
+                navigate("/unauthorized");
+                return;
+              }
+
+              const program = progData[0];
+              setSchema({ items: program.application_schema?.fields || [] });
+              setProgramDeadline(program?.close_at || null);
+              setProgramOpenDate(program?.open_at || null);
+              setProgramDetails({
+                id: program.program_id,
+                name: program.program_name,
+                description: program.program_description,
+                organization_name: program.organization_name,
+              });
+
+              // Set a dummy app row for preview mode
+              setAppRow({
+                id: appId!,
+                program_id: program.program_id,
+                user_id: user?.id || "",
+                status: "draft",
+                answers: {},
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                program_name: program.program_name,
+                program_metadata: program.application_schema,
+              });
+
+              return; // Exit early for preview mode
+            } catch (previewError) {
+              console.error(
+                "🔍 ApplicationPage - Preview mode also failed:",
+                previewError
+              );
+              navigate("/unauthorized");
+              return;
+            }
+          }
+        } else {
+          setAppRow(app);
+
+          // Load schema using centralized loader
+          const schema = await loadApplicationSchemaById(app.program_id);
+          console.log("🔍 ApplicationPage - Loaded schema:", schema);
+          setSchema({ items: schema.fields || [] });
+        }
 
         // Get program details for deadline info - check if program is published
         const { data: progData, error: progError } = await supabase
