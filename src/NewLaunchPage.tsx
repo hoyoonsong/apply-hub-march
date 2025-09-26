@@ -440,20 +440,18 @@ function NewLaunchPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button
-              onClick={() => (user ? navigate("/dashboard") : setOpen(true))}
+              onClick={() =>
+                navigate("/applications/948bbc90-5a60-463f-82b1-de002829da5c")
+              }
               className="bg-white hover:bg-gray-50 text-blue-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
             >
-              {user ? "Go to Dashboard" : "Get Started Free"}
+              Organizations Start Here
             </button>
             <button
-              onClick={() =>
-                document
-                  .getElementById("features")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
+              onClick={() => (user ? navigate("/dashboard") : setOpen(true))}
               className="bg-transparent hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl text-lg border-2 border-white transition-all duration-200 transform hover:scale-105"
             >
-              Learn More
+              {user ? "Go to Dashboard" : "Applicants Start Here"}
             </button>
           </div>
         </div>

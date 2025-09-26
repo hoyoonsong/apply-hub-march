@@ -155,16 +155,16 @@ export default function SuperHome() {
             </div>
           </Link>
 
-          {/* Assignments Card */}
+          {/* Omnipply Forms Card */}
           <Link
-            to="/super/assignments"
+            to="/org/omnipply/admin/programs"
             className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
           >
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <svg
-                    className="w-6 h-6 text-orange-600"
+                    className="w-6 h-6 text-blue-600"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -173,17 +173,51 @@ export default function SuperHome() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
                 </div>
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Assignments
+                  Omnipply Forms
                 </h3>
                 <p className="text-sm text-gray-500">
-                  Assign roles and permissions
+                  Manage application forms and programs
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          {/* Organization Requests Card */}
+          <Link
+            to="/review/46cbcde8-59da-400b-bda9-63259bac1159"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Organization Requests
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Review organization creation requests
                 </p>
               </div>
             </div>
