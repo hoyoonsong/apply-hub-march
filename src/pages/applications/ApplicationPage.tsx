@@ -139,6 +139,74 @@ export default function ApplicationPage() {
 
         // Authenticated user flow - load full application
         const app = await getApplication(appId!);
+
+        // If no app or missing program_id, fall back to preview mode using public RPC
+        if (!app || !app.program_id) {
+          console.log(
+            "🔍 ApplicationPage - No app or missing program_id, using fallback"
+          );
+          try {
+            const { data: progData, error: progError } = await supabase.rpc(
+              "public_get_program_from_app_id",
+              { p_app_id: appId! }
+            );
+
+            if (progError || !progData || progData.length === 0) {
+              console.log("Cannot access program data:", progError);
+              navigate("/unauthorized");
+              return;
+            }
+
+            const program = progData[0];
+
+            // Load schema using the program ID directly
+            const previewSchema = await loadApplicationSchemaById(
+              program.program_id
+            );
+            console.log(
+              "🔍 ApplicationPage - Loaded schema (preview):",
+              previewSchema
+            );
+            setSchema({ items: previewSchema.fields || [] });
+
+            // Program timing details
+            setProgramDeadline(program?.close_at || null);
+            setProgramOpenDate(program?.open_at || null);
+
+            // Program details for header
+            setProgramDetails({
+              id: program.program_id,
+              name: program.program_name,
+              description: program.program_description,
+              metadata: program.application_schema,
+            });
+
+            // Set a lightweight app row for preview/editing
+            setAppRow({
+              id: appId!,
+              program_id: program.program_id,
+              user_id: user?.id || "",
+              status: "draft",
+              answers: {},
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              program_name: program.program_name,
+              program_metadata: program.application_schema,
+            } as any);
+
+            // Allow editing in this fallback mode
+            setIsEditing(true);
+            return; // Exit early after setting preview state
+          } catch (previewError) {
+            console.error(
+              "🔍 ApplicationPage - Preview fallback failed:",
+              previewError
+            );
+            navigate("/unauthorized");
+            return;
+          }
+        }
+
         setAppRow(app);
 
         // Load schema using centralized loader
