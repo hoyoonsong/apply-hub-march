@@ -748,211 +748,228 @@ export default function ApplicationPage() {
                   })()}
 
                   {/* Organization Application Questions Section */}
-                  {items.length === 0 ? (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <h2 className="text-lg font-semibold text-gray-900">
-                          Organization Application Questions
-                        </h2>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Custom questions created by this organization.
-                      </p>
-                      <div className="text-sm text-slate-500">
-                        This application doesn't include custom questions.
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <h2 className="text-lg font-semibold text-gray-900">
-                          Organization Application Questions
-                        </h2>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-6">
-                        Custom questions created by this organization.
-                      </p>
-                      <div className="space-y-6">
-                        {items.map((item, idx) => {
-                          const key = item.key || `q_${idx}`;
-                          const val = answers?.[key] ?? "";
+                  {(() => {
+                    const program = {
+                      id: programDetails?.id,
+                      name: programDetails?.name,
+                      metadata: programDetails?.metadata,
+                    };
+                    const hasOtherSections = programUsesProfile(program);
 
-                          switch (item.type) {
-                            case "short_text":
-                              return (
-                                <div
-                                  key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-6"
-                                >
-                                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                                    {item.label}
-                                    {item.required && " *"}
-                                  </label>
-                                  <input
-                                    className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                      !isFormEditable
-                                        ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                        : ""
-                                    }`}
-                                    value={val}
-                                    maxLength={item.maxLength}
-                                    onChange={(e) =>
-                                      update(key, e.target.value)
-                                    }
-                                    disabled={!isFormEditable}
-                                    readOnly={!isFormEditable}
-                                    style={{
-                                      cursor: isFormEditable
-                                        ? "text"
-                                        : "not-allowed",
-                                    }}
-                                  />
-                                </div>
-                              );
-                            case "long_text":
-                              return (
-                                <div
-                                  key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-6"
-                                >
-                                  <WordLimitedTextarea
-                                    label={item.label}
-                                    value={val}
-                                    onChange={(value) => update(key, value)}
-                                    maxWords={item.maxWords ?? 100}
-                                    rows={4}
-                                    required={item.required}
-                                    disabled={!isFormEditable}
-                                  />
-                                </div>
-                              );
-                            case "checkbox":
-                              return (
-                                <div
-                                  key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-6"
-                                >
-                                  <div className="flex items-center gap-3">
+                    return items.length === 0 ? (
+                      <div className="p-6">
+                        {hasOtherSections && (
+                          <>
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                              <h2 className="text-lg font-semibold text-gray-900">
+                                Organization Application Questions
+                              </h2>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-4">
+                              Custom questions created by this organization.
+                            </p>
+                          </>
+                        )}
+                        <div className="text-sm text-slate-500">
+                          This application doesn't include custom questions.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-6">
+                        {hasOtherSections && (
+                          <>
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                              <h2 className="text-lg font-semibold text-gray-900">
+                                Organization Application Questions
+                              </h2>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-6">
+                              Custom questions created by this organization.
+                            </p>
+                          </>
+                        )}
+                        <div className="space-y-6">
+                          {items.map((item, idx) => {
+                            const key = item.key || `q_${idx}`;
+                            const val = answers?.[key] ?? "";
+
+                            switch (item.type) {
+                              case "short_text":
+                                return (
+                                  <div
+                                    key={key}
+                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                  >
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                                      {item.label}
+                                      {item.required && " *"}
+                                    </label>
                                     <input
-                                      type="checkbox"
-                                      checked={!!val}
+                                      className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                        !isFormEditable
+                                          ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                          : ""
+                                      }`}
+                                      value={val}
+                                      maxLength={item.maxLength}
                                       onChange={(e) =>
-                                        update(key, e.target.checked)
+                                        update(key, e.target.value)
                                       }
                                       disabled={!isFormEditable}
-                                      className={`h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
-                                        !isFormEditable ? "opacity-50" : ""
+                                      readOnly={!isFormEditable}
+                                      style={{
+                                        cursor: isFormEditable
+                                          ? "text"
+                                          : "not-allowed",
+                                      }}
+                                    />
+                                  </div>
+                                );
+                              case "long_text":
+                                return (
+                                  <div
+                                    key={key}
+                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                  >
+                                    <WordLimitedTextarea
+                                      label={item.label}
+                                      value={val}
+                                      onChange={(value) => update(key, value)}
+                                      maxWords={item.maxWords ?? 100}
+                                      rows={4}
+                                      required={item.required}
+                                      disabled={!isFormEditable}
+                                    />
+                                  </div>
+                                );
+                              case "checkbox":
+                                return (
+                                  <div
+                                    key={key}
+                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={!!val}
+                                        onChange={(e) =>
+                                          update(key, e.target.checked)
+                                        }
+                                        disabled={!isFormEditable}
+                                        className={`h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
+                                          !isFormEditable ? "opacity-50" : ""
+                                        }`}
+                                        style={{
+                                          cursor: isFormEditable
+                                            ? "pointer"
+                                            : "not-allowed",
+                                        }}
+                                      />
+                                      <label className="text-sm font-medium text-gray-700">
+                                        {item.label}
+                                        {item.required && " *"}
+                                      </label>
+                                    </div>
+                                  </div>
+                                );
+                              case "date":
+                                return (
+                                  <div
+                                    key={key}
+                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                  >
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                                      {item.label}
+                                      {item.required && " *"}
+                                    </label>
+                                    <input
+                                      type="date"
+                                      className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                        !isFormEditable
+                                          ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                          : ""
                                       }`}
+                                      value={val}
+                                      onChange={(e) =>
+                                        update(key, e.target.value)
+                                      }
+                                      disabled={!isFormEditable}
+                                      readOnly={!isFormEditable}
+                                      style={{
+                                        cursor: isFormEditable
+                                          ? "text"
+                                          : "not-allowed",
+                                      }}
+                                    />
+                                  </div>
+                                );
+                              case "select":
+                                return (
+                                  <div
+                                    key={key}
+                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                  >
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                                      {item.label}
+                                      {item.required && " *"}
+                                    </label>
+                                    <select
+                                      className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                        !isFormEditable
+                                          ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                          : ""
+                                      }`}
+                                      value={val}
+                                      onChange={(e) =>
+                                        update(key, e.target.value)
+                                      }
+                                      disabled={!isFormEditable}
                                       style={{
                                         cursor: isFormEditable
                                           ? "pointer"
                                           : "not-allowed",
                                       }}
-                                    />
-                                    <label className="text-sm font-medium text-gray-700">
+                                    >
+                                      <option value="">
+                                        Select an option...
+                                      </option>
+                                      {item.options?.map((option: string) => (
+                                        <option key={option} value={option}>
+                                          {option}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                );
+                              case "file":
+                                return (
+                                  <div
+                                    key={key}
+                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                  >
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">
                                       {item.label}
                                       {item.required && " *"}
                                     </label>
+                                    <SimpleFileUpload
+                                      applicationId={appId!}
+                                      fieldId={key}
+                                      value={answers[key] || ""}
+                                      onChange={(value) => update(key, value)}
+                                      disabled={!isFormEditable}
+                                    />
                                   </div>
-                                </div>
-                              );
-                            case "date":
-                              return (
-                                <div
-                                  key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-6"
-                                >
-                                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                                    {item.label}
-                                    {item.required && " *"}
-                                  </label>
-                                  <input
-                                    type="date"
-                                    className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                      !isFormEditable
-                                        ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                        : ""
-                                    }`}
-                                    value={val}
-                                    onChange={(e) =>
-                                      update(key, e.target.value)
-                                    }
-                                    disabled={!isFormEditable}
-                                    readOnly={!isFormEditable}
-                                    style={{
-                                      cursor: isFormEditable
-                                        ? "text"
-                                        : "not-allowed",
-                                    }}
-                                  />
-                                </div>
-                              );
-                            case "select":
-                              return (
-                                <div
-                                  key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-6"
-                                >
-                                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                                    {item.label}
-                                    {item.required && " *"}
-                                  </label>
-                                  <select
-                                    className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                      !isFormEditable
-                                        ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                        : ""
-                                    }`}
-                                    value={val}
-                                    onChange={(e) =>
-                                      update(key, e.target.value)
-                                    }
-                                    disabled={!isFormEditable}
-                                    style={{
-                                      cursor: isFormEditable
-                                        ? "pointer"
-                                        : "not-allowed",
-                                    }}
-                                  >
-                                    <option value="">
-                                      Select an option...
-                                    </option>
-                                    {item.options?.map((option: string) => (
-                                      <option key={option} value={option}>
-                                        {option}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              );
-                            case "file":
-                              return (
-                                <div
-                                  key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-6"
-                                >
-                                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                                    {item.label}
-                                    {item.required && " *"}
-                                  </label>
-                                  <SimpleFileUpload
-                                    applicationId={appId!}
-                                    fieldId={key}
-                                    value={answers[key] || ""}
-                                    onChange={(value) => update(key, value)}
-                                    disabled={!isFormEditable}
-                                  />
-                                </div>
-                              );
-                            default:
-                              return null;
-                          }
-                        })}
+                                );
+                              default:
+                                return null;
+                            }
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
 
