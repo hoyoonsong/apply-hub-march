@@ -1,7 +1,7 @@
 export type ReviewsListRow = {
   review_id: string;
   application_id: string;
-  status: "draft" | "submitted";
+  status: "draft" | "submitted" | "not_started";
   score: number | null;
   updated_at: string | null;
   submitted_at: string | null;
@@ -25,7 +25,7 @@ export type ReviewRecord = {
   score?: number | null;
   comments?: string | null;
   ratings?: Record<string, unknown> | null;
-  status?: "draft" | "submitted" | null;
+  status?: "draft" | "submitted" | "not_started" | null;
   submitted_at?: string | null;
   updated_at?: string | null;
   created_at?: string | null;
@@ -43,7 +43,7 @@ export type ReviewGetRow = {
     score?: number | null;
     comments?: string | null;
     ratings?: Record<string, any> | null;
-    status?: "draft" | "submitted" | null;
+    status?: "draft" | "submitted" | "not_started" | null;
     submitted_at?: string | null;
     updated_at?: string | null;
     created_at?: string | null;

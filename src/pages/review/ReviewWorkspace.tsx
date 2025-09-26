@@ -192,7 +192,7 @@ export default function ReviewWorkspacePage() {
               submitted ? "bg-gray-400" : "bg-indigo-600 hover:bg-indigo-700"
             }`}
           >
-            {submitted ? "Submitted" : "Submit review"}
+            {submitted ? "finalized" : "finalize"}
           </button>
         </div>
       </div>

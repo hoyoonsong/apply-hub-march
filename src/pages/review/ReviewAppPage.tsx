@@ -235,7 +235,7 @@ export default function ReviewAppPage() {
                           }
                           disabled={saving === "saving"}
                         >
-                          {saving === "saving" ? "Saving..." : "Save Draft"}
+                          {saving === "saving" ? "Saving..." : "Save comments"}
                         </button>
                         <button
                           className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -248,7 +248,7 @@ export default function ReviewAppPage() {
                           }
                           disabled={saving === "saving"}
                         >
-                          Submit Review
+                          finalize
                         </button>
                       </div>
                     </div>

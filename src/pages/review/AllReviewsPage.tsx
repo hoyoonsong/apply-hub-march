@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useCapabilities } from "../../lib/capabilities";
@@ -10,7 +10,9 @@ export default function AllReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mineOnly, setMineOnly] = useState(false);
-  const [status, setStatus] = useState<"" | "draft" | "submitted">("");
+  const [status, setStatus] = useState<
+    "" | "draft" | "submitted" | "not_started"
+  >("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
   const [programFormConfigs, setProgramFormConfigs] = useState<
@@ -46,36 +48,124 @@ export default function AllReviewsPage() {
     setProgramFormConfigs(configs);
   }
 
-  async function fetchList() {
+  const fetchList = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // Get all reviews (no pagination, no program filter at RPC level)
-    const { data, error } = await supabase.rpc("reviews_list_v1", {
-      p_mine_only: mineOnly,
-      p_status: status || null,
-      p_program_id: null,
-      p_org_id: null,
-      p_limit: 1000, // Large limit to get all reviews
-      p_offset: 0,
-    });
+    try {
+      // Get existing reviews (commented and finalized)
+      const { data: reviewsData, error: reviewsError } = await supabase.rpc(
+        "reviews_list_v1",
+        {
+          p_mine_only: mineOnly,
+          p_status: null, // Get all statuses
+          p_program_id: null,
+          p_org_id: null,
+          p_limit: 1000,
+          p_offset: 0,
+        }
+      );
 
-    if (error) {
-      console.error("Error fetching reviews:", error);
-      setError(error.message);
-      setAllRows([]);
-    } else {
-      const reviews = (data ?? []) as ReviewsListRow[];
-      setAllRows(reviews);
+      if (reviewsError) {
+        console.error("Error fetching reviews:", reviewsError);
+        setError(reviewsError.message);
+        setAllRows([]);
+        return;
+      }
+
+      const existingReviews = (reviewsData ?? []) as ReviewsListRow[];
+
+      // Get all submitted applications directly from the applications table
+      const { data: submittedApps, error: appsError } = await supabase
+        .from("applications")
+        .select(
+          `
+          id,
+          program_id,
+          user_id,
+          status,
+          created_at,
+          updated_at,
+          programs!inner(name, organization_id, organizations(name))
+        `
+        )
+        .eq("status", "submitted");
+
+      if (appsError) {
+        console.error("Error fetching submitted applications:", appsError);
+        setError(appsError.message);
+        setAllRows([]);
+        return;
+      }
+
+      console.log("Submitted applications:", submittedApps?.length || 0);
+      console.log("Existing reviews:", existingReviews.length);
+
+      // Create a map of existing reviews by application_id
+      const reviewsMap = new Map<string, ReviewsListRow>();
+      existingReviews.forEach((review) => {
+        reviewsMap.set(review.application_id, review);
+      });
+
+      // Combine existing reviews with submitted applications that don't have reviews yet
+      const combinedRows: ReviewsListRow[] = [...existingReviews];
+
+      // Add submitted applications without reviews as "not_started"
+      submittedApps?.forEach((app) => {
+        if (!reviewsMap.has(app.id)) {
+          // Create a "not_started" review entry
+          const notStartedReview: ReviewsListRow = {
+            review_id: `not_started_${app.id}`,
+            application_id: app.id,
+            status: "not_started",
+            score: null,
+            updated_at: app.updated_at,
+            submitted_at: app.created_at,
+            comments: null,
+            ratings: null,
+            reviewer_id: null,
+            reviewer_name: "Not assigned",
+            applicant_id: app.user_id,
+            applicant_name: app.user_id, // We'll need to get the actual name later
+            program_id: app.program_id,
+            program_name: (app.programs as any)?.name || "Unknown Program",
+            org_id: (app.programs as any)?.organization_id || "",
+            org_name:
+              (app.programs as any)?.organizations?.name ||
+              "Unknown Organization",
+          };
+          combinedRows.push(notStartedReview);
+        }
+      });
+
+      console.log("Total combined rows:", combinedRows.length);
+      console.log(
+        "Not started applications:",
+        combinedRows.filter((r) => r.status === "not_started").length
+      );
+
+      // Sort all rows by updated_at in descending order (most recent first)
+      const sortedRows = combinedRows.sort((a, b) => {
+        const dateA = new Date(a.updated_at || a.submitted_at || 0).getTime();
+        const dateB = new Date(b.updated_at || b.submitted_at || 0).getTime();
+        return dateB - dateA; // Descending order (newest first)
+      });
+
+      setAllRows(sortedRows);
       // Load form configurations for all programs
-      await loadProgramFormConfigs(reviews);
+      await loadProgramFormConfigs(sortedRows);
+    } catch (error) {
+      console.error("Error in fetchList:", error);
+      setError("Failed to load reviews");
+      setAllRows([]);
     }
+
     setLoading(false);
-  }
+  }, [mineOnly, status]);
 
   useEffect(() => {
     fetchList();
-  }, [mineOnly, status]); // eslint-disable-line
+  }, [mineOnly, status, fetchList]);
 
   // Realtime refresh whenever any review changes or program metadata changes
   useEffect(() => {
@@ -84,16 +174,22 @@ export default function AllReviewsPage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "application_reviews" },
-        () => fetchList()
+        () => {
+          fetchList();
+        }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "programs" },
-        () => fetchList() // Refresh when program metadata changes (including form config)
+        () => {
+          fetchList(); // Refresh when program metadata changes (including form config)
+        }
       )
       .subscribe();
-    return () => supabase.removeChannel(ch);
-  }, [supabase]); // eslint-disable-line
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [supabase, fetchList]);
 
   // Always show decisions column
   const hasAnyDecisionsEnabled = true;
@@ -151,17 +247,29 @@ export default function AllReviewsPage() {
   const filteredRows = useMemo(() => {
     let filtered = allRows;
 
+    console.log("Starting with allRows:", allRows.length);
+    console.log("Reviewer programs:", reviewerPrograms.length);
+
     // Filter by assigned programs only
     if (reviewerPrograms.length > 0) {
       const assignedProgramIds = reviewerPrograms.map((p) => p.id);
+      console.log("Assigned program IDs:", assignedProgramIds);
       filtered = filtered.filter((row) =>
         assignedProgramIds.includes(row.program_id)
       );
+      console.log("After program filter:", filtered.length);
     }
 
     // Filter by selected program
     if (selectedProgramId) {
       filtered = filtered.filter((row) => row.program_id === selectedProgramId);
+    }
+
+    // Filter by status
+    if (status) {
+      console.log("Filtering by status:", status);
+      filtered = filtered.filter((row) => row.status === status);
+      console.log("After status filter:", filtered.length);
     }
 
     // Filter by search term
@@ -177,8 +285,9 @@ export default function AllReviewsPage() {
       );
     }
 
+    console.log("Final filtered rows:", filtered.length);
     return filtered;
-  }, [allRows, reviewerPrograms, selectedProgramId, searchTerm]);
+  }, [allRows, reviewerPrograms, selectedProgramId, searchTerm, status]);
 
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-4">
@@ -220,8 +329,9 @@ export default function AllReviewsPage() {
               onChange={(e) => setStatus(e.target.value as any)}
             >
               <option value="">All</option>
-              <option value="draft">Draft</option>
-              <option value="submitted">Submitted</option>
+              <option value="not_started">not started</option>
+              <option value="draft">commented</option>
+              <option value="submitted">finalized</option>
             </select>
           </label>
           {reviewerPrograms.length > 0 && (
@@ -292,11 +402,15 @@ export default function AllReviewsPage() {
                   <td className="p-2">
                     {r.status === "submitted" ? (
                       <span className="px-2 py-1 rounded bg-green-100 text-green-800">
-                        Submitted
+                        finalized
+                      </span>
+                    ) : r.status === "not_started" ? (
+                      <span className="px-2 py-1 rounded bg-gray-100 text-gray-800">
+                        not started
                       </span>
                     ) : (
                       <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-800">
-                        Draft
+                        commented
                       </span>
                     )}
                   </td>
