@@ -249,7 +249,16 @@ export default function ApplicationPage() {
     }
   }, [appRow?.answers, setAnswers]);
 
-  const items = useMemo(() => schema.items ?? [], [schema]);
+  const items = useMemo(() => {
+    const rawItems = schema.items ?? [];
+    // Filter out any invalid/empty items
+    const validItems = rawItems.filter(
+      (item) => item && item.label && item.label.trim() !== "" && item.type
+    );
+    console.log("🔍 ApplicationPage - items:", { rawItems, validItems });
+    console.log("🔍 ApplicationPage - rawItems details:", rawItems);
+    return validItems;
+  }, [schema]);
 
   // Check if application is currently open (between open and close dates)
   const isOpen = isApplicationOpen(programOpenDate, programDeadline);
@@ -679,33 +688,47 @@ export default function ApplicationPage() {
                     );
                   })()}
 
-                  {/* Organization Application Questions Section */}
-                  {items.length === 0 ? (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <h2 className="text-lg font-semibold text-gray-900">
-                          Organization Application Questions
-                        </h2>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Custom questions created by this organization.
-                      </p>
-                      <div className="text-sm text-slate-500">
-                        This application doesn't include custom questions.
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <h2 className="text-lg font-semibold text-gray-900">
-                          Organization Application Questions
-                        </h2>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-6">
-                        Custom questions created by this organization.
-                      </p>
+                  {/* Organization Application Questions Section - only show if there are items */}
+                  {items.length > 0 && (
+                    <div
+                      className={(() => {
+                        const program = {
+                          id: programDetails?.id,
+                          name: programDetails?.name,
+                          metadata: programDetails?.metadata,
+                        };
+                        const hasProfileAutofill = programUsesProfile(program);
+                        return hasProfileAutofill
+                          ? "bg-gray-50 border border-gray-200 rounded-lg p-6"
+                          : "space-y-6";
+                      })()}
+                    >
+                      {/* Only show header if there are other sections (profile autofill, etc.) */}
+                      {(() => {
+                        const program = {
+                          id: programDetails?.id,
+                          name: programDetails?.name,
+                          metadata: programDetails?.metadata,
+                        };
+                        const hasProfileAutofill = programUsesProfile(program);
+
+                        if (hasProfileAutofill) {
+                          return (
+                            <>
+                              <div className="flex items-center gap-3 mb-4">
+                                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                <h2 className="text-lg font-semibold text-gray-900">
+                                  Organization Application Questions
+                                </h2>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-6">
+                                Custom questions created by this organization.
+                              </p>
+                            </>
+                          );
+                        }
+                        return null; // No header when it's just custom questions
+                      })()}
                       <div className="space-y-6">
                         {items.map((item, idx) => {
                           const key = item.key || `q_${idx}`;
