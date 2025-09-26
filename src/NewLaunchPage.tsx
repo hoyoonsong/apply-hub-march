@@ -441,17 +441,17 @@ function NewLaunchPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button
               onClick={() =>
-                navigate("/applications/948bbc90-5a60-463f-82b1-de002829da5c")
+                navigate("/applications/ed757042-a574-4927-abfd-0604e13d6a8d")
               }
               className="bg-white hover:bg-gray-50 text-blue-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
             >
               Organizations Start Here
             </button>
             <button
-              onClick={() => (user ? navigate("/dashboard") : setOpen(true))}
-              className="bg-transparent hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl text-lg border-2 border-white transition-all duration-200 transform hover:scale-105"
+              onClick={() => setOpen(true)}
+              className="bg-white hover:bg-gray-50 text-blue-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
             >
-              {user ? "Go to Dashboard" : "Applicants Start Here"}
+              Applicants Start Here
             </button>
           </div>
         </div>

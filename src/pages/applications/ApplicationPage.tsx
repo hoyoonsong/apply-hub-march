@@ -5,7 +5,6 @@ import {
   getApplication,
   submitApplication,
   saveApplication,
-  startOrGetApplication,
 } from "../../lib/rpc";
 import { loadApplicationSchemaById } from "../../lib/schemaLoader";
 import { useApplicationAutosave } from "../../components/useApplicationAutosave";
@@ -139,96 +138,81 @@ export default function ApplicationPage() {
         }
 
         // Authenticated user flow - load full application
-        console.log(
-          "🔍 ApplicationPage - Loading application for appId:",
-          appId
-        );
         const app = await getApplication(appId!);
-        console.log("🔍 ApplicationPage - Loaded application:", app);
 
-        // If no application found, this might be a program ID - try to start/create an application
-        if (!app || !app.id) {
+        // If no app or missing program_id, fall back to preview mode using public RPC
+        if (!app || !app.program_id) {
           console.log(
-            "🔍 ApplicationPage - No application found, trying to start new application for program:",
-            appId
+            "🔍 ApplicationPage - No app or missing program_id, using fallback"
           );
           try {
-            const newApp = await startOrGetApplication(appId!);
-            console.log(
-              "🔍 ApplicationPage - Started new application:",
-              newApp
-            );
-            setAppRow(newApp);
-
-            // Load schema using the program ID directly
-            const schema = await loadApplicationSchemaById(appId!);
-            console.log("🔍 ApplicationPage - Loaded schema:", schema);
-            setSchema({ items: schema.fields || [] });
-          } catch (error) {
-            console.error(
-              "🔍 ApplicationPage - Failed to start application:",
-              error
-            );
-            // If we can't create an application, fall back to preview mode for authenticated users
-            console.log(
-              "🔍 ApplicationPage - Falling back to preview mode for authenticated user"
+            const { data: progData, error: progError } = await supabase.rpc(
+              "public_get_program_from_app_id",
+              { p_app_id: appId! }
             );
 
-            // Try to get program data using the public RPC function (same as preview mode)
-            try {
-              const { data: progData, error: progError } = await supabase.rpc(
-                "public_get_program_from_app_id",
-                { p_app_id: appId! }
-              );
-
-              if (progError || !progData || progData.length === 0) {
-                console.log("Cannot access program data:", progError);
-                navigate("/unauthorized");
-                return;
-              }
-
-              const program = progData[0];
-              setSchema({ items: program.application_schema?.fields || [] });
-              setProgramDeadline(program?.close_at || null);
-              setProgramOpenDate(program?.open_at || null);
-              setProgramDetails({
-                id: program.program_id,
-                name: program.program_name,
-                description: program.program_description,
-                organization_name: program.organization_name,
-              });
-
-              // Set a dummy app row for preview mode
-              setAppRow({
-                id: appId!,
-                program_id: program.program_id,
-                user_id: user?.id || "",
-                status: "draft",
-                answers: {},
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                program_name: program.program_name,
-                program_metadata: program.application_schema,
-              });
-
-              return; // Exit early for preview mode
-            } catch (previewError) {
-              console.error(
-                "🔍 ApplicationPage - Preview mode also failed:",
-                previewError
-              );
+            if (progError || !progData || progData.length === 0) {
+              console.log("Cannot access program data:", progError);
               navigate("/unauthorized");
               return;
             }
-          }
-        } else {
-          setAppRow(app);
 
-          // Load schema using centralized loader
-          const schema = await loadApplicationSchemaById(app.program_id);
-          console.log("🔍 ApplicationPage - Loaded schema:", schema);
-          setSchema({ items: schema.fields || [] });
+            const program = progData[0];
+
+            // Load schema using the program ID directly
+            const previewSchema = await loadApplicationSchemaById(
+              program.program_id
+            );
+            console.log(
+              "🔍 ApplicationPage - Loaded schema (preview):",
+              previewSchema
+            );
+            setSchema({ items: previewSchema.fields || [] });
+
+            // Program timing details
+            setProgramDeadline(program?.close_at || null);
+            setProgramOpenDate(program?.open_at || null);
+
+            // Program details for header
+            setProgramDetails({
+              id: program.program_id,
+              name: program.program_name,
+              description: program.program_description,
+              metadata: program.application_schema,
+            });
+
+            // Set a lightweight app row for preview/editing
+            setAppRow({
+              id: appId!,
+              program_id: program.program_id,
+              user_id: user?.id || "",
+              status: "draft",
+              answers: {},
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              program_name: program.program_name,
+              program_metadata: program.application_schema,
+            } as any);
+
+            // Allow editing in this fallback mode
+            setIsEditing(true);
+            return; // Exit early after setting preview state
+          } catch (previewError) {
+            console.error(
+              "🔍 ApplicationPage - Preview fallback failed:",
+              previewError
+            );
+            navigate("/unauthorized");
+            return;
+          }
         }
+
+        setAppRow(app);
+
+        // Load schema using centralized loader
+        const schema = await loadApplicationSchemaById(app.program_id);
+        console.log("🔍 ApplicationPage - Loaded schema:", schema);
+        setSchema({ items: schema.fields || [] });
 
         // Get program details for deadline info - check if program is published
         const { data: progData, error: progError } = await supabase
@@ -333,16 +317,7 @@ export default function ApplicationPage() {
     }
   }, [appRow?.answers, setAnswers]);
 
-  const items = useMemo(() => {
-    const rawItems = schema.items ?? [];
-    // Filter out any invalid/empty items
-    const validItems = rawItems.filter(
-      (item) => item && item.label && item.label.trim() !== "" && item.type
-    );
-    console.log("🔍 ApplicationPage - items:", { rawItems, validItems });
-    console.log("🔍 ApplicationPage - rawItems details:", rawItems);
-    return validItems;
-  }, [schema]);
+  const items = useMemo(() => schema.items ?? [], [schema]);
 
   // Check if application is currently open (between open and close dates)
   const isOpen = isApplicationOpen(programOpenDate, programDeadline);
@@ -772,47 +747,33 @@ export default function ApplicationPage() {
                     );
                   })()}
 
-                  {/* Organization Application Questions Section - only show if there are items */}
-                  {items.length > 0 && (
-                    <div
-                      className={(() => {
-                        const program = {
-                          id: programDetails?.id,
-                          name: programDetails?.name,
-                          metadata: programDetails?.metadata,
-                        };
-                        const hasProfileAutofill = programUsesProfile(program);
-                        return hasProfileAutofill
-                          ? "bg-gray-50 border border-gray-200 rounded-lg p-6"
-                          : "space-y-6";
-                      })()}
-                    >
-                      {/* Only show header if there are other sections (profile autofill, etc.) */}
-                      {(() => {
-                        const program = {
-                          id: programDetails?.id,
-                          name: programDetails?.name,
-                          metadata: programDetails?.metadata,
-                        };
-                        const hasProfileAutofill = programUsesProfile(program);
-
-                        if (hasProfileAutofill) {
-                          return (
-                            <>
-                              <div className="flex items-center gap-3 mb-4">
-                                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                                <h2 className="text-lg font-semibold text-gray-900">
-                                  Organization Application Questions
-                                </h2>
-                              </div>
-                              <p className="text-sm text-gray-600 mb-6">
-                                Custom questions created by this organization.
-                              </p>
-                            </>
-                          );
-                        }
-                        return null; // No header when it's just custom questions
-                      })()}
+                  {/* Organization Application Questions Section */}
+                  {items.length === 0 ? (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          Organization Application Questions
+                        </h2>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Custom questions created by this organization.
+                      </p>
+                      <div className="text-sm text-slate-500">
+                        This application doesn't include custom questions.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          Organization Application Questions
+                        </h2>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-6">
+                        Custom questions created by this organization.
+                      </p>
                       <div className="space-y-6">
                         {items.map((item, idx) => {
                           const key = item.key || `q_${idx}`;
