@@ -126,7 +126,7 @@ export default function AllReviewsPage() {
             reviewer_id: null,
             reviewer_name: "Not assigned",
             applicant_id: app.user_id,
-            applicant_name: app.user_id, // We'll need to get the actual name later
+            applicant_name: "—", // Placeholder text instead of UUID
             program_id: app.program_id,
             program_name: (app.programs as any)?.name || "Unknown Program",
             org_id: (app.programs as any)?.organization_id || "",
