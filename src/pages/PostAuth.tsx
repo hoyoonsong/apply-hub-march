@@ -22,7 +22,14 @@ export default function PostAuth() {
             if (error) throw error;
           }
         }
-        window.location.replace("/#"); // same behavior as current app
+
+        // Check for next parameter to redirect after successful auth
+        const nextParam = url.searchParams.get("next");
+        if (nextParam) {
+          window.location.replace(nextParam);
+        } else {
+          window.location.replace("/#"); // default behavior
+        }
       } catch (e) {
         console.error(e);
         window.location.replace("/login?auth_error=1");

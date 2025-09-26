@@ -3,10 +3,22 @@ import { supabase } from "../lib/supabase";
 
 function startOAuth(intent: "signup" | "login") {
   sessionStorage.setItem("authIntent", intent);
+
+  // Get the next parameter from URL to pass through OAuth
+  const urlParams = new URLSearchParams(window.location.search);
+  const nextParam = urlParams.get("next");
+
+  // If no next param in URL, use current pathname as the redirect destination
+  const redirectDestination = nextParam || window.location.pathname;
+
+  const redirectUrl = `${
+    window.location.origin
+  }/post-auth?next=${encodeURIComponent(redirectDestination)}`;
+
   return supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/post-auth`,
+      redirectTo: redirectUrl,
       queryParams: { prompt: "select_account" },
     },
   });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { isUUID } from "../../lib/id";
 import {
@@ -28,6 +28,8 @@ import {
   getOpenDateMessage,
 } from "../../lib/deadlineUtils";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../auth/AuthProvider";
+import LoginModal from "../../components/LoginModal";
 
 type AppRow = {
   id: string;
@@ -51,6 +53,7 @@ type AppRow = {
 export default function ApplicationPage() {
   const { appId } = useParams();
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [appRow, setAppRow] = useState<AppRow | null>(null);
   const [schema, setSchema] = useState<ProgramApplicationSchema>({});
   const [submitting, setSubmitting] = useState(false);
@@ -60,18 +63,88 @@ export default function ApplicationPage() {
   const [profileSnap, setProfileSnap] = useState<any>(null);
   const [programDetails, setProgramDetails] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
+
+  // Handle redirect after successful authentication
+  useEffect(() => {
+    if (user && showSignUpModal) {
+      setShowSignUpModal(false);
+      // Refresh the page to load the authenticated user flow
+      window.location.reload();
+    }
+  }, [user, showSignUpModal]);
 
   useEffect(() => {
     if (!isUUID(appId)) return;
+    if (authLoading) return; // Wait for auth to load
+
     (async () => {
       try {
+        // If user is not authenticated, show preview mode
+        if (!user) {
+          // For non-authenticated users, use the secure RPC function
+          try {
+            const { data: progData, error: progError } = await supabase.rpc(
+              "public_get_program_from_app_id",
+              { p_app_id: appId! }
+            );
+
+            if (progError || !progData || progData.length === 0) {
+              console.log("Cannot access program data for preview:", progError);
+              console.log(
+                "RPC function may not exist yet. Showing generic preview."
+              );
+
+              // Fallback: Show a generic preview with sign-up prompt
+              setSchema({ items: [] });
+              setProgramDetails({
+                id: "unknown",
+                name: "Application Preview",
+                description:
+                  "We can't pull up your application at this moment. Please try again later or contact support if the issue persists.",
+                organization_name: "Organization",
+              });
+              return; // Exit early for preview mode
+            }
+
+            const program = progData[0]; // RPC returns array, get first result
+
+            // Set schema from the program data
+            setSchema({ items: program.application_schema?.fields || [] });
+            setProgramDeadline(program?.close_at || null);
+            setProgramOpenDate(program?.open_at || null);
+            setProgramDetails({
+              id: program.program_id,
+              name: program.program_name,
+              description: program.program_description,
+              organization_name: program.organization_name,
+            });
+            return; // Exit early for preview mode
+          } catch (error: any) {
+            console.log("Error loading preview for non-user:", error.message);
+            console.log("Showing generic preview instead.");
+
+            // Fallback: Show a generic preview with sign-up prompt
+            setSchema({ items: [] });
+            setProgramDetails({
+              id: "unknown",
+              name: "Application Preview",
+              description:
+                "We can't pull up your application at this moment. Please try again later or contact support if the issue persists.",
+              organization_name: "Organization",
+            });
+            return; // Exit early for preview mode
+          }
+        }
+
+        // Authenticated user flow - load full application
         const app = await getApplication(appId!);
         setAppRow(app);
 
         // Load schema using centralized loader
         const schema = await loadApplicationSchemaById(app.program_id);
         console.log("🔍 ApplicationPage - Loaded schema:", schema);
-        setSchema(schema);
+        setSchema({ items: schema.fields || [] });
 
         // Get program details for deadline info - check if program is published
         const { data: progData, error: progError } = await supabase
@@ -161,7 +234,7 @@ export default function ApplicationPage() {
         navigate("/");
       }
     })();
-  }, [appId, navigate]);
+  }, [appId, navigate, user, authLoading]);
 
   const { answers, setAnswers } = useApplicationAutosave(
     appId!,
@@ -176,7 +249,7 @@ export default function ApplicationPage() {
     }
   }, [appRow?.answers, setAnswers]);
 
-  const items = useMemo(() => schema.fields ?? [], [schema]);
+  const items = useMemo(() => schema.items ?? [], [schema]);
 
   // Check if application is currently open (between open and close dates)
   const isOpen = isApplicationOpen(programOpenDate, programDeadline);
@@ -207,7 +280,7 @@ export default function ApplicationPage() {
 
     // Validate required fields before submitting
     if (schema) {
-      const missing = missingRequired(schema, answers);
+      const missing = missingRequired({ fields: schema.items || [] }, answers);
       if (missing.length > 0) {
         alert(
           `Please complete the following required fields: ${missing.join(", ")}`
@@ -254,9 +327,9 @@ export default function ApplicationPage() {
           }
         }
 
-        await submitApplication(appId, finalAnswers);
+        await submitApplication(appId!, finalAnswers);
         // Reload application data to get updated status and answers
-        const updatedApp = await getApplication(appId);
+        const updatedApp = await getApplication(appId!);
         setAppRow(updatedApp);
         // Clear localStorage after successful submission
         localStorage.removeItem(`app:${appId}:answers`);
@@ -264,9 +337,9 @@ export default function ApplicationPage() {
         navigate("/");
       } else if (appRow.status === "submitted" && isEditing) {
         // Saving changes to already submitted application
-        await saveApplication(appId, answers);
+        await saveApplication(appId!, answers);
         // Reload application data to get updated answers
-        const updatedApp = await getApplication(appId);
+        const updatedApp = await getApplication(appId!);
         setAppRow(updatedApp);
         setIsEditing(false); // Exit edit mode and lock fields
         alert("Changes saved!");
@@ -279,397 +352,569 @@ export default function ApplicationPage() {
   };
 
   if (!isUUID(appId)) return null; // Guard against undefined ID
-  if (!appRow || !schema) return <div>Loading...</div>;
+  if (authLoading) return <div>Loading...</div>;
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto p-6">
-        {/* Header Section */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">
-                {programDetails?.name || appRow.program_name || "Application"}
-              </h1>
-              {programDetails?.description && (
-                <p className="mt-1 text-gray-600">
-                  {programDetails.description}
-                </p>
-              )}
-              {organization && (
-                <p className="mt-1 text-sm text-gray-500">
-                  Organization: {organization.name}
-                </p>
-              )}
+  // For non-authenticated users, show preview mode
+  if (!user) {
+    if (!schema || !programDetails) return <div>Loading...</div>;
+
+    return (
+      <>
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-4xl mx-auto p-6">
+            {/* Header Section */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold">
+                    {programDetails?.name || "Application"}
+                  </h1>
+                  {programDetails?.description && (
+                    <p className="text-gray-600 mt-2">
+                      {programDetails.description}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-500 mt-1">
+                    {programDetails?.organization_name}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => navigate("/")}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                <span>←</span>
-                Back to Home
-              </button>
-              {/* Show Edit Application button only for submitted apps that can still be edited */}
-              {appRow.status === "submitted" && canEdit && !isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 text-white bg-purple-600 rounded-md hover:bg-purple-700"
-                >
-                  Edit Application
-                </button>
-              )}
 
-              {/* Show Cancel button only when editing submitted apps */}
-              {isEditing && appRow.status === "submitted" && (
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 text-white bg-gray-500 rounded-md hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
+            {/* Sign Up Prompt - only show if we have application data */}
+            {schema.items && schema.items.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-8 w-8 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-blue-900">
+                      Create an account to submit
+                    </h3>
+                    <p className="text-blue-700 mt-1">
+                      You need to create an account to fill out and submit this
+                      application.
+                    </p>
+                    <div className="mt-4">
+                      <button
+                        onClick={() => setShowSignUpModal(true)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Sign Up / Log In
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Application Preview */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold mb-4">
+                Application Preview
+              </h2>
+              {schema.items && schema.items.length > 0 ? (
+                <div className="space-y-6">
+                  {schema.items.map((field: any) => (
+                    <div
+                      key={field.id}
+                      className="border-b border-gray-100 pb-4"
+                    >
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {field.label}
+                        {field.required && (
+                          <span className="text-red-500 ml-1">*</span>
+                        )}
+                      </label>
+                      <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-gray-500">
+                        {field.type === "short_text" && "Short text answer..."}
+                        {field.type === "long_text" && "Long text answer..."}
+                        {field.type === "date" && "Select date..."}
+                        {field.type === "select" &&
+                          `Choose from: ${field.options?.join(", ")}`}
+                        {field.type === "checkbox" && "Checkbox option..."}
+                        {field.type === "file" && "Upload file..."}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-gray-500 mb-4">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-gray-600 mb-2">
+                    Unable to load application preview
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    We can't pull up your application at this moment. Please try
+                    again later or contact support if the issue persists.
+                  </p>
+                </div>
+              )}
+              {schema.items && schema.items.length > 0 ? (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => setShowSignUpModal(true)}
+                    className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Sign Up to Fill Out Application
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="text-center">
+                    <p className="text-gray-500 text-sm">
+                      Please try refreshing the page or contact support if the
+                      issue persists.
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Application Status */}
-        <div className="mb-6">
-          <div
-            className={`rounded-lg border p-4 ${
-              canEdit
-                ? "bg-green-50 border-green-200"
-                : isBeforeOpen
-                ? "bg-yellow-50 border-yellow-200"
-                : "bg-red-50 border-red-200"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-xl">
-                {canEdit ? "📅" : isBeforeOpen ? "⏰" : "🔒"}
-              </span>
+        {/* Login Modal */}
+        <LoginModal
+          open={showSignUpModal}
+          onClose={() => setShowSignUpModal(false)}
+        />
+      </>
+    );
+  }
+
+  // Authenticated user flow
+  if (!appRow || !schema) return <div>Loading...</div>;
+
+  return (
+    <>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto p-6">
+          {/* Header Section */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
               <div>
-                <div className="font-semibold text-gray-900">
-                  {canEdit
-                    ? "Application Open"
-                    : isBeforeOpen
-                    ? "Application Coming Soon"
-                    : "Application Closed"}
-                </div>
-                <div className="text-sm text-gray-600">
-                  {isBeforeOpen
-                    ? getOpenDateMessage(programOpenDate)
-                    : programDeadline
-                    ? getDeadlineMessage(programDeadline)
-                    : "No deadline set"}
-                </div>
-                {appRow.status === "submitted" && canEdit && (
-                  <div className="text-sm text-green-600 mt-1">
-                    ✓ Application submitted - You can still edit until the
-                    deadline
-                  </div>
+                <h1 className="text-2xl font-bold">
+                  {programDetails?.name || appRow.program_name || "Application"}
+                </h1>
+                {programDetails?.description && (
+                  <p className="mt-1 text-gray-600">
+                    {programDetails.description}
+                  </p>
                 )}
-                {isBeforeOpen && (
-                  <div className="text-sm text-yellow-600 mt-1">
-                    Application will be available soon
-                  </div>
+                {organization && (
+                  <p className="mt-1 text-sm text-gray-500">
+                    Organization: {organization.name}
+                  </p>
                 )}
-                {!canEdit && !isBeforeOpen && (
-                  <div className="text-sm text-red-600 mt-1">
-                    Application is locked - deadline has passed
-                  </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate("/")}
+                  className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  <span>←</span>
+                  Back to Home
+                </button>
+                {/* Show Edit Application button only for submitted apps that can still be edited */}
+                {appRow.status === "submitted" && canEdit && !isEditing && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="px-4 py-2 text-white bg-purple-600 rounded-md hover:bg-purple-700"
+                  >
+                    Edit Application
+                  </button>
+                )}
+
+                {/* Show Cancel button only when editing submitted apps */}
+                {isEditing && appRow.status === "submitted" && (
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="px-4 py-2 text-white bg-gray-500 rounded-md hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
                 )}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Application Card */}
-        <div className="bg-white rounded-lg border shadow-sm">
-          <div className="p-6">
-            {/* Only show form if application is open or past deadline (for viewing submitted apps) */}
-            {!isBeforeOpen && (
-              <div className="space-y-6">
-                {/* Profile Autofill Section */}
-                {(() => {
-                  const program = {
-                    id: programDetails?.id,
-                    name: programDetails?.name,
-                    metadata: programDetails?.metadata,
-                  };
-
-                  return (
-                    programUsesProfile(program) && (
-                      <div className="mb-8">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <h2 className="text-lg font-semibold text-blue-900">
-                                Applicant Profile (Autofilled)
-                              </h2>
-                            </div>
-                            <a
-                              href="/profile"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:text-blue-800 underline"
-                            >
-                              Edit Profile →
-                            </a>
-                          </div>
-                          <p className="text-sm text-blue-700 mb-6">
-                            {appRow?.status === "submitted"
-                              ? "This information was automatically filled from your profile at the time of submission and is now locked."
-                              : "This information was automatically filled from your profile and will be updated as you make changes."}
-                          </p>
-
-                          {profileSnap ? (
-                            <ProfileCard
-                              profile={profileSnap}
-                              sectionSettings={
-                                programDetails?.metadata?.application?.profile
-                                  ?.sections
-                              }
-                            />
-                          ) : (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                              <p className="text-sm text-yellow-800">
-                                🔍 Debug: Profile autofill is enabled but no
-                                profile data loaded yet. Check console for
-                                debugging info.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  );
-                })()}
-
-                {/* Organization Application Questions Section */}
-                {items.length === 0 ? (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        Organization Application Questions
-                      </h2>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Custom questions created by this organization.
-                    </p>
-                    <div className="text-sm text-slate-500">
-                      This application doesn't include custom questions.
-                    </div>
+          {/* Application Status */}
+          <div className="mb-6">
+            <div
+              className={`rounded-lg border p-4 ${
+                canEdit
+                  ? "bg-green-50 border-green-200"
+                  : isBeforeOpen
+                  ? "bg-yellow-50 border-yellow-200"
+                  : "bg-red-50 border-red-200"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">
+                  {canEdit ? "📅" : isBeforeOpen ? "⏰" : "🔒"}
+                </span>
+                <div>
+                  <div className="font-semibold text-gray-900">
+                    {canEdit
+                      ? "Application Open"
+                      : isBeforeOpen
+                      ? "Application Coming Soon"
+                      : "Application Closed"}
                   </div>
-                ) : (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        Organization Application Questions
-                      </h2>
+                  <div className="text-sm text-gray-600">
+                    {isBeforeOpen
+                      ? getOpenDateMessage(programOpenDate)
+                      : programDeadline
+                      ? getDeadlineMessage(programDeadline)
+                      : "No deadline set"}
+                  </div>
+                  {appRow.status === "submitted" && canEdit && (
+                    <div className="text-sm text-green-600 mt-1">
+                      ✓ Application submitted - You can still edit until the
+                      deadline
                     </div>
-                    <p className="text-sm text-gray-600 mb-6">
-                      Custom questions created by this organization.
-                    </p>
-                    <div className="space-y-6">
-                      {items.map((item, idx) => {
-                        const key = item.key || `q_${idx}`;
-                        const val = answers?.[key] ?? "";
+                  )}
+                  {isBeforeOpen && (
+                    <div className="text-sm text-yellow-600 mt-1">
+                      Application will be available soon
+                    </div>
+                  )}
+                  {!canEdit && !isBeforeOpen && (
+                    <div className="text-sm text-red-600 mt-1">
+                      Application is locked - deadline has passed
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
 
-                        switch (item.type) {
-                          case "short_text":
-                            return (
-                              <div
-                                key={key}
-                                className="bg-white border border-gray-200 rounded-lg p-6"
-                              >
-                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                  {item.label}
-                                  {item.required && " *"}
-                                </label>
-                                <input
-                                  className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                    !isFormEditable
-                                      ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                      : ""
-                                  }`}
-                                  value={val}
-                                  maxLength={item.maxLength}
-                                  onChange={(e) => update(key, e.target.value)}
-                                  disabled={!isFormEditable}
-                                  readOnly={!isFormEditable}
-                                  style={{
-                                    cursor: isFormEditable
-                                      ? "text"
-                                      : "not-allowed",
-                                  }}
-                                />
+          {/* Application Card */}
+          <div className="bg-white rounded-lg border shadow-sm">
+            <div className="p-6">
+              {/* Only show form if application is open or past deadline (for viewing submitted apps) */}
+              {!isBeforeOpen && (
+                <div className="space-y-6">
+                  {/* Profile Autofill Section */}
+                  {(() => {
+                    const program = {
+                      id: programDetails?.id,
+                      name: programDetails?.name,
+                      metadata: programDetails?.metadata,
+                    };
+
+                    return (
+                      programUsesProfile(program) && (
+                        <div className="mb-8">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <h2 className="text-lg font-semibold text-blue-900">
+                                  Applicant Profile (Autofilled)
+                                </h2>
                               </div>
-                            );
-                          case "long_text":
-                            return (
-                              <div
-                                key={key}
-                                className="bg-white border border-gray-200 rounded-lg p-6"
+                              <a
+                                href="/profile"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:text-blue-800 underline"
                               >
-                                <WordLimitedTextarea
-                                  label={item.label}
-                                  value={val}
-                                  onChange={(value) => update(key, value)}
-                                  maxWords={item.maxWords ?? 100}
-                                  rows={4}
-                                  required={item.required}
-                                  disabled={!isFormEditable}
-                                />
+                                Edit Profile →
+                              </a>
+                            </div>
+                            <p className="text-sm text-blue-700 mb-6">
+                              {appRow?.status === "submitted"
+                                ? "This information was automatically filled from your profile at the time of submission and is now locked."
+                                : "This information was automatically filled from your profile and will be updated as you make changes."}
+                            </p>
+
+                            {profileSnap ? (
+                              <ProfileCard
+                                profile={profileSnap}
+                                sectionSettings={
+                                  programDetails?.metadata?.application?.profile
+                                    ?.sections
+                                }
+                              />
+                            ) : (
+                              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <p className="text-sm text-yellow-800">
+                                  🔍 Debug: Profile autofill is enabled but no
+                                  profile data loaded yet. Check console for
+                                  debugging info.
+                                </p>
                               </div>
-                            );
-                          case "checkbox":
-                            return (
-                              <div
-                                key={key}
-                                className="bg-white border border-gray-200 rounded-lg p-6"
-                              >
-                                <div className="flex items-center gap-3">
+                            )}
+                          </div>
+                        </div>
+                      )
+                    );
+                  })()}
+
+                  {/* Organization Application Questions Section */}
+                  {items.length === 0 ? (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          Organization Application Questions
+                        </h2>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Custom questions created by this organization.
+                      </p>
+                      <div className="text-sm text-slate-500">
+                        This application doesn't include custom questions.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          Organization Application Questions
+                        </h2>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-6">
+                        Custom questions created by this organization.
+                      </p>
+                      <div className="space-y-6">
+                        {items.map((item, idx) => {
+                          const key = item.key || `q_${idx}`;
+                          const val = answers?.[key] ?? "";
+
+                          switch (item.type) {
+                            case "short_text":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-6"
+                                >
+                                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    {item.label}
+                                    {item.required && " *"}
+                                  </label>
                                   <input
-                                    type="checkbox"
-                                    checked={!!val}
+                                    className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                      !isFormEditable
+                                        ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                        : ""
+                                    }`}
+                                    value={val}
+                                    maxLength={item.maxLength}
                                     onChange={(e) =>
-                                      update(key, e.target.checked)
+                                      update(key, e.target.value)
                                     }
                                     disabled={!isFormEditable}
-                                    className={`h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
-                                      !isFormEditable ? "opacity-50" : ""
+                                    readOnly={!isFormEditable}
+                                    style={{
+                                      cursor: isFormEditable
+                                        ? "text"
+                                        : "not-allowed",
+                                    }}
+                                  />
+                                </div>
+                              );
+                            case "long_text":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-6"
+                                >
+                                  <WordLimitedTextarea
+                                    label={item.label}
+                                    value={val}
+                                    onChange={(value) => update(key, value)}
+                                    maxWords={item.maxWords ?? 100}
+                                    rows={4}
+                                    required={item.required}
+                                    disabled={!isFormEditable}
+                                  />
+                                </div>
+                              );
+                            case "checkbox":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-6"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!val}
+                                      onChange={(e) =>
+                                        update(key, e.target.checked)
+                                      }
+                                      disabled={!isFormEditable}
+                                      className={`h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
+                                        !isFormEditable ? "opacity-50" : ""
+                                      }`}
+                                      style={{
+                                        cursor: isFormEditable
+                                          ? "pointer"
+                                          : "not-allowed",
+                                      }}
+                                    />
+                                    <label className="text-sm font-medium text-gray-700">
+                                      {item.label}
+                                      {item.required && " *"}
+                                    </label>
+                                  </div>
+                                </div>
+                              );
+                            case "date":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-6"
+                                >
+                                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    {item.label}
+                                    {item.required && " *"}
+                                  </label>
+                                  <input
+                                    type="date"
+                                    className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                      !isFormEditable
+                                        ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                        : ""
                                     }`}
+                                    value={val}
+                                    onChange={(e) =>
+                                      update(key, e.target.value)
+                                    }
+                                    disabled={!isFormEditable}
+                                    readOnly={!isFormEditable}
+                                    style={{
+                                      cursor: isFormEditable
+                                        ? "text"
+                                        : "not-allowed",
+                                    }}
+                                  />
+                                </div>
+                              );
+                            case "select":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-6"
+                                >
+                                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    {item.label}
+                                    {item.required && " *"}
+                                  </label>
+                                  <select
+                                    className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                      !isFormEditable
+                                        ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                        : ""
+                                    }`}
+                                    value={val}
+                                    onChange={(e) =>
+                                      update(key, e.target.value)
+                                    }
+                                    disabled={!isFormEditable}
                                     style={{
                                       cursor: isFormEditable
                                         ? "pointer"
                                         : "not-allowed",
                                     }}
-                                  />
-                                  <label className="text-sm font-medium text-gray-700">
+                                  >
+                                    <option value="">
+                                      Select an option...
+                                    </option>
+                                    {item.options?.map((option: string) => (
+                                      <option key={option} value={option}>
+                                        {option}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              );
+                            case "file":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-6"
+                                >
+                                  <label className="block text-sm font-medium text-gray-700 mb-3">
                                     {item.label}
                                     {item.required && " *"}
                                   </label>
+                                  <SimpleFileUpload
+                                    applicationId={appId!}
+                                    fieldId={key}
+                                    value={answers[key] || ""}
+                                    onChange={(value) => update(key, value)}
+                                    disabled={!isFormEditable}
+                                  />
                                 </div>
-                              </div>
-                            );
-                          case "date":
-                            return (
-                              <div
-                                key={key}
-                                className="bg-white border border-gray-200 rounded-lg p-6"
-                              >
-                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                  {item.label}
-                                  {item.required && " *"}
-                                </label>
-                                <input
-                                  type="date"
-                                  className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                    !isFormEditable
-                                      ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                      : ""
-                                  }`}
-                                  value={val}
-                                  onChange={(e) => update(key, e.target.value)}
-                                  disabled={!isFormEditable}
-                                  readOnly={!isFormEditable}
-                                  style={{
-                                    cursor: isFormEditable
-                                      ? "text"
-                                      : "not-allowed",
-                                  }}
-                                />
-                              </div>
-                            );
-                          case "select":
-                            return (
-                              <div
-                                key={key}
-                                className="bg-white border border-gray-200 rounded-lg p-6"
-                              >
-                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                  {item.label}
-                                  {item.required && " *"}
-                                </label>
-                                <select
-                                  className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                    !isFormEditable
-                                      ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
-                                      : ""
-                                  }`}
-                                  value={val}
-                                  onChange={(e) => update(key, e.target.value)}
-                                  disabled={!isFormEditable}
-                                  style={{
-                                    cursor: isFormEditable
-                                      ? "pointer"
-                                      : "not-allowed",
-                                  }}
-                                >
-                                  <option value="">
-                                    {item.placeholder || "Select an option..."}
-                                  </option>
-                                  {item.options?.map((option: string) => (
-                                    <option key={option} value={option}>
-                                      {option}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            );
-                          case "file":
-                            return (
-                              <div
-                                key={key}
-                                className="bg-white border border-gray-200 rounded-lg p-6"
-                              >
-                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                  {item.label}
-                                  {item.required && " *"}
-                                </label>
-                                <SimpleFileUpload
-                                  applicationId={appId!}
-                                  fieldId={key}
-                                  value={answers[key] || ""}
-                                  onChange={(value) => update(key, value)}
-                                  disabled={!isFormEditable}
-                                />
-                              </div>
-                            );
-                          default:
-                            return null;
-                        }
-                      })}
+                              );
+                            default:
+                              return null;
+                          }
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Submit button at bottom like Google Forms - only show if not before open */}
-            {!isBeforeOpen &&
-              (appRow.status === "draft" ||
-                (appRow.status === "submitted" && isEditing)) && (
-                <div className="flex justify-end pt-4 border-t">
-                  <button
-                    onClick={handleSubmit}
-                    className="rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
-                    disabled={submitting || !canEdit}
-                    title={
-                      !canEdit ? "Cannot submit - deadline has passed" : ""
-                    }
-                  >
-                    {submitting ? "Submitting..." : "Submit Application"}
-                  </button>
+                  )}
                 </div>
               )}
+
+              {/* Submit button at bottom like Google Forms - only show if not before open */}
+              {!isBeforeOpen &&
+                (appRow.status === "draft" ||
+                  (appRow.status === "submitted" && isEditing)) && (
+                  <div className="flex justify-end pt-4 border-t">
+                    <button
+                      onClick={handleSubmit}
+                      className="rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
+                      disabled={submitting || !canEdit}
+                      title={
+                        !canEdit ? "Cannot submit - deadline has passed" : ""
+                      }
+                    >
+                      {submitting ? "Submitting..." : "Submit Application"}
+                    </button>
+                  </div>
+                )}
+            </div>
           </div>
         </div>
+
+        {/* Login Modal */}
+        <LoginModal
+          open={showSignUpModal}
+          onClose={() => setShowSignUpModal(false)}
+        />
       </div>
-    </div>
+    </>
   );
 }
