@@ -30,18 +30,19 @@ export default function DashboardHeader({
         </Link>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 md:py-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-6 sm:py-12 md:py-16">
+        {/* Main header row - logo, tabs (desktop), user info */}
         <div className="flex items-center justify-between">
           {/* Responsive spacer for logo */}
-          <div className="w-20 sm:w-28 md:w-40"></div>
+          <div className="w-16 sm:w-28 md:w-40"></div>
 
-          {/* Center - Tabs with responsive positioning */}
+          {/* Center - Tabs with responsive positioning (hidden on mobile) */}
           {showTabs && tabs.length > 0 && (
-            <div className="absolute left-1/2 transform -translate-x-1/2 flex gap-3 sm:gap-4 md:gap-5">
+            <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 gap-4 lg:gap-5">
               {tabs.map((tab) => (
                 <button
                   key={tab.name}
-                  className={`font-bold py-2 px-4 sm:py-2.5 sm:px-5 md:py-3 md:px-6 rounded-lg transition-all duration-200 text-sm sm:text-base ${
+                  className={`font-bold py-2.5 px-5 lg:py-3 lg:px-6 rounded-lg transition-all duration-200 text-sm lg:text-base ${
                     activeTab === tab.name
                       ? "bg-blue-600 text-white shadow-lg"
                       : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -55,10 +56,29 @@ export default function DashboardHeader({
           )}
 
           {/* Right side - User info */}
-          <div className="flex items-center">
+          <div className="flex items-start pt-4 md:items-center md:pt-0">
             <UserInfo />
           </div>
         </div>
+
+        {/* Mobile tabs row - shown only on mobile */}
+        {showTabs && tabs.length > 0 && (
+          <div className="md:hidden flex justify-center mt-12 gap-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.name}
+                className={`font-bold py-1.5 px-2 rounded-md transition-all duration-200 text-xs ${
+                  activeTab === tab.name
+                    ? "bg-blue-600 text-white shadow-lg"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+                onClick={() => onTabChange?.(tab.name)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </nav>
   );

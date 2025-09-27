@@ -583,21 +583,21 @@ export default function ApplicationPage() {
   return (
     <>
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto p-6">
+        <div className="max-w-4xl mx-auto p-3 md:p-6">
           {/* Header Section */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between">
+          <div className="mb-4 md:mb-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
               <div>
-                <h1 className="text-2xl font-bold">
+                <h1 className="text-xl md:text-2xl font-bold">
                   {programDetails?.name || appRow.program_name || "Application"}
                 </h1>
                 {programDetails?.description && (
-                  <p className="mt-1 text-gray-600">
+                  <p className="mt-1 text-sm md:text-base text-gray-600">
                     {programDetails.description}
                   </p>
                 )}
                 {organization && (
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-xs md:text-sm text-gray-500">
                     Organization: {organization.name}
                   </p>
                 )}
@@ -800,14 +800,14 @@ export default function ApplicationPage() {
                                 return (
                                   <div
                                     key={key}
-                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                    className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
                                   >
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                       {item.label}
                                       {item.required && " *"}
                                     </label>
                                     <input
-                                      className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                      className={`w-full rounded-md border border-gray-300 px-3 md:px-4 py-2 md:py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                         !isFormEditable
                                           ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
                                           : ""
@@ -831,14 +831,14 @@ export default function ApplicationPage() {
                                 return (
                                   <div
                                     key={key}
-                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                    className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
                                   >
                                     <WordLimitedTextarea
                                       label={item.label}
                                       value={val}
                                       onChange={(value) => update(key, value)}
                                       maxWords={item.maxWords ?? 100}
-                                      rows={4}
+                                      rows={3}
                                       required={item.required}
                                       disabled={!isFormEditable}
                                     />
@@ -848,9 +848,9 @@ export default function ApplicationPage() {
                                 return (
                                   <div
                                     key={key}
-                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                    className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
                                   >
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2 md:gap-3">
                                       <input
                                         type="checkbox"
                                         checked={!!val}
@@ -858,7 +858,7 @@ export default function ApplicationPage() {
                                           update(key, e.target.checked)
                                         }
                                         disabled={!isFormEditable}
-                                        className={`h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
+                                        className={`h-4 w-4 md:h-5 md:w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
                                           !isFormEditable ? "opacity-50" : ""
                                         }`}
                                         style={{
@@ -878,15 +878,15 @@ export default function ApplicationPage() {
                                 return (
                                   <div
                                     key={key}
-                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                    className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
                                   >
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                       {item.label}
                                       {item.required && " *"}
                                     </label>
                                     <input
                                       type="date"
-                                      className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                      className={`w-full rounded-md border border-gray-300 px-3 md:px-4 py-2 md:py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                         !isFormEditable
                                           ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
                                           : ""
@@ -909,14 +909,14 @@ export default function ApplicationPage() {
                                 return (
                                   <div
                                     key={key}
-                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                    className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
                                   >
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                       {item.label}
                                       {item.required && " *"}
                                     </label>
                                     <select
-                                      className={`w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                      className={`w-full rounded-md border border-gray-300 px-3 md:px-4 py-2 md:py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                         !isFormEditable
                                           ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
                                           : ""
@@ -947,9 +947,9 @@ export default function ApplicationPage() {
                                 return (
                                   <div
                                     key={key}
-                                    className="bg-white border border-gray-200 rounded-lg p-6"
+                                    className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
                                   >
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                       {item.label}
                                       {item.required && " *"}
                                     </label>

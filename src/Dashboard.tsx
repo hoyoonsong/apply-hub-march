@@ -458,10 +458,10 @@ function FeaturedPrograms() {
     <div className="w-full">
       {/* Hero Section - Keep the header you liked */}
 
-      {/* Featured Carousel - Times Square Style */}
-      <div className="mb-8 md:mb-16">
-        <div className="relative bg-white rounded-xl md:rounded-2xl shadow-xl overflow-hidden border-2 border-gray-100 mx-2 md:mx-0">
-          <div className="relative h-64 md:h-96">
+      {/* Featured Carousel - Mobile-First Design */}
+      <div className="mb-4 md:mb-16">
+        <div className="relative bg-white rounded-lg md:rounded-2xl shadow-lg md:shadow-xl overflow-hidden border border-gray-100 md:border-2 md:border-gray-100 mx-1 md:mx-0">
+          <div className="relative h-40 md:h-96">
             {featuredPrograms.map((program, index) => (
               <div
                 key={program.id}
@@ -472,40 +472,40 @@ function FeaturedPrograms() {
                 <div
                   className={`h-full bg-gradient-to-br ${program.gradient} flex items-center justify-center relative`}
                 >
-                  <div className="text-center text-white p-4 md:p-8 max-w-4xl">
-                    <h2 className="text-2xl md:text-4xl font-bold mb-2 md:mb-4 drop-shadow-lg">
+                  <div className="text-center text-white p-3 md:p-8 max-w-4xl">
+                    <h2 className="text-lg md:text-4xl font-bold mb-1 md:mb-4 drop-shadow-lg">
                       {program.name}
                     </h2>
-                    <p className="text-sm md:text-xl mb-4 md:mb-6 opacity-90 max-w-2xl mx-auto">
+                    <p className="text-xs md:text-xl mb-2 md:mb-6 opacity-90 max-w-2xl mx-auto hidden md:block">
                       {program.description}
                     </p>
-                    <div className="flex flex-col md:flex-row items-center justify-center space-y-2 md:space-y-0 md:space-x-6 mb-6 md:mb-8">
+                    <div className="flex flex-col md:flex-row items-center justify-center space-y-1 md:space-y-0 md:space-x-6 mb-3 md:mb-8">
                       <span
-                        className={`${program.tagColor} text-xs md:text-sm font-semibold px-3 md:px-4 py-1 md:py-2 rounded-full`}
+                        className={`${program.tagColor} text-xs md:text-sm font-semibold px-2 md:px-4 py-1 md:py-2 rounded-full`}
                       >
                         {program.class}
                       </span>
-                      <span className="text-white text-sm md:text-lg">
+                      <span className="text-white text-xs md:text-lg">
                         Since {program.founded}
                       </span>
                       <span
-                        className={`${program.statusColor} font-semibold text-sm md:text-lg`}
+                        className={`${program.statusColor} font-semibold text-xs md:text-lg`}
                       >
                         {program.status}
                       </span>
                     </div>
                     <button
-                      className={`${program.buttonColor} text-white px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-xl text-sm md:text-lg font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl`}
+                      className={`${program.buttonColor} text-white px-4 md:px-8 py-2 md:py-4 rounded-md md:rounded-xl text-xs md:text-lg font-bold transition-all duration-300 transform hover:scale-105 shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl`}
                       onClick={() => navigate(`/org/${program.slug}`)}
                     >
                       Learn More
                     </button>
                   </div>
 
-                  {/* Subtle animated elements */}
-                  <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-4 md:top-8 left-4 md:left-8 w-8 md:w-12 h-8 md:h-12 border-2 border-white rounded-full animate-pulse"></div>
-                    <div className="absolute bottom-4 md:bottom-8 right-4 md:right-8 w-6 md:w-8 h-6 md:h-8 border-2 border-white rounded-full animate-ping"></div>
+                  {/* Subtle animated elements - hidden on mobile */}
+                  <div className="absolute inset-0 opacity-10 hidden md:block">
+                    <div className="absolute top-8 left-8 w-12 h-12 border-2 border-white rounded-full animate-pulse"></div>
+                    <div className="absolute bottom-8 right-8 w-8 h-8 border-2 border-white rounded-full animate-ping"></div>
                   </div>
                 </div>
               </div>
@@ -513,12 +513,12 @@ function FeaturedPrograms() {
           </div>
 
           {/* Carousel Navigation Dots */}
-          <div className="absolute bottom-2 md:bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+          <div className="absolute bottom-1 md:bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-1 md:space-x-2">
             {featuredPrograms.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentSlide(index)}
-                className={`w-2 h-2 md:w-3 md:h-3 rounded-full transition-colors ${
+                className={`w-1.5 h-1.5 md:w-3 md:h-3 rounded-full transition-colors ${
                   index === currentSlide ? "bg-white" : "bg-white/50"
                 }`}
               />
@@ -527,25 +527,25 @@ function FeaturedPrograms() {
         </div>
       </div>
 
-      {/* Gallery Section - Smaller Cards */}
-      <div className="mb-8 md:mb-12 px-2 md:px-0">
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8 text-center">
+      {/* Gallery Section - Mobile-First Cards */}
+      <div className="mb-6 md:mb-12 px-1 md:px-0">
+        <h2 className="text-lg md:text-3xl font-bold text-gray-900 mb-4 md:mb-8 text-center">
           More Programs
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
           {galleryPrograms.map((program) => (
             <div
               key={program.id}
-              className="bg-white rounded-lg md:rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden group"
+              className="bg-white rounded-md md:rounded-xl shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 md:hover:-translate-y-2 border border-gray-100 overflow-hidden group"
             >
               <div
-                className={`h-24 md:h-32 bg-gradient-to-br ${program.gradient} flex items-center justify-center`}
+                className={`h-20 md:h-32 bg-gradient-to-br ${program.gradient} flex items-center justify-center`}
               >
-                <h3 className="text-white text-sm md:text-lg font-bold text-center px-2 md:px-4">
+                <h3 className="text-white text-xs md:text-lg font-bold text-center px-2 md:px-4">
                   {program.name}
                 </h3>
               </div>
-              <div className="p-3 md:p-4">
+              <div className="p-2 md:p-4">
                 <div className="flex flex-col md:flex-row md:items-center mb-2 md:mb-3">
                   <span
                     className={`${program.tagColor} text-xs font-semibold px-2 py-1 rounded-full mb-1 md:mb-0`}
@@ -556,7 +556,7 @@ function FeaturedPrograms() {
                     {program.founded}
                   </span>
                 </div>
-                <p className="text-gray-700 text-xs md:text-sm mb-3 md:mb-4 line-clamp-2">
+                <p className="text-gray-700 text-xs md:text-sm mb-2 md:mb-4 line-clamp-2 hidden md:block">
                   {program.description}
                 </p>
                 <div className="flex justify-between items-center">
