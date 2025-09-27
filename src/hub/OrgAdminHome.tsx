@@ -88,6 +88,14 @@ export default function OrgAdminHome() {
               onClick={() => {}}
             />
           </Link>
+          <Link to={`/org/${orgSlug}/admin/publish-results`} className="block">
+            <HubTile
+              title="Publish Results"
+              subtitle="Publish review results to applicants"
+              disabled={false}
+              onClick={() => {}}
+            />
+          </Link>
           <HubTile
             title="Organization Settings"
             subtitle="Name, slug, description"

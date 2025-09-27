@@ -51,6 +51,9 @@ import ReviewAppPage from "./pages/review/ReviewAppPage";
 import AllReviewsPage from "./pages/review/AllReviewsPage";
 import OrgReviewsPage from "./pages/org/admin/OrgReviewsPage";
 import OrgManageReviewers from "./pages/org-admin/OrgManageReviewers";
+import PublishResultsPage from "./pages/org-admin/PublishResultsPage";
+import PublishResultsHomePage from "./pages/org-admin/PublishResultsHomePage";
+import MySubmissionsPage from "./pages/applicant/MySubmissionsPage";
 
 export default function App() {
   return (
@@ -197,6 +200,26 @@ export default function App() {
               }
             />
             <Route
+              path="/org/:orgSlug/admin/publish-results"
+              element={
+                <ProtectedRoute>
+                  <ProtectedOrgAdminRoute>
+                    <PublishResultsHomePage />
+                  </ProtectedOrgAdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/:orgSlug/admin/programs/:programId/publish"
+              element={
+                <ProtectedRoute>
+                  <ProtectedOrgAdminRoute>
+                    <PublishResultsPage />
+                  </ProtectedOrgAdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/org/:orgSlug/reviewer"
               element={
                 <ProtectedRoute>
@@ -249,6 +272,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-submissions"
+              element={
+                <ProtectedRoute>
+                  <MySubmissionsPage />
                 </ProtectedRoute>
               }
             />

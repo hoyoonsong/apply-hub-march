@@ -29,6 +29,13 @@ export default function DashboardNavigation() {
           Profile
         </Link>
 
+        <Link
+          to="/my-submissions"
+          className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-white hover:border-gray-400 text-gray-700 transition-all duration-200 hover:shadow-sm"
+        >
+          My Submissions
+        </Link>
+
         <ReviewerNavLink />
       </div>
     </div>
