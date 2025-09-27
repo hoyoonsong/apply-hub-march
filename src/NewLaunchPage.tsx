@@ -137,7 +137,7 @@ function NewLaunchPage() {
               <img
                 src="/ApplicationBoth.png"
                 alt="Application interface showing both applicant and organization views"
-                className="w-full h-auto rounded-2xl shadow-2xl mx-auto mb-8"
+                className="w-full h-96 object-cover rounded-2xl shadow-2xl mx-auto mb-8"
               />
               <div className="text-center">
                 <div className="inline-flex items-center gap-3 bg-blue-600 text-white px-6 py-3 rounded-full text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
@@ -182,7 +182,7 @@ function NewLaunchPage() {
                 <img
                   src="/ApplicationBuilderOrgview.png"
                   alt="Application Builder Interface showing profile autofill and custom questions"
-                  className="w-full h-auto rounded-2xl shadow-2xl mx-auto mb-8"
+                  className="w-full h-96 object-cover rounded-2xl shadow-2xl mx-auto mb-8"
                 />
                 <div className="text-center">
                   <div className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-full text-base font-semibold">
@@ -228,7 +228,7 @@ function NewLaunchPage() {
                 <img
                   src="/ApplicationCoalition.png"
                   alt="Coalition application interface showing shared questions and requirements"
-                  className="w-full h-auto rounded-2xl shadow-2xl mx-auto mb-8"
+                  className="w-full h-96 object-cover rounded-2xl shadow-2xl mx-auto mb-8"
                 />
                 <div className="text-center">
                   <div className="inline-flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-full text-base font-semibold">
@@ -273,7 +273,7 @@ function NewLaunchPage() {
                 <img
                   src="/AppReview.png"
                   alt="Application Review Interface showing collaborative commenting, scoring, and decision-making"
-                  className="w-full h-auto rounded-2xl shadow-2xl mx-auto mb-8"
+                  className="w-full h-96 object-cover rounded-2xl shadow-2xl mx-auto mb-8"
                 />
                 <div className="text-center">
                   <div className="inline-flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-full text-base font-semibold">

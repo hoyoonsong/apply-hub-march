@@ -269,92 +269,104 @@ export default function MySubmissionsPage() {
         <div className="bg-white rounded-b-lg shadow-sm">
           <div className="p-6">
             {resultsRows.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="mx-auto h-12 w-12 text-gray-400">
-                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="text-center py-16">
+                <div className="mx-auto h-24 w-24 text-gray-300 mb-6">
+                  <svg
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    className="w-full h-full"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      strokeWidth={1.5}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">
-                  No results yet
+                <h3 className="text-2xl font-semibold text-gray-700 mb-3">
+                  No results at this time
                 </h3>
-                <p className="mt-2 text-gray-500">
-                  Results will appear here once they are published.
+                <p className="text-lg text-gray-500 max-w-md mx-auto">
+                  Your application results will appear here once they are
+                  published by the organization.
                 </p>
               </div>
             ) : (
               <div className="space-y-6">
-                {resultsRows.map((r) => {
-                  const v = r.visibility;
-                  const p = r.payload || {};
-                  return (
-                    <div
-                      key={r.publication_id}
-                      className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200"
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {r.program_name}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Published:{" "}
-                            {new Date(r.published_at).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {v.decision && p.decision && (
-                          <div className="bg-green-50 rounded-lg p-4">
-                            <div className="text-sm font-medium text-green-800 mb-1">
-                              Decision
-                            </div>
-                            <div className="text-lg font-semibold text-green-900 capitalize">
-                              {p.decision}
-                            </div>
-                          </div>
-                        )}
-                        {v.score && p.score !== null && (
-                          <div className="bg-blue-50 rounded-lg p-4">
-                            <div className="text-sm font-medium text-blue-800 mb-1">
-                              Score
-                            </div>
-                            <div className="text-lg font-semibold text-blue-900">
-                              {p.score}
-                            </div>
-                          </div>
-                        )}
-                        {v.comments && p.comments && (
-                          <div className="sm:col-span-2 lg:col-span-3 bg-gray-50 rounded-lg p-4">
-                            <div className="text-sm font-medium text-gray-800 mb-2">
-                              Reviewer Comments:
-                            </div>
-                            <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                              {p.comments}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {v.customMessage && (
-                        <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
-                          <div className="text-sm font-medium text-amber-800 mb-1">
-                            Additional Message
-                          </div>
-                          <div className="text-amber-700">
-                            {v.customMessage}
+                {resultsRows
+                  .sort(
+                    (a, b) =>
+                      new Date(b.published_at).getTime() -
+                      new Date(a.published_at).getTime()
+                  )
+                  .map((r) => {
+                    const v = r.visibility;
+                    const p = r.payload || {};
+                    return (
+                      <div
+                        key={r.publication_id}
+                        className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200"
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {r.program_name}
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Published:{" "}
+                              {new Date(r.published_at).toLocaleString()}
+                            </p>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {v.decision && p.decision && (
+                            <div className="bg-purple-50 rounded-lg p-4">
+                              <div className="text-sm font-medium text-purple-700 mb-1">
+                                Decision
+                              </div>
+                              <div className="text-lg font-semibold text-purple-900 capitalize">
+                                {p.decision}
+                              </div>
+                            </div>
+                          )}
+                          {v.score && p.score !== null && (
+                            <div className="bg-blue-50 rounded-lg p-4">
+                              <div className="text-sm font-medium text-blue-800 mb-1">
+                                Score
+                              </div>
+                              <div className="text-lg font-semibold text-blue-900">
+                                {p.score}
+                              </div>
+                            </div>
+                          )}
+                          {v.comments && p.comments && (
+                            <div className="sm:col-span-2 lg:col-span-3 bg-gray-50 rounded-lg p-4">
+                              <div className="text-sm font-medium text-gray-800 mb-2">
+                                Reviewer Comments:
+                              </div>
+                              <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                                {p.comments}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {v.customMessage && (
+                          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                            <div className="text-sm font-medium text-amber-800 mb-1">
+                              Additional Message
+                            </div>
+                            <div className="text-amber-700">
+                              {v.customMessage}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>
