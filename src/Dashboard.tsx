@@ -351,17 +351,17 @@ function FeaturedScholarships() {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-2 md:px-0">
-      {/* Search Section - Compact */}
+      {/* Search Section */}
       <div className="mb-6 md:mb-8">
         <div className="relative max-w-2xl mx-auto">
           <input
             type="text"
-            placeholder="Search for scholarships..."
+            placeholder="Search all programs..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 md:h-12 px-4 md:px-6 text-sm md:text-base border-2 border-gray-200 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-20 md:pr-24 transition-all duration-200 hover:shadow-xl focus:shadow-xl"
+            className="w-full h-12 md:h-14 px-4 md:px-6 text-base md:text-lg border-2 border-gray-300 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 md:pr-32 transition-all duration-200 hover:shadow-xl focus:shadow-xl bg-white"
           />
-          <button className="absolute right-1 md:right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-1 md:py-2 rounded-full transition-colors text-xs md:text-sm font-medium h-7 md:h-8">
+          <button className="absolute right-1 md:right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-full transition-colors text-xs md:text-sm font-medium h-8 md:h-10">
             Search
           </button>
         </div>
@@ -666,11 +666,6 @@ function AllOrgs() {
 function Scholarships() {
   return (
     <div className="flex flex-col gap-4 items-center px-2 md:px-0">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-          Scholarships
-        </h2>
-      </div>
       <FeaturedScholarships />
     </div>
   );
