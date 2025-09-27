@@ -67,7 +67,7 @@ export default function DashboardHeader({
             {tabs.map((tab) => (
               <button
                 key={tab.name}
-                className={`font-bold py-1.5 px-2 rounded-md transition-all duration-200 text-xs ${
+                className={`font-bold py-2.5 px-4 rounded-lg transition-all duration-200 text-sm ${
                   activeTab === tab.name
                     ? "bg-blue-600 text-white shadow-lg"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"

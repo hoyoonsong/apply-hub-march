@@ -44,7 +44,7 @@ function NewLaunchPage() {
               ) : (
                 <button
                   onClick={() => setOpen(true)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-1 px-3 md:py-2 md:px-6 rounded-md md:rounded-lg transition-colors shadow-md md:shadow-lg text-xs md:text-base"
+                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-3 md:py-2 md:px-6 rounded-md md:rounded-lg transition-colors shadow-md md:shadow-lg text-xs md:text-base"
                 >
                   Sign up / Log in
                 </button>

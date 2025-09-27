@@ -461,7 +461,7 @@ function FeaturedPrograms() {
       {/* Featured Carousel - Mobile-First Design */}
       <div className="mb-4 md:mb-16">
         <div className="relative bg-white rounded-lg md:rounded-2xl shadow-lg md:shadow-xl overflow-hidden border border-gray-100 md:border-2 md:border-gray-100 mx-1 md:mx-0">
-          <div className="relative h-40 md:h-96">
+          <div className="relative h-56 md:h-96">
             {featuredPrograms.map((program, index) => (
               <div
                 key={program.id}
