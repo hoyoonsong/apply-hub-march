@@ -350,69 +350,69 @@ function FeaturedScholarships() {
       : filteredScholarships.slice(0, 3);
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="w-full max-w-6xl mx-auto px-2 md:px-0">
       {/* Search Section - Compact */}
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <div className="relative max-w-2xl mx-auto">
           <input
             type="text"
             placeholder="Search for scholarships..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 px-6 text-base border-2 border-gray-200 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 transition-all duration-200 hover:shadow-xl focus:shadow-xl"
+            className="w-full h-10 md:h-12 px-4 md:px-6 text-sm md:text-base border-2 border-gray-200 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-20 md:pr-24 transition-all duration-200 hover:shadow-xl focus:shadow-xl"
           />
-          <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition-colors text-sm font-medium h-8">
+          <button className="absolute right-1 md:right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-1 md:py-2 rounded-full transition-colors text-xs md:text-sm font-medium h-7 md:h-8">
             Search
           </button>
         </div>
       </div>
 
       {/* Scholarships Grid - Always 3 cards, consistent sizing */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-5xl mx-auto">
         {displayScholarships.map((scholarship) => (
           <div
             key={scholarship.id}
-            className="w-full bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden flex flex-col h-full"
+            className="w-full bg-white rounded-xl md:rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden flex flex-col h-full"
           >
             <div
-              className={`h-48 bg-gradient-to-br ${scholarship.gradient} flex items-center justify-center p-4`}
+              className={`h-32 md:h-48 bg-gradient-to-br ${scholarship.gradient} flex items-center justify-center p-3 md:p-4`}
             >
-              <h3 className="text-white text-xl font-bold text-center leading-tight">
+              <h3 className="text-white text-sm md:text-xl font-bold text-center leading-tight">
                 {scholarship.name}
               </h3>
             </div>
-            <div className="p-8 flex-1 flex flex-col">
-              <div className="flex items-center justify-between mb-6">
+            <div className="p-4 md:p-8 flex-1 flex flex-col">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6">
                 <span
-                  className={`${scholarship.tagColor} text-xs font-semibold px-4 py-2 rounded-full`}
+                  className={`${scholarship.tagColor} text-xs font-semibold px-3 md:px-4 py-1 md:py-2 rounded-full mb-2 md:mb-0`}
                 >
                   {scholarship.provider}
                 </span>
-                <span className="text-green-600 font-bold text-lg">
+                <span className="text-green-600 font-bold text-base md:text-lg">
                   {scholarship.amount}
                 </span>
               </div>
-              <p className="text-gray-700 leading-relaxed mb-8 flex-grow text-base">
+              <p className="text-gray-700 leading-relaxed mb-6 md:mb-8 flex-grow text-sm md:text-base">
                 {scholarship.description}
               </p>
-              <div className="mb-8">
-                <p className="text-gray-600 text-sm mb-3">
+              <div className="mb-6 md:mb-8">
+                <p className="text-gray-600 text-xs md:text-sm mb-2 md:mb-3">
                   <span className="font-semibold">Requirements:</span>{" "}
                   {scholarship.requirements}
                 </p>
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 text-xs md:text-sm">
                   <span className="font-semibold">Deadline:</span>{" "}
                   {scholarship.deadline}
                 </p>
               </div>
-              <div className="mt-auto flex justify-between items-center">
+              <div className="mt-auto flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
                 <span
-                  className={`${scholarship.statusColor} font-semibold text-sm`}
+                  className={`${scholarship.statusColor} font-semibold text-xs md:text-sm`}
                 >
                   {scholarship.status}
                 </span>
                 <button
-                  className={`${scholarship.buttonColor} text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors`}
+                  className={`${scholarship.buttonColor} text-white px-4 md:px-6 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-colors`}
                 >
                   Apply Now
                 </button>
@@ -459,9 +459,9 @@ function FeaturedPrograms() {
       {/* Hero Section - Keep the header you liked */}
 
       {/* Featured Carousel - Times Square Style */}
-      <div className="mb-16">
-        <div className="relative bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-100">
-          <div className="relative h-96">
+      <div className="mb-8 md:mb-16">
+        <div className="relative bg-white rounded-xl md:rounded-2xl shadow-xl overflow-hidden border-2 border-gray-100 mx-2 md:mx-0">
+          <div className="relative h-64 md:h-96">
             {featuredPrograms.map((program, index) => (
               <div
                 key={program.id}
@@ -472,30 +472,30 @@ function FeaturedPrograms() {
                 <div
                   className={`h-full bg-gradient-to-br ${program.gradient} flex items-center justify-center relative`}
                 >
-                  <div className="text-center text-white p-8 max-w-4xl">
-                    <h2 className="text-4xl font-bold mb-4 drop-shadow-lg">
+                  <div className="text-center text-white p-4 md:p-8 max-w-4xl">
+                    <h2 className="text-2xl md:text-4xl font-bold mb-2 md:mb-4 drop-shadow-lg">
                       {program.name}
                     </h2>
-                    <p className="text-xl mb-6 opacity-90 max-w-2xl mx-auto">
+                    <p className="text-sm md:text-xl mb-4 md:mb-6 opacity-90 max-w-2xl mx-auto">
                       {program.description}
                     </p>
-                    <div className="flex items-center justify-center space-x-6 mb-8">
+                    <div className="flex flex-col md:flex-row items-center justify-center space-y-2 md:space-y-0 md:space-x-6 mb-6 md:mb-8">
                       <span
-                        className={`${program.tagColor} text-sm font-semibold px-4 py-2 rounded-full`}
+                        className={`${program.tagColor} text-xs md:text-sm font-semibold px-3 md:px-4 py-1 md:py-2 rounded-full`}
                       >
                         {program.class}
                       </span>
-                      <span className="text-white text-lg">
+                      <span className="text-white text-sm md:text-lg">
                         Since {program.founded}
                       </span>
                       <span
-                        className={`${program.statusColor} font-semibold text-lg`}
+                        className={`${program.statusColor} font-semibold text-sm md:text-lg`}
                       >
                         {program.status}
                       </span>
                     </div>
                     <button
-                      className={`${program.buttonColor} text-white px-8 py-4 rounded-xl text-lg font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl`}
+                      className={`${program.buttonColor} text-white px-6 md:px-8 py-3 md:py-4 rounded-lg md:rounded-xl text-sm md:text-lg font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl`}
                       onClick={() => navigate(`/org/${program.slug}`)}
                     >
                       Learn More
@@ -504,8 +504,8 @@ function FeaturedPrograms() {
 
                   {/* Subtle animated elements */}
                   <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-8 left-8 w-12 h-12 border-2 border-white rounded-full animate-pulse"></div>
-                    <div className="absolute bottom-8 right-8 w-8 h-8 border-2 border-white rounded-full animate-ping"></div>
+                    <div className="absolute top-4 md:top-8 left-4 md:left-8 w-8 md:w-12 h-8 md:h-12 border-2 border-white rounded-full animate-pulse"></div>
+                    <div className="absolute bottom-4 md:bottom-8 right-4 md:right-8 w-6 md:w-8 h-6 md:h-8 border-2 border-white rounded-full animate-ping"></div>
                   </div>
                 </div>
               </div>
@@ -513,12 +513,12 @@ function FeaturedPrograms() {
           </div>
 
           {/* Carousel Navigation Dots */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+          <div className="absolute bottom-2 md:bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
             {featuredPrograms.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentSlide(index)}
-                className={`w-3 h-3 rounded-full transition-colors ${
+                className={`w-2 h-2 md:w-3 md:h-3 rounded-full transition-colors ${
                   index === currentSlide ? "bg-white" : "bg-white/50"
                 }`}
               />
@@ -528,35 +528,35 @@ function FeaturedPrograms() {
       </div>
 
       {/* Gallery Section - Smaller Cards */}
-      <div className="mb-12">
-        <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+      <div className="mb-8 md:mb-12 px-2 md:px-0">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8 text-center">
           More Programs
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {galleryPrograms.map((program) => (
             <div
               key={program.id}
-              className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden group"
+              className="bg-white rounded-lg md:rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden group"
             >
               <div
-                className={`h-32 bg-gradient-to-br ${program.gradient} flex items-center justify-center`}
+                className={`h-24 md:h-32 bg-gradient-to-br ${program.gradient} flex items-center justify-center`}
               >
-                <h3 className="text-white text-lg font-bold text-center px-4">
+                <h3 className="text-white text-sm md:text-lg font-bold text-center px-2 md:px-4">
                   {program.name}
                 </h3>
               </div>
-              <div className="p-4">
-                <div className="flex items-center mb-3">
+              <div className="p-3 md:p-4">
+                <div className="flex flex-col md:flex-row md:items-center mb-2 md:mb-3">
                   <span
-                    className={`${program.tagColor} text-xs font-semibold px-2 py-1 rounded-full`}
+                    className={`${program.tagColor} text-xs font-semibold px-2 py-1 rounded-full mb-1 md:mb-0`}
                   >
                     {program.class}
                   </span>
-                  <span className="ml-2 text-gray-500 text-xs">
+                  <span className="text-gray-500 text-xs md:ml-2">
                     {program.founded}
                   </span>
                 </div>
-                <p className="text-gray-700 text-sm mb-4 line-clamp-2">
+                <p className="text-gray-700 text-xs md:text-sm mb-3 md:mb-4 line-clamp-2">
                   {program.description}
                 </p>
                 <div className="flex justify-between items-center">
@@ -566,7 +566,7 @@ function FeaturedPrograms() {
                     {program.status}
                   </span>
                   <button
-                    className={`${program.buttonColor} text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors`}
+                    className={`${program.buttonColor} text-white px-2 md:px-3 py-1 rounded-md md:rounded-lg text-xs font-medium transition-colors`}
                     onClick={() => navigate(`/org/${program.slug}`)}
                   >
                     View
@@ -584,7 +584,7 @@ function FeaturedPrograms() {
 }
 
 // ALL PROGRAMS TAB (Regular Programs)
-function AllPrograms() {
+function AllOrgs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredCorps, setFilteredCorps] = useState(allCorps);
   const navigate = useNavigate();
@@ -597,57 +597,59 @@ function AllPrograms() {
   }, [searchTerm]);
 
   return (
-    <div className="w-full">
+    <div className="w-full px-2 md:px-0">
       {/* Search Section */}
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <div className="relative max-w-2xl mx-auto">
           <input
             type="text"
             placeholder="Search all programs..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-14 px-6 text-lg border-2 border-gray-300 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-32 transition-all duration-200 hover:shadow-xl focus:shadow-xl bg-white"
+            className="w-full h-12 md:h-14 px-4 md:px-6 text-base md:text-lg border-2 border-gray-300 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 md:pr-32 transition-all duration-200 hover:shadow-xl focus:shadow-xl bg-white"
           />
-          <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full transition-colors text-sm font-medium h-10">
+          <button className="absolute right-1 md:right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-full transition-colors text-xs md:text-sm font-medium h-8 md:h-10">
             Search
           </button>
         </div>
       </div>
 
       {/* Programs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {filteredCorps.map((corps) => (
           <div
             key={corps.id}
-            className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden"
+            className="bg-white rounded-xl md:rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden"
           >
             <div
-              className={`h-48 bg-gradient-to-br ${corps.gradient} flex items-center justify-center`}
+              className={`h-32 md:h-48 bg-gradient-to-br ${corps.gradient} flex items-center justify-center`}
             >
-              <h3 className="text-white text-2xl font-bold text-center px-6">
+              <h3 className="text-white text-lg md:text-2xl font-bold text-center px-4 md:px-6">
                 {corps.name}
               </h3>
             </div>
-            <div className="p-6">
-              <div className="flex items-center mb-4">
+            <div className="p-4 md:p-6">
+              <div className="flex flex-col md:flex-row md:items-center mb-3 md:mb-4">
                 <span
-                  className={`${corps.tagColor} text-xs font-semibold px-3 py-1 rounded-full`}
+                  className={`${corps.tagColor} text-xs font-semibold px-2 md:px-3 py-1 rounded-full mb-1 md:mb-0`}
                 >
                   {corps.class}
                 </span>
-                <span className="ml-3 text-gray-500 text-sm">
+                <span className="text-gray-500 text-xs md:text-sm md:ml-3">
                   Founded {corps.founded}
                 </span>
               </div>
-              <p className="text-gray-700 leading-relaxed mb-6 text-sm">
+              <p className="text-gray-700 leading-relaxed mb-4 md:mb-6 text-xs md:text-sm">
                 {corps.description}
               </p>
-              <div className="flex justify-between items-center">
-                <span className={`${corps.statusColor} font-semibold text-sm`}>
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
+                <span
+                  className={`${corps.statusColor} font-semibold text-xs md:text-sm`}
+                >
                   {corps.status}
                 </span>
                 <button
-                  className={`${corps.buttonColor} text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors`}
+                  className={`${corps.buttonColor} text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors`}
                   onClick={() => navigate(`/org/${corps.slug}`)}
                 >
                   Learn More
@@ -663,9 +665,11 @@ function AllPrograms() {
 
 function Scholarships() {
   return (
-    <div className="flex flex-col gap-4 items-center">
+    <div className="flex flex-col gap-4 items-center px-2 md:px-0">
       <div className="text-center mb-6">
-        <h2 className="text-3xl font-bold text-white">Scholarships</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+          Scholarships
+        </h2>
       </div>
       <FeaturedScholarships />
     </div>
@@ -710,16 +714,16 @@ function Dashboard() {
         onTabChange={setActiveTab}
         tabs={[
           { name: "Featured", label: "Featured" },
-          { name: "All Programs", label: "All Programs" },
+          { name: "All Orgs", label: "All Orgs" },
           { name: "Scholarships", label: "Scholarships" },
         ]}
       />
       <DashboardNavigation />
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-8">
         {/* Page Content */}
         {activeTab === "Featured" && <FeaturedPrograms />}
-        {activeTab === "All Programs" && <AllPrograms />}
+        {activeTab === "All Orgs" && <AllOrgs />}
         {activeTab === "Scholarships" && <Scholarships />}
       </div>
     </div>
