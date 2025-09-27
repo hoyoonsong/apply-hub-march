@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 
@@ -31,6 +31,7 @@ export default function PublishResultsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [onlyUnpublished, setOnlyUnpublished] = useState(true);
+  const [programName, setProgramName] = useState<string>("");
   const [visibility, setVisibility] = useState<Visibility>({
     decision: true,
     score: false,
@@ -44,16 +45,19 @@ export default function PublishResultsPage() {
     (async () => {
       const { data: prg } = await supabase
         .from("programs")
-        .select("metadata")
+        .select("name, metadata")
         .eq("id", programId)
         .single();
-      const rf = prg?.metadata?.reviewerForm || {};
-      setVisibility((v) => ({
-        decision: rf.decision ?? v.decision,
-        score: rf.score ?? v.score,
-        comments: rf.comments ?? v.comments,
-        customMessage: null,
-      }));
+      if (prg) {
+        setProgramName(prg.name);
+        const rf = prg.metadata?.reviewerForm || {};
+        setVisibility((v) => ({
+          decision: rf.decision ?? v.decision,
+          score: rf.score ?? v.score,
+          comments: rf.comments ?? v.comments,
+          customMessage: null,
+        }));
+      }
     })();
   }, [programId]);
 
@@ -117,7 +121,10 @@ export default function PublishResultsPage() {
     <div className="max-w-7xl mx-auto p-6">
       <div className="mb-8 flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Publish Results</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Publish Results - <span className="font-normal">{programName}</span>
+          </h1>
+
           <p className="mt-2 text-gray-600">
             Manage and publish application results for your program
           </p>
