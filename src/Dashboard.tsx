@@ -436,36 +436,290 @@ function Auditions() {
   );
 }
 
+// TIMES SQUARE-STYLE FEATURED PROGRAMS (Rotating Carousel + Gallery)
+function FeaturedPrograms() {
+  const navigate = useNavigate();
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Featured programs (big carousel) - using real data
+  const featuredPrograms = allCorps.slice(0, 4); // First 4 corps as featured
+  // Gallery programs (smaller cards) - rest of the corps
+  const galleryPrograms = allCorps.slice(4);
+
+  // Auto-rotate carousel every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % featuredPrograms.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [featuredPrograms.length]);
+
+  return (
+    <div className="w-full">
+      {/* Hero Section - Keep the header you liked */}
+
+      {/* Featured Carousel - Times Square Style */}
+      <div className="mb-16">
+        <div className="relative bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-100">
+          <div className="relative h-96">
+            {featuredPrograms.map((program, index) => (
+              <div
+                key={program.id}
+                className={`absolute inset-0 transition-opacity duration-1000 ${
+                  index === currentSlide ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                <div
+                  className={`h-full bg-gradient-to-br ${program.gradient} flex items-center justify-center relative`}
+                >
+                  <div className="text-center text-white p-8 max-w-4xl">
+                    <h2 className="text-4xl font-bold mb-4 drop-shadow-lg">
+                      {program.name}
+                    </h2>
+                    <p className="text-xl mb-6 opacity-90 max-w-2xl mx-auto">
+                      {program.description}
+                    </p>
+                    <div className="flex items-center justify-center space-x-6 mb-8">
+                      <span
+                        className={`${program.tagColor} text-sm font-semibold px-4 py-2 rounded-full`}
+                      >
+                        {program.class}
+                      </span>
+                      <span className="text-white text-lg">
+                        Since {program.founded}
+                      </span>
+                      <span
+                        className={`${program.statusColor} font-semibold text-lg`}
+                      >
+                        {program.status}
+                      </span>
+                    </div>
+                    <button
+                      className={`${program.buttonColor} text-white px-8 py-4 rounded-xl text-lg font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl`}
+                      onClick={() => navigate(`/org/${program.slug}`)}
+                    >
+                      Learn More
+                    </button>
+                  </div>
+
+                  {/* Subtle animated elements */}
+                  <div className="absolute inset-0 opacity-10">
+                    <div className="absolute top-8 left-8 w-12 h-12 border-2 border-white rounded-full animate-pulse"></div>
+                    <div className="absolute bottom-8 right-8 w-8 h-8 border-2 border-white rounded-full animate-ping"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Carousel Navigation Dots */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+            {featuredPrograms.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`w-3 h-3 rounded-full transition-colors ${
+                  index === currentSlide ? "bg-white" : "bg-white/50"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Gallery Section - Smaller Cards */}
+      <div className="mb-12">
+        <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+          More Programs
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {galleryPrograms.map((program) => (
+            <div
+              key={program.id}
+              className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden group"
+            >
+              <div
+                className={`h-32 bg-gradient-to-br ${program.gradient} flex items-center justify-center`}
+              >
+                <h3 className="text-white text-lg font-bold text-center px-4">
+                  {program.name}
+                </h3>
+              </div>
+              <div className="p-4">
+                <div className="flex items-center mb-3">
+                  <span
+                    className={`${program.tagColor} text-xs font-semibold px-2 py-1 rounded-full`}
+                  >
+                    {program.class}
+                  </span>
+                  <span className="ml-2 text-gray-500 text-xs">
+                    {program.founded}
+                  </span>
+                </div>
+                <p className="text-gray-700 text-sm mb-4 line-clamp-2">
+                  {program.description}
+                </p>
+                <div className="flex justify-between items-center">
+                  <span
+                    className={`${program.statusColor} font-semibold text-xs`}
+                  >
+                    {program.status}
+                  </span>
+                  <button
+                    className={`${program.buttonColor} text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors`}
+                    onClick={() => navigate(`/org/${program.slug}`)}
+                  >
+                    View
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Call to Action Section */}
+    </div>
+  );
+}
+
+// ALL PROGRAMS TAB (Regular Programs)
+function AllPrograms() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredCorps, setFilteredCorps] = useState(allCorps);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const filtered = allCorps.filter((corps) =>
+      corps.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredCorps(filtered);
+  }, [searchTerm]);
+
+  return (
+    <div className="w-full">
+      {/* Search Section */}
+      <div className="mb-8">
+        <div className="relative max-w-2xl mx-auto">
+          <input
+            type="text"
+            placeholder="Search all programs..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-14 px-6 text-lg border-2 border-gray-300 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-32 transition-all duration-200 hover:shadow-xl focus:shadow-xl bg-white"
+          />
+          <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full transition-colors text-sm font-medium h-10">
+            Search
+          </button>
+        </div>
+      </div>
+
+      {/* Programs Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredCorps.map((corps) => (
+          <div
+            key={corps.id}
+            className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden"
+          >
+            <div
+              className={`h-48 bg-gradient-to-br ${corps.gradient} flex items-center justify-center`}
+            >
+              <h3 className="text-white text-2xl font-bold text-center px-6">
+                {corps.name}
+              </h3>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <span
+                  className={`${corps.tagColor} text-xs font-semibold px-3 py-1 rounded-full`}
+                >
+                  {corps.class}
+                </span>
+                <span className="ml-3 text-gray-500 text-sm">
+                  Founded {corps.founded}
+                </span>
+              </div>
+              <p className="text-gray-700 leading-relaxed mb-6 text-sm">
+                {corps.description}
+              </p>
+              <div className="flex justify-between items-center">
+                <span className={`${corps.statusColor} font-semibold text-sm`}>
+                  {corps.status}
+                </span>
+                <button
+                  className={`${corps.buttonColor} text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors`}
+                  onClick={() => navigate(`/org/${corps.slug}`)}
+                >
+                  Learn More
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Scholarships() {
   return (
     <div className="flex flex-col gap-4 items-center">
       <div className="text-center mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">Scholarships</h2>
+        <h2 className="text-3xl font-bold text-white">Scholarships</h2>
       </div>
       <FeaturedScholarships />
     </div>
   );
 }
 
+// COMMENTED OUT - ORIGINAL DASHBOARD FOR BACKUP
+// function Dashboard() {
+//   const [activeTab, setActiveTab] = useState("Auditions");
+
+//   return (
+//     <div className="relative">
+//       <DashboardHeader
+//         showTabs={true}
+//         activeTab={activeTab}
+//         onTabChange={setActiveTab}
+//         tabs={[
+//           { name: "Auditions", label: "Auditions" },
+//           { name: "Scholarships", label: "Scholarships" },
+//         ]}
+//       />
+//       <DashboardNavigation />
+
+//       <div className="max-w-6xl mx-auto px-8 py-8">
+//         {/* Page Content */}
+//         {activeTab === "Auditions" && <Auditions />}
+//         {activeTab === "Scholarships" && <Scholarships />}
+//       </div>
+//     </div>
+//   );
+// }
+
+// NEW TIMES SQUARE-STYLE APPLICANT DASHBOARD
 function Dashboard() {
-  const [activeTab, setActiveTab] = useState("Auditions");
+  const [activeTab, setActiveTab] = useState("Featured");
 
   return (
-    <div className="relative">
+    <div className="relative min-h-screen bg-white">
       <DashboardHeader
         showTabs={true}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         tabs={[
-          { name: "Auditions", label: "Auditions" },
+          { name: "Featured", label: "Featured" },
+          { name: "All Programs", label: "All Programs" },
           { name: "Scholarships", label: "Scholarships" },
         ]}
       />
       <DashboardNavigation />
 
-      <div className="max-w-6xl mx-auto px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Page Content */}
-        {activeTab === "Auditions" && <Auditions />}
+        {activeTab === "Featured" && <FeaturedPrograms />}
+        {activeTab === "All Programs" && <AllPrograms />}
         {activeTab === "Scholarships" && <Scholarships />}
       </div>
     </div>
