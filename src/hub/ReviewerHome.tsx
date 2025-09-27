@@ -20,7 +20,7 @@ export default function ReviewerHome() {
               to="/dashboard"
               className="w-full sm:w-auto bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-center"
             >
-              Back to Hub
+              Back to Dashboard
             </Link>
           </div>
         </div>

@@ -430,15 +430,6 @@ function Auditions() {
     <div className="flex flex-col gap-4 items-center">
       <div className="text-center mb-6">
         <h2 className="text-3xl font-bold text-gray-900">Auditions</h2>
-        <div className="mt-4">
-          <Link
-            to="/my-submissions"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-black text-white hover:bg-gray-800 hover:shadow-lg transition-all duration-200 font-medium"
-          >
-            <span className="text-lg">📋</span>
-            My Submissions
-          </Link>
-        </div>
       </div>
       <FeaturedCorps />
     </div>

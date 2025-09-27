@@ -401,7 +401,7 @@ export default function Users() {
               to="/dashboard"
               className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg"
             >
-              Back to Hub
+              Back to Dashboard
             </Link>
           </div>
         </div>

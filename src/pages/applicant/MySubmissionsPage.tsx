@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
@@ -86,7 +86,7 @@ export default function MySubmissionsPage() {
       if (error) {
         console.error("Error fetching applications:", error);
       } else {
-        setApplicationsRows((data ?? []) as ApplicationRow[]);
+        setApplicationsRows((data ?? []) as any[]);
       }
     } catch (error) {
       console.error("Error fetching applications:", error);
@@ -137,15 +137,41 @@ export default function MySubmissionsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-4">
-      <h1 className="text-xl font-semibold">My Submissions</h1>
+    <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">My Submissions</h1>
+          <p className="mt-2 text-gray-600">
+            View your submitted applications and their results
+          </p>
+        </div>
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+        >
+          <svg
+            className="w-4 h-4 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Back to Dashboard
+        </Link>
+      </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-gray-200 bg-white rounded-t-lg">
+        <nav className="-mb-px flex space-x-8 px-6">
           <button
             onClick={() => setActiveTab("applications")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
               activeTab === "applications"
                 ? "border-blue-500 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -155,7 +181,7 @@ export default function MySubmissionsPage() {
           </button>
           <button
             onClick={() => setActiveTab("results")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
               activeTab === "results"
                 ? "border-blue-500 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -168,98 +194,170 @@ export default function MySubmissionsPage() {
 
       {/* Applications Tab */}
       {activeTab === "applications" && (
-        <div className="space-y-4">
-          {loading ? (
-            <div className="text-center py-8">Loading applications...</div>
-          ) : applicationsRows.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No applications submitted yet.
-            </div>
-          ) : (
-            applicationsRows.map((app) => (
-              <div key={app.id} className="rounded-2xl p-4 border">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="font-medium">{app.programs.name}</div>
-                    <div className="text-sm text-gray-500">
-                      {app.programs.organizations.name}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Submitted: {new Date(app.created_at).toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                        app.status
-                      )}`}
-                    >
-                      {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                    </span>
-                    <Link
-                      to={`/applications/${app.id}`}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      View Application
-                    </Link>
-                  </div>
-                </div>
+        <div className="bg-white rounded-b-lg shadow-sm">
+          <div className="p-6">
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-4 text-gray-600">Loading applications...</p>
               </div>
-            ))
-          )}
+            ) : applicationsRows.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="mx-auto h-12 w-12 text-gray-400">
+                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">
+                  No applications yet
+                </h3>
+                <p className="mt-2 text-gray-500">
+                  You haven't submitted any applications yet.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {applicationsRows.map((app) => (
+                  <div
+                    key={app.id}
+                    className="group border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                          {app.programs.name}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {app.programs.organizations.name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Submitted: {new Date(app.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                            app.status
+                          )}`}
+                        >
+                          {app.status.charAt(0).toUpperCase() +
+                            app.status.slice(1)}
+                        </span>
+                        <Link
+                          to={`/applications/${app.id}`}
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
+                        >
+                          View Application
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Results Tab */}
       {activeTab === "results" && (
-        <div className="space-y-4">
-          {resultsRows.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No results yet.
-            </div>
-          ) : (
-            resultsRows.map((r) => {
-              const v = r.visibility;
-              const p = r.payload || {};
-              return (
-                <div key={r.publication_id} className="rounded-2xl p-4 border">
-                  <div className="flex justify-between">
-                    <div>
-                      <div className="font-medium">{r.program_name}</div>
-                      <div className="text-xs text-gray-500">
-                        Published: {new Date(r.published_at).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid sm:grid-cols-3 gap-3">
-                    {v.decision && p.decision && (
-                      <div>
-                        <div className="text-xs text-gray-500">Decision</div>
-                        <div className="font-semibold">{p.decision}</div>
-                      </div>
-                    )}
-                    {v.score && p.score !== null && (
-                      <div>
-                        <div className="text-xs text-gray-500">Score</div>
-                        <div className="font-semibold">{p.score}</div>
-                      </div>
-                    )}
-                    {v.comments && p.comments && (
-                      <div className="sm:col-span-3">
-                        <div className="text-xs text-gray-500">Comments</div>
-                        <div className="whitespace-pre-wrap">{p.comments}</div>
-                      </div>
-                    )}
-                    {v.customMessage ? (
-                      <div className="sm:col-span-3 rounded bg-gray-50 p-3 text-sm">
-                        {v.customMessage}
-                      </div>
-                    ) : null}
-                  </div>
+        <div className="bg-white rounded-b-lg shadow-sm">
+          <div className="p-6">
+            {resultsRows.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="mx-auto h-12 w-12 text-gray-400">
+                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
                 </div>
-              );
-            })
-          )}
+                <h3 className="mt-4 text-lg font-medium text-gray-900">
+                  No results yet
+                </h3>
+                <p className="mt-2 text-gray-500">
+                  Results will appear here once they are published.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {resultsRows.map((r) => {
+                  const v = r.visibility;
+                  const p = r.payload || {};
+                  return (
+                    <div
+                      key={r.publication_id}
+                      className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {r.program_name}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Published:{" "}
+                            {new Date(r.published_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {v.decision && p.decision && (
+                          <div className="bg-green-50 rounded-lg p-4">
+                            <div className="text-sm font-medium text-green-800 mb-1">
+                              Decision
+                            </div>
+                            <div className="text-lg font-semibold text-green-900 capitalize">
+                              {p.decision}
+                            </div>
+                          </div>
+                        )}
+                        {v.score && p.score !== null && (
+                          <div className="bg-blue-50 rounded-lg p-4">
+                            <div className="text-sm font-medium text-blue-800 mb-1">
+                              Score
+                            </div>
+                            <div className="text-lg font-semibold text-blue-900">
+                              {p.score}
+                            </div>
+                          </div>
+                        )}
+                        {v.comments && p.comments && (
+                          <div className="sm:col-span-2 lg:col-span-3 bg-gray-50 rounded-lg p-4">
+                            <div className="text-sm font-medium text-gray-800 mb-2">
+                              Reviewer Comments:
+                            </div>
+                            <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                              {p.comments}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {v.customMessage && (
+                        <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                          <div className="text-sm font-medium text-amber-800 mb-1">
+                            Additional Message
+                          </div>
+                          <div className="text-amber-700">
+                            {v.customMessage}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

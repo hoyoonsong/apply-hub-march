@@ -60,7 +60,10 @@ export default function PublishResultsHomePage() {
             const finalized_count = (finalizedData as any[])?.length || 0;
 
             // Get published count using the safe helper
-            const published_count = await getProgramPublicationCount(supabase, program.id);
+            const published_count = await getProgramPublicationCount(
+              supabase,
+              program.id
+            );
 
             return {
               ...program,
@@ -91,11 +94,32 @@ export default function PublishResultsHomePage() {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Publish Results</h1>
-        <p className="text-gray-600">
-          Select a program to publish review results to applicants
-        </p>
+      <div className="mb-6 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Publish Results</h1>
+          <p className="text-gray-600">
+            Select a program to publish review results to applicants
+          </p>
+        </div>
+        <Link
+          to={`/org/${orgSlug}/admin`}
+          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+        >
+          <svg
+            className="w-4 h-4 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          Back to Admin Home
+        </Link>
       </div>
 
       {programs.length === 0 ? (
@@ -114,23 +138,31 @@ export default function PublishResultsHomePage() {
             <Link
               key={program.id}
               to={`/org/${orgSlug}/admin/programs/${program.id}/publish`}
-              className="block p-6 bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all"
+              className="block h-56 p-6 bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all group"
             >
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {program.name}
-              </h3>
-              {program.description && (
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {program.description}
-                </p>
-              )}
-              <div className="flex justify-between items-center text-sm">
-                <div className="text-gray-500">
-                  <div>Finalized: {program.finalized_count}</div>
-                  <div>Published: {program.published_count}</div>
+              <div className="h-full flex flex-col">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 line-clamp-2">
+                    {program.name}
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-3 min-h-[3.75rem]">
+                    {program.description || "No description available"}
+                  </p>
                 </div>
-                <div className="text-blue-600 font-medium">
-                  Publish Results →
+
+                <div className="mt-auto">
+                  <div className="flex justify-between items-center text-sm mb-3">
+                    <div className="text-gray-500 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                        <span>Finalized: {program.finalized_count}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                        <span>Published: {program.published_count}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </Link>
