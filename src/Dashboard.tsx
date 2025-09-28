@@ -5,6 +5,7 @@ import DashboardNavigation from "./components/DashboardNavigation.tsx";
 import CapabilityHub from "./components/CapabilityHub.tsx";
 import { loadCapabilities, hasAnyCapabilities } from "./lib/capabilities";
 import { supabase } from "./lib/supabase";
+import { startOrGetApplication } from "./lib/rpc";
 
 // Expanded corps data
 const allCorps = [
@@ -537,7 +538,7 @@ function FeaturedPrograms() {
           {galleryPrograms.map((program) => (
             <div
               key={program.id}
-              className="bg-white rounded-md md:rounded-xl shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 md:hover:-translate-y-2 border border-gray-100 overflow-hidden group"
+              className="bg-white rounded-md md:rounded-xl shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 md:hover:-translate-y-2 border border-gray-100 overflow-hidden group flex flex-col"
             >
               <div
                 className={`h-20 md:h-32 bg-gradient-to-br ${program.gradient} flex items-center justify-center`}
@@ -546,7 +547,7 @@ function FeaturedPrograms() {
                   {program.name}
                 </h3>
               </div>
-              <div className="p-2 md:p-4">
+              <div className="p-2 md:p-4 flex flex-col flex-grow">
                 <div className="flex flex-col md:flex-row md:items-center mb-2 md:mb-3">
                   <span
                     className={`${program.tagColor} text-xs font-semibold px-2 py-1 rounded-full mb-1 md:mb-0`}
@@ -560,7 +561,11 @@ function FeaturedPrograms() {
                 <p className="text-gray-700 text-xs md:text-sm mb-2 md:mb-4 line-clamp-2 hidden md:block">
                   {program.description}
                 </p>
-                <div className="flex justify-between items-center">
+
+                {/* Spacer to push footer to bottom */}
+                <div className="flex-grow"></div>
+
+                <div className="flex justify-between items-center mt-auto">
                   <span
                     className={`${program.statusColor} font-semibold text-xs`}
                   >
@@ -747,7 +752,7 @@ function AllOrgs() {
         {filteredCorps.map((corps) => (
           <div
             key={corps.id}
-            className="bg-white rounded-xl md:rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden"
+            className="bg-white rounded-xl md:rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden flex flex-col"
           >
             <div
               className={`h-32 md:h-48 bg-gradient-to-br ${corps.gradient} flex items-center justify-center`}
@@ -756,7 +761,7 @@ function AllOrgs() {
                 {corps.name}
               </h3>
             </div>
-            <div className="p-4 md:p-6">
+            <div className="p-4 md:p-6 flex flex-col flex-grow">
               <div className="flex flex-col md:flex-row md:items-center mb-3 md:mb-4">
                 <span
                   className={`${corps.tagColor} text-xs font-semibold px-2 md:px-3 py-1 rounded-full mb-1 md:mb-0`}
@@ -767,7 +772,11 @@ function AllOrgs() {
               <p className="text-gray-700 leading-relaxed mb-4 md:mb-6 text-xs md:text-sm">
                 {corps.description}
               </p>
-              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
+
+              {/* Spacer to push footer to bottom */}
+              <div className="flex-grow"></div>
+
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0 mt-auto">
                 <span
                   className={`${corps.statusColor} font-semibold text-xs md:text-sm`}
                 >
@@ -920,40 +929,57 @@ function AllPrograms() {
     <div className="w-full px-2 md:px-0">
       {/* Search and Filter Section */}
       <div className="mb-6 md:mb-8">
-        <div className="relative max-w-2xl mx-auto mb-4">
-          <input
-            type="text"
-            placeholder="Search all programs..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 md:h-14 px-4 md:px-6 text-base md:text-lg border-2 border-gray-300 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 md:pr-32 transition-all duration-200 hover:shadow-xl focus:shadow-xl bg-white"
-          />
-          <button className="absolute right-1 md:right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-full transition-colors text-xs md:text-sm font-medium h-8 md:h-10">
-            Search
-          </button>
-        </div>
+        <div className="relative max-w-3xl mx-auto">
+          <div className="flex items-center bg-white border-2 border-gray-300 rounded-full focus-within:border-blue-500 shadow-lg hover:shadow-xl focus-within:shadow-xl transition-all duration-200">
+            {/* Type Filter Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="h-12 md:h-14 px-3 md:px-4 text-base md:text-lg border-0 bg-transparent focus:outline-none cursor-pointer appearance-none pr-8 md:pr-10 text-gray-700 font-medium"
+              >
+                <option value="all">All Types</option>
+                <option value="application">Applications</option>
+                <option value="audition">Auditions</option>
+                <option value="scholarship">Scholarships</option>
+                <option value="competition">Competitions</option>
+              </select>
 
-        {/* Type Filter */}
-        <div className="flex flex-wrap justify-center gap-2 md:gap-3">
-          {[
-            { value: "all", label: "All Types" },
-            { value: "application", label: "Applications" },
-            { value: "audition", label: "Auditions" },
-            { value: "scholarship", label: "Scholarships" },
-            { value: "competition", label: "Competitions" },
-          ].map((filter) => (
-            <button
-              key={filter.value}
-              onClick={() => setSelectedType(filter.value)}
-              className={`px-3 md:px-4 py-2 rounded-full text-xs md:text-sm font-medium transition-colors ${
-                selectedType === filter.value
-                  ? "bg-blue-600 text-white shadow-lg"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              {filter.label}
+              {/* Custom Dropdown Arrow */}
+              <div className="absolute right-2 md:right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <svg
+                  className="w-4 h-4 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="w-px h-8 bg-gray-300"></div>
+
+            {/* Search Input */}
+            <input
+              type="text"
+              placeholder="Search all programs..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 h-12 md:h-14 px-4 md:px-6 text-base md:text-lg focus:outline-none bg-transparent"
+            />
+
+            {/* Search Button */}
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-full transition-colors text-xs md:text-sm font-medium h-8 md:h-10 mr-1 md:mr-2">
+              Search
             </button>
-          ))}
+          </div>
         </div>
       </div>
 
@@ -962,7 +988,7 @@ function AllPrograms() {
         {filteredPrograms.map((program) => (
           <div
             key={program.id}
-            className="bg-white rounded-xl md:rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden"
+            className="bg-white rounded-xl md:rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden flex flex-col"
           >
             <div
               className={`h-32 md:h-48 bg-gradient-to-br ${program.gradient} flex items-center justify-center`}
@@ -971,7 +997,7 @@ function AllPrograms() {
                 {program.name}
               </h3>
             </div>
-            <div className="p-4 md:p-6">
+            <div className="p-4 md:p-6 flex flex-col flex-grow">
               <div className="flex flex-col md:flex-row md:items-center mb-3 md:mb-4">
                 <span
                   className={`${program.tagColor} text-xs font-semibold px-2 md:px-3 py-1 rounded-full mb-1 md:mb-0`}
@@ -982,29 +1008,32 @@ function AllPrograms() {
                   {program.type}
                 </span>
               </div>
-              <p className="text-gray-700 leading-relaxed mb-3 md:mb-4 text-xs md:text-sm">
-                {program.description}
-              </p>
+
+              {program.description && (
+                <p className="text-gray-700 leading-relaxed mb-3 md:mb-4 text-xs md:text-sm">
+                  {program.description}
+                </p>
+              )}
 
               {/* Deadline Information */}
               {(program.openAt || program.closeAt) && (
-                <div className="mb-4 md:mb-6">
+                <div className="mb-4 md:mb-6 mt-4 md:mt-6">
                   {program.openAt && (
-                    <div className="flex items-center mb-1">
-                      <span className="text-gray-500 text-xs md:text-sm font-medium mr-2">
+                    <div className="flex items-center mb-2">
+                      <span className="text-gray-600 text-xs md:text-sm font-bold mr-2">
                         Opens:
                       </span>
-                      <span className="text-gray-700 text-xs md:text-sm">
+                      <span className="text-gray-800 text-xs md:text-sm font-bold">
                         {new Date(program.openAt).toLocaleDateString()}
                       </span>
                     </div>
                   )}
                   {program.closeAt && (
                     <div className="flex items-center">
-                      <span className="text-gray-500 text-xs md:text-sm font-medium mr-2">
+                      <span className="text-gray-600 text-xs md:text-sm font-bold mr-2">
                         Deadline:
                       </span>
-                      <span className="text-gray-700 text-xs md:text-sm">
+                      <span className="text-gray-800 text-xs md:text-sm font-bold">
                         {new Date(program.closeAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -1012,7 +1041,10 @@ function AllPrograms() {
                 </div>
               )}
 
-              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
+              {/* Spacer to push footer to bottom */}
+              <div className="flex-grow"></div>
+
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0 mt-auto">
                 <span
                   className={`${program.statusColor} font-semibold text-xs md:text-sm`}
                 >
@@ -1020,7 +1052,15 @@ function AllPrograms() {
                 </span>
                 <button
                   className={`${program.buttonColor} text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors`}
-                  onClick={() => navigate(`/programs/${program.slug}`)}
+                  onClick={async () => {
+                    try {
+                      const app = await startOrGetApplication(program.id);
+                      navigate(`/applications/${app.id}`);
+                    } catch (error) {
+                      console.error("Failed to start application:", error);
+                      alert("Could not start application. Please try again.");
+                    }
+                  }}
                 >
                   Learn More
                 </button>
