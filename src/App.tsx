@@ -28,6 +28,7 @@ import ReviewerApplication from "./pages/reviewer/applications/[applicationId]";
 import ProgramQueue from "./pages/review/ProgramQueue";
 import ApplicationReview from "./pages/review/ApplicationReview";
 import Assignments from "./pages/super/Assignments";
+import FeaturedManager from "./pages/super/FeaturedManager";
 import OrgHome from "./pages/public/OrgHome";
 import CoalitionHome from "./pages/public/CoalitionHome";
 import ProgramDetail from "./pages/public/ProgramDetail";
@@ -126,6 +127,14 @@ export default function App() {
               element={
                 <ProtectedSuperRoute>
                   <Assignments />
+                </ProtectedSuperRoute>
+              }
+            />
+            <Route
+              path="/super/featured"
+              element={
+                <ProtectedSuperRoute>
+                  <FeaturedManager />
                 </ProtectedSuperRoute>
               }
             />
