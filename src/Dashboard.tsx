@@ -4,6 +4,7 @@ import DashboardHeader from "./components/DashboardHeader.tsx";
 import DashboardNavigation from "./components/DashboardNavigation.tsx";
 import CapabilityHub from "./components/CapabilityHub.tsx";
 import { loadCapabilities, hasAnyCapabilities } from "./lib/capabilities";
+import { supabase } from "./lib/supabase";
 
 // Expanded corps data
 const allCorps = [
@@ -583,18 +584,145 @@ function FeaturedPrograms() {
   );
 }
 
+// Helper functions for generating gradients and colors
+const gradients = [
+  "from-blue-600 to-blue-800",
+  "from-purple-600 to-purple-800",
+  "from-green-600 to-green-800",
+  "from-red-600 to-red-800",
+  "from-yellow-600 to-yellow-800",
+  "from-pink-600 to-pink-800",
+  "from-indigo-600 to-indigo-800",
+  "from-teal-600 to-teal-800",
+];
+
+const tagColors = [
+  "bg-blue-100 text-blue-800",
+  "bg-purple-100 text-purple-800",
+  "bg-green-100 text-green-800",
+  "bg-red-100 text-red-800",
+  "bg-yellow-100 text-yellow-800",
+  "bg-pink-100 text-pink-800",
+  "bg-indigo-100 text-indigo-800",
+  "bg-teal-100 text-teal-800",
+];
+
+function getGradientForIndex(index) {
+  return gradients[index % gradients.length];
+}
+
+function getTagColorForIndex(index) {
+  return tagColors[index % tagColors.length];
+}
+
 // ALL PROGRAMS TAB (Regular Programs)
 function AllOrgs() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredCorps, setFilteredCorps] = useState(allCorps);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [filteredCorps, setFilteredCorps] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Fetch real organizations from database with coalition data
   useEffect(() => {
-    const filtered = allCorps.filter((corps) =>
-      corps.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const fetchOrganizations = async () => {
+      try {
+        // Fetch organizations with their coalition memberships
+        const { data, error } = await supabase
+          .from("organizations")
+          .select(
+            `
+            *,
+            coalition_memberships(
+              coalition_id,
+              coalitions(
+                name,
+                slug
+              )
+            )
+          `
+          )
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching organizations:", error);
+          return;
+        }
+
+        // Transform database data to match the expected format
+        const transformedOrgs = data.map((org, index) => {
+          // Handle multiple coalition memberships
+          const coalitionMemberships = org.coalition_memberships || [];
+
+          let coalitionDisplay;
+          if (coalitionMemberships.length === 0) {
+            coalitionDisplay = "Independent";
+          } else if (coalitionMemberships.length === 1) {
+            coalitionDisplay =
+              coalitionMemberships[0]?.coalitions?.name || "Unknown Coalition";
+          } else {
+            // Multiple coalitions - show count or first few names
+            const coalitionNames = coalitionMemberships
+              .map((membership) => membership?.coalitions?.name)
+              .filter((name) => name)
+              .slice(0, 2); // Show first 2 coalition names
+
+            if (coalitionNames.length === 2) {
+              coalitionDisplay = `${coalitionNames[0]}, ${coalitionNames[1]}`;
+            } else {
+              coalitionDisplay = `${coalitionNames[0]} +${
+                coalitionMemberships.length - 1
+              }`;
+            }
+          }
+
+          return {
+            id: org.id,
+            name: org.name,
+            slug: org.slug,
+            class: coalitionDisplay, // Use coalition name(s) instead of "Organization"
+            status: "Active",
+            statusColor: "text-green-600",
+            gradient: getGradientForIndex(index),
+            tagColor: getTagColorForIndex(index),
+            buttonColor: "bg-blue-600 hover:bg-blue-700",
+            description:
+              org.description || "A great organization on our platform.",
+          };
+        });
+
+        setOrganizations(transformedOrgs);
+        setFilteredCorps(transformedOrgs);
+      } catch (error) {
+        console.error("Error fetching organizations:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrganizations();
+  }, []);
+
+  useEffect(() => {
+    const filtered = organizations.filter((org) =>
+      org.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredCorps(filtered);
-  }, [searchTerm]);
+  }, [searchTerm, organizations]);
+
+  if (loading) {
+    return (
+      <div className="w-full px-2 md:px-0">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading organizations...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full px-2 md:px-0">
@@ -635,9 +763,6 @@ function AllOrgs() {
                 >
                   {corps.class}
                 </span>
-                <span className="text-gray-500 text-xs md:text-sm md:ml-3">
-                  Founded {corps.founded}
-                </span>
               </div>
               <p className="text-gray-700 leading-relaxed mb-4 md:mb-6 text-xs md:text-sm">
                 {corps.description}
@@ -663,10 +788,255 @@ function AllOrgs() {
   );
 }
 
-function Scholarships() {
+// ALL PROGRAMS TAB (All Programs with Filters)
+function AllPrograms() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [filteredPrograms, setFilteredPrograms] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedType, setSelectedType] = useState("all");
+  const navigate = useNavigate();
+
+  // Fetch all programs from database
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        // Fetch programs with organization data
+        const { data, error } = await supabase
+          .from("programs")
+          .select(
+            `
+            *,
+            organizations(
+              id,
+              name,
+              slug,
+              coalition_memberships(
+                coalition_id,
+                coalitions(
+                  name,
+                  slug
+                )
+              )
+            )
+          `
+          )
+          .is("deleted_at", null)
+          .eq("published", true)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching programs:", error);
+          return;
+        }
+
+        // Transform database data to match the expected format
+        const transformedPrograms = data.map((program, index) => {
+          const org = program.organizations;
+          const coalitionMemberships = org?.coalition_memberships || [];
+
+          let coalitionDisplay;
+          if (coalitionMemberships.length === 0) {
+            coalitionDisplay = "Independent";
+          } else if (coalitionMemberships.length === 1) {
+            coalitionDisplay =
+              coalitionMemberships[0]?.coalitions?.name || "Unknown Coalition";
+          } else {
+            const coalitionNames = coalitionMemberships
+              .map((membership) => membership?.coalitions?.name)
+              .filter((name) => name)
+              .slice(0, 2);
+
+            if (coalitionNames.length === 2) {
+              coalitionDisplay = `${coalitionNames[0]}, ${coalitionNames[1]}`;
+            } else {
+              coalitionDisplay = `${coalitionNames[0]} +${
+                coalitionMemberships.length - 1
+              }`;
+            }
+          }
+
+          return {
+            id: program.id,
+            name: program.name,
+            slug: program.slug,
+            type: program.type,
+            organization: org?.name || "Unknown Organization",
+            organizationSlug: org?.slug,
+            class: coalitionDisplay,
+            status: program.published ? "Open" : "Closed",
+            statusColor: program.published ? "text-green-600" : "text-red-600",
+            gradient: getGradientForIndex(index),
+            tagColor: getTagColorForIndex(index),
+            buttonColor: "bg-blue-600 hover:bg-blue-700",
+            description:
+              program.description || "A great program on our platform.",
+            openAt: program.open_at,
+            closeAt: program.close_at,
+          };
+        });
+
+        setPrograms(transformedPrograms);
+        setFilteredPrograms(transformedPrograms);
+      } catch (error) {
+        console.error("Error fetching programs:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPrograms();
+  }, []);
+
+  useEffect(() => {
+    let filtered = programs.filter(
+      (program) =>
+        program.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        program.organization.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Apply type filter
+    if (selectedType !== "all") {
+      filtered = filtered.filter((program) => program.type === selectedType);
+    }
+
+    setFilteredPrograms(filtered);
+  }, [searchTerm, selectedType, programs]);
+
+  if (loading) {
+    return (
+      <div className="w-full px-2 md:px-0">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading programs...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-4 items-center px-2 md:px-0">
-      <FeaturedScholarships />
+    <div className="w-full px-2 md:px-0">
+      {/* Search and Filter Section */}
+      <div className="mb-6 md:mb-8">
+        <div className="relative max-w-2xl mx-auto mb-4">
+          <input
+            type="text"
+            placeholder="Search all programs..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-12 md:h-14 px-4 md:px-6 text-base md:text-lg border-2 border-gray-300 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 md:pr-32 transition-all duration-200 hover:shadow-xl focus:shadow-xl bg-white"
+          />
+          <button className="absolute right-1 md:right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-full transition-colors text-xs md:text-sm font-medium h-8 md:h-10">
+            Search
+          </button>
+        </div>
+
+        {/* Type Filter */}
+        <div className="flex flex-wrap justify-center gap-2 md:gap-3">
+          {[
+            { value: "all", label: "All Types" },
+            { value: "application", label: "Applications" },
+            { value: "audition", label: "Auditions" },
+            { value: "scholarship", label: "Scholarships" },
+            { value: "competition", label: "Competitions" },
+          ].map((filter) => (
+            <button
+              key={filter.value}
+              onClick={() => setSelectedType(filter.value)}
+              className={`px-3 md:px-4 py-2 rounded-full text-xs md:text-sm font-medium transition-colors ${
+                selectedType === filter.value
+                  ? "bg-blue-600 text-white shadow-lg"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Programs Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {filteredPrograms.map((program) => (
+          <div
+            key={program.id}
+            className="bg-white rounded-xl md:rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden"
+          >
+            <div
+              className={`h-32 md:h-48 bg-gradient-to-br ${program.gradient} flex items-center justify-center`}
+            >
+              <h3 className="text-white text-lg md:text-2xl font-bold text-center px-4 md:px-6">
+                {program.name}
+              </h3>
+            </div>
+            <div className="p-4 md:p-6">
+              <div className="flex flex-col md:flex-row md:items-center mb-3 md:mb-4">
+                <span
+                  className={`${program.tagColor} text-xs font-semibold px-2 md:px-3 py-1 rounded-full mb-1 md:mb-0`}
+                >
+                  {program.organization}
+                </span>
+                <span className="text-gray-500 text-xs md:text-sm md:ml-3 capitalize">
+                  {program.type}
+                </span>
+              </div>
+              <p className="text-gray-700 leading-relaxed mb-3 md:mb-4 text-xs md:text-sm">
+                {program.description}
+              </p>
+
+              {/* Deadline Information */}
+              {(program.openAt || program.closeAt) && (
+                <div className="mb-4 md:mb-6">
+                  {program.openAt && (
+                    <div className="flex items-center mb-1">
+                      <span className="text-gray-500 text-xs md:text-sm font-medium mr-2">
+                        Opens:
+                      </span>
+                      <span className="text-gray-700 text-xs md:text-sm">
+                        {new Date(program.openAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                  {program.closeAt && (
+                    <div className="flex items-center">
+                      <span className="text-gray-500 text-xs md:text-sm font-medium mr-2">
+                        Deadline:
+                      </span>
+                      <span className="text-gray-700 text-xs md:text-sm">
+                        {new Date(program.closeAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
+                <span
+                  className={`${program.statusColor} font-semibold text-xs md:text-sm`}
+                >
+                  {program.status}
+                </span>
+                <button
+                  className={`${program.buttonColor} text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors`}
+                  onClick={() => navigate(`/programs/${program.slug}`)}
+                >
+                  Learn More
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filteredPrograms.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg">
+            No programs found matching your criteria.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -710,7 +1080,7 @@ function Dashboard() {
         tabs={[
           { name: "Featured", label: "Featured" },
           { name: "All Orgs", label: "All Orgs" },
-          { name: "Scholarships", label: "Scholarships" },
+          { name: "All Programs", label: "All Programs" },
         ]}
       />
       <DashboardNavigation />
@@ -719,7 +1089,7 @@ function Dashboard() {
         {/* Page Content */}
         {activeTab === "Featured" && <FeaturedPrograms />}
         {activeTab === "All Orgs" && <AllOrgs />}
-        {activeTab === "Scholarships" && <Scholarships />}
+        {activeTab === "All Programs" && <AllPrograms />}
       </div>
     </div>
   );
