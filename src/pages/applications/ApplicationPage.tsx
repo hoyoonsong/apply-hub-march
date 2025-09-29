@@ -604,11 +604,11 @@ export default function ApplicationPage() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => navigate("/")}
+                  onClick={() => navigate("/dashboard")}
                   className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   <span>←</span>
-                  Back to Home
+                  Back to Dashboard
                 </button>
                 {/* Show Edit Application button only for submitted apps that can still be edited */}
                 {appRow.status === "submitted" && canEdit && !isEditing && (

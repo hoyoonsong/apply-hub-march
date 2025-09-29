@@ -129,10 +129,10 @@ export default function OrgHome() {
           <h1 className="text-2xl font-semibold text-gray-900">Organization</h1>
           <p className="mt-3 text-gray-600">{error || "Not found"}</p>
           <Link
-            to="/"
+            to="/dashboard"
             className="mt-6 inline-flex items-center px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
           >
-            Go Home
+            Go to Dashboard
           </Link>
         </div>
       </div>
@@ -155,10 +155,10 @@ export default function OrgHome() {
               )}
             </div>
             <Link
-              to="/"
+              to="/dashboard"
               className="w-full sm:w-auto bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg text-center"
             >
-              Home
+              Dashboard
             </Link>
           </div>
         </div>

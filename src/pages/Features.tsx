@@ -250,10 +250,10 @@ function Features() {
               {user ? "Go to Dashboard" : "Get Started"}
             </button>
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/dashboard")}
               className="bg-transparent hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl text-lg border-2 border-white transition-all duration-200 transform hover:scale-105"
             >
-              Back to Home
+              Go to Dashboard
             </button>
           </div>
         </div>

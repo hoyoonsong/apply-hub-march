@@ -894,10 +894,10 @@ function AllOrgs() {
         <div className="relative max-w-2xl mx-auto">
           <input
             type="text"
-            placeholder="Search all programs..."
+            placeholder="Search all orgs..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 md:h-14 px-4 md:px-6 text-base md:text-lg border-2 border-gray-300 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 md:pr-32 transition-all duration-200 hover:shadow-xl focus:shadow-xl bg-white"
+            className="w-full h-12 md:h-14 px-4 md:px-6 text-xs md:text-lg border-2 border-gray-300 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 md:pr-32 transition-all duration-200 hover:shadow-xl focus:shadow-xl bg-white"
           />
           <button className="absolute right-1 md:right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-full transition-colors text-xs md:text-sm font-medium h-8 md:h-10">
             Search
@@ -1087,16 +1087,16 @@ function AllPrograms() {
     <div className="w-full px-2 md:px-0">
       {/* Search and Filter Section */}
       <div className="mb-6 md:mb-8">
-        <div className="relative max-w-3xl mx-auto">
+        <div className="relative max-w-2xl mx-auto">
           <div className="flex items-center bg-white border-2 border-gray-300 rounded-full focus-within:border-blue-500 shadow-lg hover:shadow-xl focus-within:shadow-xl transition-all duration-200">
-            {/* Type Filter Dropdown */}
+            {/* Type Filter Dropdown - Compact on mobile */}
             <div className="relative">
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="h-12 md:h-14 px-3 md:px-4 text-base md:text-lg border-0 bg-transparent focus:outline-none cursor-pointer appearance-none pr-8 md:pr-10 text-gray-700 font-medium"
+                className="h-12 md:h-14 px-2 md:px-4 text-xs md:text-lg border-0 bg-transparent focus:outline-none cursor-pointer appearance-none pr-6 md:pr-10 text-gray-700 font-medium text-center"
               >
-                <option value="all">All Types</option>
+                <option value="all">All</option>
                 <option value="application">Applications</option>
                 <option value="audition">Auditions</option>
                 <option value="scholarship">Scholarships</option>
@@ -1104,9 +1104,9 @@ function AllPrograms() {
               </select>
 
               {/* Custom Dropdown Arrow */}
-              <div className="absolute right-2 md:right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+              <div className="absolute right-1 md:right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
                 <svg
-                  className="w-4 h-4 text-gray-500"
+                  className="w-3 h-3 md:w-4 md:h-4 text-gray-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -1122,19 +1122,19 @@ function AllPrograms() {
             </div>
 
             {/* Divider */}
-            <div className="w-px h-8 bg-gray-300"></div>
+            <div className="w-px h-6 md:h-8 bg-gray-300"></div>
 
             {/* Search Input */}
             <input
               type="text"
-              placeholder="Search all programs..."
+              placeholder="Search programs..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 h-12 md:h-14 px-4 md:px-6 text-base md:text-lg focus:outline-none bg-transparent"
+              className="flex-1 h-12 md:h-14 px-3 md:px-6 text-xs md:text-lg focus:outline-none bg-transparent"
             />
 
             {/* Search Button */}
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-full transition-colors text-xs md:text-sm font-medium h-8 md:h-10 mr-1 md:mr-2">
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-8 py-2 md:py-3 rounded-full transition-colors text-xs md:text-sm font-medium h-8 md:h-10 mr-1 md:mr-2">
               Search
             </button>
           </div>

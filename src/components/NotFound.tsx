@@ -32,10 +32,10 @@ export default function NotFound() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
-            to="/"
+            to="/dashboard"
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors shadow-lg"
           >
-            Go Home
+            Go to Dashboard
           </Link>
           {user && (
             <Link

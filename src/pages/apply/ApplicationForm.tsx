@@ -297,10 +297,10 @@ export default function ApplicationForm() {
           )}
         </div>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/dashboard")}
           className="px-3 py-2 border rounded-md text-sm"
         >
-          Back to Home
+          Back to Dashboard
         </button>
       </div>
 
