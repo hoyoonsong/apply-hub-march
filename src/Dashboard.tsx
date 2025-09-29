@@ -583,15 +583,15 @@ function FeaturedPrograms() {
   };
 
   if (loading) {
-    return (
+  return (
       <div className="w-full py-16 flex justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading Featured Programs...</p>
-        </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div className="w-full">
@@ -710,7 +710,7 @@ function FeaturedPrograms() {
                   item.gradient || "from-blue-600 to-blue-800"
                 } flex items-center justify-center`}
               >
-                <h3 className="text-white text-xs md:text-lg font-bold text-center px-2 md:px-4">
+                <h3 className="text-white text-sm md:text-xl font-bold text-center px-2 md:px-4">
                   {item.title || item.name || "Featured"}
                 </h3>
               </div>
@@ -917,7 +917,7 @@ function AllOrgs() {
   }, [searchTerm, organizations]);
 
   if (loading) {
-    return (
+  return (
       <div className="w-full px-2 md:px-0">
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
@@ -1132,7 +1132,7 @@ function AllPrograms() {
         <div className="relative max-w-3xl mx-auto">
           <div className="flex items-center bg-white border-2 border-gray-300 rounded-full focus-within:border-blue-500 shadow-lg hover:shadow-xl focus-within:shadow-xl transition-all duration-200">
             {/* Type Filter Dropdown */}
-            <div className="relative">
+    <div className="relative">
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
