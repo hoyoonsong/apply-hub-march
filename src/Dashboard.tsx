@@ -615,8 +615,8 @@ function FeaturedPrograms() {
                     } flex items-center justify-center relative`}
                   >
                     <div className="text-center text-white p-3 md:p-8 max-w-4xl">
-                      <div className="flex flex-col md:flex-row items-center justify-center mb-1 md:mb-4">
-                        <h2 className="text-lg md:text-4xl font-bold drop-shadow-lg mb-2 md:mb-0 md:mr-4">
+                      <div className="flex flex-row items-center justify-center mb-1 md:mb-4">
+                        <h2 className="text-lg md:text-4xl font-bold drop-shadow-lg mr-2 md:mr-4">
                           {item.title || item.name || "Featured"}
                         </h2>
                         <span
@@ -635,7 +635,7 @@ function FeaturedPrograms() {
                         </span>
                       </div>
                       {item.description && (
-                        <p className="text-xs md:text-xl mb-2 md:mb-6 opacity-90 max-w-2xl mx-auto hidden md:block">
+                        <p className="text-xs md:text-xl mb-2 md:mb-6 opacity-90 max-w-2xl mx-auto">
                           {item.description}
                         </p>
                       )}
@@ -725,14 +725,13 @@ function FeaturedPrograms() {
                         : item.target_type === "program"
                         ? "bg-blue-100 text-blue-800"
                         : "bg-gray-100 text-gray-800"
-                    } text-xs font-semibold px-2 py-1 rounded-full mb-1 md:mb-0 capitalize`}
+                    } text-xs font-semibold px-2 py-1 rounded-full mb-1 md:mb-0 capitalize w-fit`}
                   >
                     {item.target_type}
-                    {item.program_type ? ` · ${item.program_type}` : ""}
                   </span>
                 </div>
                 {item.description && (
-                  <p className="text-gray-700 text-xs md:text-sm mb-2 md:mb-4 line-clamp-2 hidden md:block">
+                  <p className="text-gray-700 text-xs md:text-sm mb-2 md:mb-4 line-clamp-2">
                     {item.description}
                   </p>
                 )}
@@ -965,7 +964,7 @@ function AllOrgs() {
             <div className="p-4 md:p-6 flex flex-col flex-grow">
               <div className="flex flex-col md:flex-row md:items-center mb-3 md:mb-4">
                 <span
-                  className={`${corps.tagColor} text-xs font-semibold px-2 md:px-3 py-1 rounded-full mb-1 md:mb-0`}
+                  className={`${corps.tagColor} text-xs font-semibold px-2 md:px-3 py-1 rounded-full mb-1 md:mb-0 w-fit`}
                 >
                   {corps.class}
                 </span>
@@ -1201,7 +1200,7 @@ function AllPrograms() {
             <div className="p-4 md:p-6 flex flex-col flex-grow">
               <div className="flex flex-col md:flex-row md:items-center mb-3 md:mb-4">
                 <span
-                  className={`${program.tagColor} text-xs font-semibold px-2 md:px-3 py-1 rounded-full mb-1 md:mb-0`}
+                  className={`${program.tagColor} text-xs font-semibold px-2 md:px-3 py-1 rounded-full mb-1 md:mb-0 w-fit`}
                 >
                   {program.organization}
                 </span>
