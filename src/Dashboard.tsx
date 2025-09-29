@@ -642,7 +642,7 @@ function FeaturedPrograms() {
 
                       {/* Deadline Information for Programs */}
                       {(item.open_at || item.close_at) && (
-                        <div className="mb-3 md:mb-6 text-white/90">
+                        <div className="mb-3 md:mb-6 text-white/90 mt-4 md:mt-6">
                           {item.open_at && (
                             <div className="text-xs md:text-sm mb-1">
                               <span className="font-semibold">Opens:</span>{" "}
