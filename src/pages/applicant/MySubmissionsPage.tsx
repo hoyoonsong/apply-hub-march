@@ -244,7 +244,7 @@ export default function MySubmissionsPage() {
                       </div>
                       <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
                         <span
-                          className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                          className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
                             app.status
                           )}`}
                         >

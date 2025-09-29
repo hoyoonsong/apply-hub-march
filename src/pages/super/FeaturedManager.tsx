@@ -20,6 +20,7 @@ type FeaturedRow = {
   sort_index: number;
   title: string | null;
   description: string | null;
+  card_color: string | null;
 };
 
 export default function FeaturedManager() {
@@ -29,12 +30,15 @@ export default function FeaturedManager() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [items, setItems] = useState<FeaturedRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [cardColor, setCardColor] = useState<string>("");
+  const [showColorModal, setShowColorModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<SearchResult | null>(null);
 
   const loadItems = async () => {
     const { data, error } = await supabase
       .from("featured")
       .select(
-        "id, placement, target_type, target_id, sort_index, title, description"
+        "id, placement, target_type, target_id, sort_index, title, description, card_color"
       )
       .eq("placement", placement)
       .order("sort_index", { ascending: true });
@@ -111,15 +115,24 @@ export default function FeaturedManager() {
     };
   }, [query, filter]);
 
-  const addItem = async (sel: SearchResult) => {
+  const showAddModal = (sel: SearchResult) => {
+    setSelectedItem(sel);
+    setCardColor(""); // Reset color selection
+    setShowColorModal(true);
+  };
+
+  const confirmAddItem = async () => {
+    if (!selectedItem) return;
+
     const maxIndex = Math.max(-1, ...items.map((i) => i.sort_index));
     const { error } = await supabase.from("featured").upsert(
       {
         placement,
-        target_type: sel.type,
-        target_id: sel.id,
+        target_type: selectedItem.type,
+        target_id: selectedItem.id,
         sort_index: maxIndex + 1,
-        title: sel.name, // sensible default; can be edited later if you add a modal
+        title: selectedItem.name,
+        card_color: cardColor?.trim() || null,
       },
       { onConflict: "placement,target_type,target_id" }
     );
@@ -128,6 +141,11 @@ export default function FeaturedManager() {
       alert("Failed to add");
       return;
     }
+
+    // Close modal and reset
+    setShowColorModal(false);
+    setSelectedItem(null);
+    setCardColor("");
     setQuery("");
     setResults([]);
     loadItems();
@@ -223,7 +241,7 @@ export default function FeaturedManager() {
                 </div>
                 <button
                   className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                  onClick={() => addItem(r)}
+                  onClick={() => showAddModal(r)}
                 >
                   Add to {placement}
                 </button>
@@ -242,8 +260,23 @@ export default function FeaturedManager() {
           >
             <div>
               <div className="font-medium">{i.title ?? i.target_id}</div>
-              <div className="text-xs text-gray-500 capitalize">
-                {i.target_type} · sort {i.sort_index}
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="capitalize">
+                  {i.target_type} · sort {i.sort_index}
+                </span>
+                {i.card_color && (
+                  <span
+                    className={`inline-block h-3 w-6 rounded ${
+                      i.card_color.startsWith("bg-") ? i.card_color : ""
+                    }`}
+                    style={
+                      !i.card_color.startsWith("bg-")
+                        ? { backgroundColor: i.card_color }
+                        : undefined
+                    }
+                    title={i.card_color}
+                  />
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -272,6 +305,82 @@ export default function FeaturedManager() {
           <li className="px-3 py-4 text-sm text-gray-500">Nothing yet.</li>
         )}
       </ul>
+
+      {/* Color Selection Modal */}
+      {showColorModal && selectedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">
+              Add "{selectedItem.name}" to {placement}
+            </h3>
+
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-600">
+                Card color
+              </label>
+              <select
+                value={cardColor}
+                onChange={(e) => setCardColor(e.target.value)}
+                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="">Default (Blue gradient)</option>
+                <option value="bg-red-600">Red</option>
+                <option value="bg-orange-600">Orange</option>
+                <option value="bg-amber-600">Amber</option>
+                <option value="bg-yellow-600">Yellow</option>
+                <option value="bg-lime-600">Lime</option>
+                <option value="bg-green-600">Green</option>
+                <option value="bg-emerald-600">Emerald</option>
+                <option value="bg-teal-600">Teal</option>
+                <option value="bg-cyan-600">Cyan</option>
+                <option value="bg-sky-600">Sky</option>
+                <option value="bg-blue-600">Blue</option>
+                <option value="bg-indigo-600">Indigo</option>
+                <option value="bg-violet-600">Violet</option>
+                <option value="bg-purple-600">Purple</option>
+                <option value="bg-fuchsia-600">Fuchsia</option>
+                <option value="bg-pink-600">Pink</option>
+                <option value="bg-rose-600">Rose</option>
+                <option value="bg-slate-600">Slate</option>
+                <option value="bg-gray-600">Gray</option>
+                <option value="bg-zinc-600">Zinc</option>
+                <option value="bg-neutral-600">Neutral</option>
+                <option value="bg-stone-600">Stone</option>
+              </select>
+              {/* Preview chip */}
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs text-gray-500">Preview:</span>
+                <span
+                  className={`inline-block h-4 w-10 rounded ${
+                    cardColor?.startsWith("bg-")
+                      ? cardColor
+                      : "bg-gradient-to-br from-blue-600 to-blue-800"
+                  }`}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowColorModal(false);
+                  setSelectedItem(null);
+                  setCardColor("");
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmAddItem}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+              >
+                Add to {placement}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

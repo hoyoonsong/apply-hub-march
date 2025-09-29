@@ -438,6 +438,23 @@ function Auditions() {
   );
 }
 
+// Helper functions for color handling
+function colorClasses(color?: string | null) {
+  if (!color) return "";
+  // only allow bg- and optional hover:bg- classes to pass to Tailwind
+  const ok = /^(bg|hover:bg)-[a-z-]+-\d{3}$/.test(color);
+  return ok ? color : "";
+}
+
+function colorStyle(color?: string | null): React.CSSProperties | undefined {
+  if (!color) return undefined;
+  // if it's hex or any CSS color name, use inline style
+  if (color.startsWith("#") || /^[a-zA-Z]+$/.test(color)) {
+    return { backgroundColor: color };
+  }
+  return undefined;
+}
+
 // TIMES SQUARE-STYLE FEATURED PROGRAMS (Rotating Carousel + Gallery)
 function FeaturedPrograms() {
   const navigate = useNavigate();
@@ -610,9 +627,16 @@ function FeaturedPrograms() {
                   }`}
                 >
                   <div
-                    className={`h-full bg-gradient-to-br ${
-                      item.gradient || "from-blue-600 to-blue-800"
-                    } flex items-center justify-center relative`}
+                    className={`h-full flex items-center justify-center relative ${
+                      item.card_color?.startsWith("bg-")
+                        ? item.card_color
+                        : "bg-gradient-to-br from-blue-600 to-blue-800"
+                    }`}
+                    style={
+                      !item.card_color?.startsWith("bg-") && item.card_color
+                        ? { backgroundColor: item.card_color }
+                        : undefined
+                    }
                   >
                     <div className="text-center text-white p-3 md:p-8 max-w-4xl">
                       <div className="flex flex-row items-center justify-center mb-1 md:mb-4">
@@ -706,9 +730,16 @@ function FeaturedPrograms() {
               className="bg-white rounded-md md:rounded-xl shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 md:hover:-translate-y-2 border border-gray-100 overflow-hidden group flex flex-col"
             >
               <div
-                className={`h-20 md:h-32 bg-gradient-to-br ${
-                  item.gradient || "from-blue-600 to-blue-800"
-                } flex items-center justify-center`}
+                className={`h-20 md:h-32 flex items-center justify-center ${
+                  item.card_color?.startsWith("bg-")
+                    ? item.card_color
+                    : "bg-gradient-to-br from-blue-600 to-blue-800"
+                }`}
+                style={
+                  !item.card_color?.startsWith("bg-") && item.card_color
+                    ? { backgroundColor: item.card_color }
+                    : undefined
+                }
               >
                 <h3 className="text-white text-sm md:text-xl font-bold text-center px-2 md:px-4">
                   {item.title || item.name || "Featured"}
