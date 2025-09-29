@@ -81,6 +81,7 @@ export default function MySubmissionsPage() {
         `
         )
         .eq("user_id", user.id)
+        .neq("status", "draft")
         .order("created_at", { ascending: false });
 
       if (error) {
