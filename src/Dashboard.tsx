@@ -691,13 +691,13 @@ function FeaturedPrograms() {
 
   const handlePrimaryClick = async (item: any) => {
     // Route logic by target type - slugs are now available from enrichment
-    if (item.target_type === "org" && item.slug) {
-      navigate(`/org/${item.slug}`);
+    if (item.target_type === "org" && item.org_slug) {
+      navigate(`/org/${item.org_slug}`);
       return;
     }
 
-    if (item.target_type === "coalition" && item.slug) {
-      navigate(`/coalitions/${item.slug}`);
+    if (item.target_type === "coalition" && item.coalition_slug) {
+      navigate(`/coalitions/${item.coalition_slug}`);
       return;
     }
 
