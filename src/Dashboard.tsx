@@ -6,6 +6,8 @@ import CapabilityHub from "./components/CapabilityHub.tsx";
 import { loadCapabilities, hasAnyCapabilities } from "./lib/capabilities";
 import { supabase } from "./lib/supabase";
 import { startOrGetApplication } from "./lib/rpc";
+import { useFeaturedSections } from "./hooks/useFeaturedSections";
+import { toCardStyle } from "./lib/colors";
 
 // Expanded corps data
 const allCorps = [
@@ -455,124 +457,240 @@ function colorStyle(color?: string | null): React.CSSProperties | undefined {
   return undefined;
 }
 
-// TIMES SQUARE-STYLE FEATURED PROGRAMS (Rotating Carousel + Gallery)
-function FeaturedPrograms() {
-  const navigate = useNavigate();
+// HeroCarousel component for individual carousels
+function HeroCarousel({
+  items,
+  onItemClick,
+}: {
+  items: any[];
+  onItemClick: (item: any) => void;
+}) {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [carousel, setCarousel] = useState<any[]>([]);
-  const [gallery, setGallery] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch featured items from RPC
-  useEffect(() => {
-    let mounted = true;
-    const loadFeatured = async () => {
-      try {
-        const [{ data: carouselData }, { data: galleryData }] =
-          await Promise.all([
-            supabase.rpc("featured_public", { p_placement: "carousel" }),
-            supabase.rpc("featured_public", { p_placement: "gallery" }),
-          ]);
-
-        if (!mounted) return;
-
-        // Enrich carousel data with detailed information
-        const enrichedCarousel = await Promise.all(
-          (carouselData ?? []).map(async (item) => {
-            try {
-              if (item.target_type === "program") {
-                const { data: programData } = await supabase
-                  .from("programs")
-                  .select("description, open_at, close_at")
-                  .eq("id", item.target_id)
-                  .single();
-                return { ...item, ...programData };
-              } else if (item.target_type === "org") {
-                const { data: orgData } = await supabase
-                  .from("organizations")
-                  .select("description, slug")
-                  .eq("id", item.target_id)
-                  .single();
-                return { ...item, ...orgData };
-              } else if (item.target_type === "coalition") {
-                const { data: coalitionData } = await supabase
-                  .from("coalitions")
-                  .select("description, slug")
-                  .eq("id", item.target_id)
-                  .single();
-                return { ...item, ...coalitionData };
-              }
-              return item;
-            } catch (error) {
-              console.error(
-                `Error enriching ${item.target_type} ${item.target_id}:`,
-                error
-              );
-              return item;
-            }
-          })
-        );
-
-        // Enrich gallery data with detailed information
-        const enrichedGallery = await Promise.all(
-          (galleryData ?? []).map(async (item) => {
-            try {
-              if (item.target_type === "program") {
-                const { data: programData } = await supabase
-                  .from("programs")
-                  .select("description, open_at, close_at")
-                  .eq("id", item.target_id)
-                  .single();
-                return { ...item, ...programData };
-              } else if (item.target_type === "org") {
-                const { data: orgData } = await supabase
-                  .from("organizations")
-                  .select("description, slug")
-                  .eq("id", item.target_id)
-                  .single();
-                return { ...item, ...orgData };
-              } else if (item.target_type === "coalition") {
-                const { data: coalitionData } = await supabase
-                  .from("coalitions")
-                  .select("description, slug")
-                  .eq("id", item.target_id)
-                  .single();
-                return { ...item, ...coalitionData };
-              }
-              return item;
-            } catch (error) {
-              console.error(
-                `Error enriching ${item.target_type} ${item.target_id}:`,
-                error
-              );
-              return item;
-            }
-          })
-        );
-
-        setCarousel(enrichedCarousel);
-        setGallery(enrichedGallery);
-      } catch (error) {
-        console.error("Error loading featured items:", error);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    loadFeatured();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   // Auto-rotate carousel every 5 seconds
   useEffect(() => {
-    if (carousel.length <= 1) return;
+    if (items.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % carousel.length);
+      setCurrentSlide((prev) => (prev + 1) % items.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [carousel.length]);
+  }, [items.length]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="relative bg-white rounded-lg md:rounded-2xl shadow-lg md:shadow-xl overflow-hidden border border-gray-100 md:border-2 md:border-gray-100 mx-1 md:mx-0">
+      <div className="relative h-56 md:h-96">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className={`absolute inset-0 transition-opacity duration-1000 ${
+              index === currentSlide ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <div
+              className={`h-full flex items-center justify-center relative ${
+                item.card_color?.startsWith("bg-")
+                  ? item.card_color
+                  : "bg-gradient-to-br from-blue-600 to-blue-800"
+              }`}
+              style={
+                !item.card_color?.startsWith("bg-") && item.card_color
+                  ? { backgroundColor: item.card_color }
+                  : undefined
+              }
+            >
+              <div className="text-center text-white p-3 md:p-8 max-w-4xl">
+                <div className="flex flex-row items-center justify-center mb-1 md:mb-4">
+                  <h2 className="text-lg md:text-4xl font-bold drop-shadow-lg mr-2 md:mr-4">
+                    {item.title || item.name || "Featured"}
+                  </h2>
+                  <span
+                    className={`${
+                      item.target_type === "org"
+                        ? "bg-green-100 text-green-800"
+                        : item.target_type === "coalition"
+                        ? "bg-purple-100 text-purple-800"
+                        : item.target_type === "program"
+                        ? "bg-blue-100 text-blue-800"
+                        : "bg-gray-100 text-gray-800"
+                    } text-xs md:text-sm font-semibold px-2 md:px-4 py-1 md:py-2 rounded-full capitalize`}
+                  >
+                    {item.target_type}
+                    {item.program_type ? ` · ${item.program_type}` : ""}
+                  </span>
+                </div>
+                {item.description && (
+                  <p className="text-xs md:text-xl mb-2 md:mb-6 opacity-90 max-w-2xl mx-auto">
+                    {item.description}
+                  </p>
+                )}
+
+                {/* Deadline Information for Programs */}
+                {(item.open_at || item.close_at) && (
+                  <div className="mb-3 md:mb-6 text-white/90 mt-4 md:mt-6">
+                    {item.open_at && (
+                      <div className="text-xs md:text-sm mb-1">
+                        <span className="font-semibold">Opens:</span>{" "}
+                        {new Date(item.open_at).toLocaleDateString()}
+                      </div>
+                    )}
+                    {item.close_at && (
+                      <div className="text-xs md:text-sm">
+                        <span className="font-semibold">Deadline:</span>{" "}
+                        {new Date(item.close_at).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  className={`${
+                    item.button_color || "bg-blue-600 hover:bg-blue-700"
+                  } text-white px-4 md:px-8 py-2 md:py-4 rounded-md md:rounded-xl text-xs md:text-lg font-bold transition-all duration-300 transform hover:scale-105 shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl relative z-10`}
+                  onClick={() => onItemClick(item)}
+                >
+                  {item.button_label || "Learn More"}
+                </button>
+              </div>
+
+              {/* Subtle animated elements - hidden on mobile */}
+              <div className="absolute inset-0 opacity-10 hidden md:block pointer-events-none">
+                <div className="absolute top-8 left-8 w-12 h-12 border-2 border-white rounded-full animate-pulse"></div>
+                <div className="absolute bottom-8 right-8 w-8 h-8 border-2 border-white rounded-full animate-ping"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Carousel Navigation Dots */}
+      {items.length > 1 && (
+        <div className="absolute bottom-1 md:bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-1 md:space-x-2 pointer-events-none">
+          {items.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentSlide(index)}
+              className={`w-1.5 h-1.5 md:w-3 md:h-3 rounded-full transition-colors pointer-events-auto ${
+                index === currentSlide ? "bg-white" : "bg-white/50"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ProgramGrid component for galleries
+function ProgramGrid({
+  items,
+  onItemClick,
+}: {
+  items: any[];
+  onItemClick: (item: any) => void;
+}) {
+  if (items.length === 0) {
+    return (
+      <div className="text-center text-gray-500 py-8">
+        Nothing featured yet.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+      {items.map((item) => (
+        <div
+          key={item.id}
+          className="bg-white rounded-md md:rounded-xl shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 md:hover:-translate-y-2 border border-gray-100 overflow-hidden group flex flex-col"
+        >
+          <div
+            className={`h-20 md:h-32 flex items-center justify-center ${
+              item.card_color?.startsWith("bg-")
+                ? item.card_color
+                : "bg-gradient-to-br from-blue-600 to-blue-800"
+            }`}
+            style={
+              !item.card_color?.startsWith("bg-") && item.card_color
+                ? { backgroundColor: item.card_color }
+                : undefined
+            }
+          >
+            <h3 className="text-white text-sm md:text-xl font-bold text-center px-2 md:px-4">
+              {item.title || item.name || "Featured"}
+            </h3>
+          </div>
+          <div className="p-2 md:p-4 flex flex-col flex-grow">
+            <div className="flex flex-col md:flex-row md:items-center mb-2 md:mb-3">
+              <span
+                className={`${
+                  item.target_type === "org"
+                    ? "bg-green-100 text-green-800"
+                    : item.target_type === "coalition"
+                    ? "bg-purple-100 text-purple-800"
+                    : item.target_type === "program"
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-gray-100 text-gray-800"
+                } text-xs font-semibold px-2 py-1 rounded-full mb-1 md:mb-0 capitalize w-fit`}
+              >
+                {item.target_type}
+              </span>
+            </div>
+            {item.description && (
+              <p className="text-gray-700 text-sm md:text-base mb-2 md:mb-4 line-clamp-2">
+                {item.description}
+              </p>
+            )}
+
+            {/* Deadline Information */}
+            {(item.open_at || item.close_at) && (
+              <div className="mb-3 md:mb-4 mt-2 md:mt-4">
+                {item.open_at && (
+                  <div className="flex items-center mb-1">
+                    <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
+                      Opens:
+                    </span>
+                    <span className="text-gray-800 text-sm md:text-base font-bold">
+                      {new Date(item.open_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+                {item.close_at && (
+                  <div className="flex items-center">
+                    <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
+                      Deadline:
+                    </span>
+                    <span className="text-gray-800 text-sm md:text-base font-bold">
+                      {new Date(item.close_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex-grow" />
+            <div className="flex justify-between items-center mt-auto">
+              <button
+                className={`${
+                  item.button_color || "bg-blue-600 hover:bg-blue-700"
+                } text-white px-2 md:px-3 py-1 rounded-md md:rounded-lg text-sm md:text-base font-medium transition-colors`}
+                onClick={() => onItemClick(item)}
+              >
+                {item.button_label || "View"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// MULTIPLE CAROUSELS AND GALLERIES
+function FeaturedPrograms() {
+  const { sections, loading } = useFeaturedSections();
+  const navigate = useNavigate();
 
   const handlePrimaryClick = async (item: any) => {
     // Route logic by target type - slugs are now available from enrichment
@@ -612,210 +730,22 @@ function FeaturedPrograms() {
 
   return (
     <div className="w-full">
-      {/* Hero Section - Keep the header you liked */}
-
-      {/* Featured Carousel - Mobile-First Design */}
-      {carousel.length > 0 && (
-        <div className="mb-4 md:mb-16">
-          <div className="relative bg-white rounded-lg md:rounded-2xl shadow-lg md:shadow-xl overflow-hidden border border-gray-100 md:border-2 md:border-gray-100 mx-1 md:mx-0">
-            <div className="relative h-56 md:h-96">
-              {carousel.map((item, index) => (
-                <div
-                  key={item.featured_id}
-                  className={`absolute inset-0 transition-opacity duration-1000 ${
-                    index === currentSlide ? "opacity-100" : "opacity-0"
-                  }`}
-                >
-                  <div
-                    className={`h-full flex items-center justify-center relative ${
-                      item.card_color?.startsWith("bg-")
-                        ? item.card_color
-                        : "bg-gradient-to-br from-blue-600 to-blue-800"
-                    }`}
-                    style={
-                      !item.card_color?.startsWith("bg-") && item.card_color
-                        ? { backgroundColor: item.card_color }
-                        : undefined
-                    }
-                  >
-                    <div className="text-center text-white p-3 md:p-8 max-w-4xl">
-                      <div className="flex flex-row items-center justify-center mb-1 md:mb-4">
-                        <h2 className="text-lg md:text-4xl font-bold drop-shadow-lg mr-2 md:mr-4">
-                          {item.title || item.name || "Featured"}
-                        </h2>
-                        <span
-                          className={`${
-                            item.target_type === "org"
-                              ? "bg-green-100 text-green-800"
-                              : item.target_type === "coalition"
-                              ? "bg-purple-100 text-purple-800"
-                              : item.target_type === "program"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-gray-100 text-gray-800"
-                          } text-xs md:text-sm font-semibold px-2 md:px-4 py-1 md:py-2 rounded-full capitalize`}
-                        >
-                          {item.target_type}
-                          {item.program_type ? ` · ${item.program_type}` : ""}
-                        </span>
-                      </div>
-                      {item.description && (
-                        <p className="text-xs md:text-xl mb-2 md:mb-6 opacity-90 max-w-2xl mx-auto">
-                          {item.description}
-                        </p>
-                      )}
-
-                      {/* Deadline Information for Programs */}
-                      {(item.open_at || item.close_at) && (
-                        <div className="mb-3 md:mb-6 text-white/90 mt-4 md:mt-6">
-                          {item.open_at && (
-                            <div className="text-xs md:text-sm mb-1">
-                              <span className="font-semibold">Opens:</span>{" "}
-                              {new Date(item.open_at).toLocaleDateString()}
-                            </div>
-                          )}
-                          {item.close_at && (
-                            <div className="text-xs md:text-sm">
-                              <span className="font-semibold">Deadline:</span>{" "}
-                              {new Date(item.close_at).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <button
-                        className={`${
-                          item.button_color || "bg-blue-600 hover:bg-blue-700"
-                        } text-white px-4 md:px-8 py-2 md:py-4 rounded-md md:rounded-xl text-xs md:text-lg font-bold transition-all duration-300 transform hover:scale-105 shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl relative z-10`}
-                        onClick={() => handlePrimaryClick(item)}
-                      >
-                        {item.button_label || "Learn More"}
-                      </button>
-                    </div>
-
-                    {/* Subtle animated elements - hidden on mobile */}
-                    <div className="absolute inset-0 opacity-10 hidden md:block pointer-events-none">
-                      <div className="absolute top-8 left-8 w-12 h-12 border-2 border-white rounded-full animate-pulse"></div>
-                      <div className="absolute bottom-8 right-8 w-8 h-8 border-2 border-white rounded-full animate-ping"></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Carousel Navigation Dots */}
-            <div className="absolute bottom-1 md:bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-1 md:space-x-2 pointer-events-none">
-              {carousel.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentSlide(index)}
-                  className={`w-1.5 h-1.5 md:w-3 md:h-3 rounded-full transition-colors pointer-events-auto ${
-                    index === currentSlide ? "bg-white" : "bg-white/50"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Gallery Section - Mobile-First Cards */}
-      <div className="mb-6 md:mb-12 px-1 md:px-0">
-        <h2 className="text-lg md:text-3xl font-bold text-gray-900 mb-4 md:mb-8 text-center">
-          More Programs
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-          {gallery.map((item, idx) => (
-            <div
-              key={item.featured_id}
-              className="bg-white rounded-md md:rounded-xl shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 md:hover:-translate-y-2 border border-gray-100 overflow-hidden group flex flex-col"
-            >
-              <div
-                className={`h-20 md:h-32 flex items-center justify-center ${
-                  item.card_color?.startsWith("bg-")
-                    ? item.card_color
-                    : "bg-gradient-to-br from-blue-600 to-blue-800"
-                }`}
-                style={
-                  !item.card_color?.startsWith("bg-") && item.card_color
-                    ? { backgroundColor: item.card_color }
-                    : undefined
-                }
-              >
-                <h3 className="text-white text-sm md:text-xl font-bold text-center px-2 md:px-4">
-                  {item.title || item.name || "Featured"}
-                </h3>
-              </div>
-              <div className="p-2 md:p-4 flex flex-col flex-grow">
-                <div className="flex flex-col md:flex-row md:items-center mb-2 md:mb-3">
-                  <span
-                    className={`${
-                      item.target_type === "org"
-                        ? "bg-green-100 text-green-800"
-                        : item.target_type === "coalition"
-                        ? "bg-purple-100 text-purple-800"
-                        : item.target_type === "program"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-gray-100 text-gray-800"
-                    } text-xs font-semibold px-2 py-1 rounded-full mb-1 md:mb-0 capitalize w-fit`}
-                  >
-                    {item.target_type}
-                  </span>
-                </div>
-                {item.description && (
-                  <p className="text-gray-700 text-sm md:text-base mb-2 md:mb-4 line-clamp-2">
-                    {item.description}
-                  </p>
-                )}
-
-                {/* Deadline Information */}
-                {(item.open_at || item.close_at) && (
-                  <div className="mb-3 md:mb-4 mt-2 md:mt-4">
-                    {item.open_at && (
-                      <div className="flex items-center mb-1">
-                        <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
-                          Opens:
-                        </span>
-                        <span className="text-gray-800 text-sm md:text-base font-bold">
-                          {new Date(item.open_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                    {item.close_at && (
-                      <div className="flex items-center">
-                        <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
-                          Deadline:
-                        </span>
-                        <span className="text-gray-800 text-sm md:text-base font-bold">
-                          {new Date(item.close_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex-grow" />
-                <div className="flex justify-between items-center mt-auto">
-                  <button
-                    className={`${
-                      item.button_color || "bg-blue-600 hover:bg-blue-700"
-                    } text-white px-2 md:px-3 py-1 rounded-md md:rounded-lg text-sm md:text-base font-medium transition-colors`}
-                    onClick={() => handlePrimaryClick(item)}
-                  >
-                    {item.button_label || "View"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-          {gallery.length === 0 && (
-            <div className="col-span-full text-center text-gray-500 py-8">
-              Nothing featured yet.
-            </div>
+      {/* All sections in intermingled order */}
+      {sections.map(({ section, items }) => (
+        <section
+          key={section.id}
+          className={section.section_type === "carousel" ? "mb-10" : "mb-12"}
+        >
+          <h2 className="mb-4 text-2xl font-semibold text-gray-900">
+            {section.header}
+          </h2>
+          {section.section_type === "carousel" ? (
+            <HeroCarousel items={items} onItemClick={handlePrimaryClick} />
+          ) : (
+            <ProgramGrid items={items} onItemClick={handlePrimaryClick} />
           )}
-        </div>
-      </div>
-
-      {/* Call to Action Section */}
+        </section>
+      ))}
     </div>
   );
 }

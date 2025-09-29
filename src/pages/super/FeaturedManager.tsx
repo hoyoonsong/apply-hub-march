@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import type { FeaturedSection } from "../../types/featured";
+
+// ------------- helpers -------------
+const slugify = (s: string) =>
+  s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 60);
 
 type Placement = "carousel" | "gallery";
 type TargetType = "org" | "program" | "coalition";
@@ -21,10 +31,13 @@ type FeaturedRow = {
   title: string | null;
   description: string | null;
   card_color: string | null;
+  section_id?: string | null;
 };
 
 export default function FeaturedManager() {
   const [placement, setPlacement] = useState<Placement>("carousel");
+  const [selectedSectionId, setSelectedSectionId] = useState<string>("");
+  const [sections, setSections] = useState<FeaturedSection[]>([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<TargetType>("org");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -34,25 +47,241 @@ export default function FeaturedManager() {
   const [showColorModal, setShowColorModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SearchResult | null>(null);
 
+  // Section management states
+  const [showCreateSectionModal, setShowCreateSectionModal] = useState(false);
+  const [newSectionHeader, setNewSectionHeader] = useState("");
+  const [newSectionPlacement, setNewSectionPlacement] =
+    useState<Placement>("carousel");
+  const [saving, setSaving] = useState(false);
+
   const loadItems = async () => {
+    if (!selectedSectionId) {
+      setItems([]);
+      return;
+    }
+
+    // Load items for the selected section (any type)
     const { data, error } = await supabase
       .from("featured")
       .select(
-        "id, placement, target_type, target_id, sort_index, title, description, card_color"
+        "id, placement, target_type, target_id, sort_index, title, description, card_color, section_id"
       )
-      .eq("placement", placement)
+      .eq("section_id", selectedSectionId)
       .order("sort_index", { ascending: true });
+
     if (error) {
       console.error(error);
       alert("Failed to load featured items");
       return;
     }
-    setItems(data || []);
+
+    // Update items that don't have titles set
+    const itemsToUpdate = (data || []).filter((item) => !item.title);
+    if (itemsToUpdate.length > 0) {
+      for (const item of itemsToUpdate) {
+        try {
+          // Fetch the actual name from the appropriate table
+          let name = null;
+          if (item.target_type === "org") {
+            const { data: orgData } = await supabase
+              .from("organizations")
+              .select("name")
+              .eq("id", item.target_id)
+              .single();
+            name = orgData?.name;
+          } else if (item.target_type === "program") {
+            const { data: programData } = await supabase
+              .from("programs")
+              .select("name")
+              .eq("id", item.target_id)
+              .single();
+            name = programData?.name;
+          } else if (item.target_type === "coalition") {
+            const { data: coalitionData } = await supabase
+              .from("coalitions")
+              .select("name")
+              .eq("id", item.target_id)
+              .single();
+            name = coalitionData?.name;
+          }
+
+          if (name) {
+            // Update the featured item with the proper title
+            await supabase
+              .from("featured")
+              .update({ title: name })
+              .eq("id", item.id);
+          }
+        } catch (err) {
+          console.error("Failed to update title for item:", item.id, err);
+        }
+      }
+
+      // Reload items after updating titles
+      const { data: updatedData } = await supabase
+        .from("featured")
+        .select(
+          "id, placement, target_type, target_id, sort_index, title, description, card_color, section_id"
+        )
+        .eq("section_id", selectedSectionId)
+        .order("sort_index", { ascending: true });
+      setItems(updatedData || []);
+    } else {
+      setItems(data || []);
+    }
+  };
+
+  const createSection = async () => {
+    if (!newSectionHeader.trim()) {
+      alert("Please enter a section header");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const sectionType = newSectionPlacement;
+
+      // Create section with proper sort_index (next available across all sections)
+      const nextSortIndex = sections.length;
+      const { data, error } = await supabase
+        .from("featured_sections")
+        .insert({
+          section_type: sectionType, // 'carousel' or 'gallery'
+          header: newSectionHeader.trim(), // e.g., "Drum Corps International"
+          slug: slugify(newSectionHeader.trim()), // your slugify(header), make unique client-side if needed
+          sort_index: nextSortIndex,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        // Handle slug collision by trying with suffix
+        if (error.code === "23505") {
+          const base = slugify(newSectionHeader.trim()) || "section";
+          let slug = base;
+          for (let i = 0; i < 15; i++) {
+            slug = `${base}-${i + 2}`;
+            const { data: retryData, error: retryError } = await supabase
+              .from("featured_sections")
+              .insert({
+                section_type: sectionType,
+                header: newSectionHeader.trim(),
+                slug,
+                sort_index: nextSortIndex,
+              })
+              .select()
+              .single();
+
+            if (!retryError) {
+              // Success with retry
+              const created = retryData;
+              await handleSectionCreated(created);
+              return;
+            }
+          }
+          throw new Error("Could not create section after multiple attempts");
+        }
+        throw error;
+      }
+
+      const created = data;
+      await handleSectionCreated(created);
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message ?? "Failed to create section");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSectionCreated = async (created: any) => {
+    // Close modal and reset
+    setShowCreateSectionModal(false);
+    setNewSectionHeader("");
+    setNewSectionPlacement("carousel");
+
+    // Reload sections and select the new one
+    await loadSections();
+    setSelectedSectionId(created.id);
+
+    alert(`Created: ${created.header}`);
+  };
+
+  const reorderSections = async (orderedSectionIds: string[]) => {
+    try {
+      // Update sort_index for each section based on the new order
+      const updatePromises = orderedSectionIds.map((sectionId, index) =>
+        supabase
+          .from("featured_sections")
+          .update({ sort_index: index })
+          .eq("id", sectionId)
+      );
+
+      const results = await Promise.all(updatePromises);
+
+      // Check if any updates failed
+      const hasError = results.some((result) => result.error);
+      if (hasError) {
+        throw new Error("Some section updates failed");
+      }
+
+      // Reload sections to reflect new order
+      await loadSections();
+    } catch (error) {
+      console.error("Failed to reorder sections:", error);
+      alert("Failed to reorder sections");
+    }
+  };
+
+  const moveSection = async (sectionId: string, direction: "up" | "down") => {
+    const currentIndex = sections.findIndex((s) => s.id === sectionId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= sections.length) return;
+
+    // Create new ordered array
+    const newOrder = [...sections];
+    [newOrder[currentIndex], newOrder[newIndex]] = [
+      newOrder[newIndex],
+      newOrder[currentIndex],
+    ];
+
+    const orderedIds = newOrder.map((s) => s.id);
+    await reorderSections(orderedIds);
+  };
+
+  const loadSections = async () => {
+    try {
+      // Load ALL sections (both carousel and gallery) sorted by sort_index
+      const { data, error } = await supabase.rpc("featured_sections_public", {
+        p_type: null, // Load all types
+      });
+
+      if (error) throw error;
+
+      const sectionsData = data ?? [];
+      setSections(sectionsData);
+
+      // Auto-select first section if none selected
+      if (!selectedSectionId && sectionsData.length > 0) {
+        setSelectedSectionId(sectionsData[0].id);
+        setPlacement(sectionsData[0].section_type);
+      }
+    } catch (error) {
+      console.error("Failed to load sections:", error);
+    }
   };
 
   useEffect(() => {
-    loadItems();
-  }, [placement]);
+    loadSections();
+  }, []);
+
+  useEffect(() => {
+    if (selectedSectionId) {
+      loadItems();
+    }
+  }, [selectedSectionId]);
 
   // search using your existing RPCs
   useEffect(() => {
@@ -122,20 +351,25 @@ export default function FeaturedManager() {
   };
 
   const confirmAddItem = async () => {
-    if (!selectedItem) return;
+    if (!selectedItem || !selectedSectionId) return;
 
-    const maxIndex = Math.max(-1, ...items.map((i) => i.sort_index));
+    const nextIndex = items.length; // Compute from current list length
+
     const { error } = await supabase.from("featured").upsert(
       {
-        placement,
-        target_type: selectedItem.type,
+        placement, // 'carousel' | 'gallery'
+        section_id: selectedSectionId,
+        target_type: selectedItem.type, // 'org' | 'program' | 'coalition'
         target_id: selectedItem.id,
-        sort_index: maxIndex + 1,
-        title: selectedItem.name,
-        card_color: cardColor?.trim() || null,
+        sort_index: nextIndex, // compute from current list length
+        title: selectedItem.name, // Set the actual name as title
+        card_color: cardColor?.trim() || null, // optional
       },
-      { onConflict: "placement,target_type,target_id" }
+      {
+        onConflict: "section_id,target_type,target_id",
+      }
     );
+
     if (error) {
       console.error(error);
       alert("Failed to add");
@@ -193,16 +427,79 @@ export default function FeaturedManager() {
       <h1 className="text-2xl font-bold mb-4">Featured Manager</h1>
 
       <div className="mb-4 flex items-center gap-2">
-        <label className="text-sm text-gray-600">Placement</label>
+        <label className="text-sm text-gray-600">Section</label>
         <select
-          value={placement}
-          onChange={(e) => setPlacement(e.target.value as Placement)}
+          value={selectedSectionId}
+          onChange={(e) => {
+            const sectionId = e.target.value;
+            setSelectedSectionId(sectionId);
+            // Update placement based on selected section
+            const selectedSection = sections.find((s) => s.id === sectionId);
+            if (selectedSection) {
+              setPlacement(selectedSection.section_type);
+            }
+          }}
           className="border rounded px-3 py-2"
         >
-          <option value="carousel">Carousel</option>
-          <option value="gallery">Gallery</option>
+          <option value="">Select a section...</option>
+          {sections.map((section) => (
+            <option key={section.id} value={section.id}>
+              {section.header} ({section.section_type})
+            </option>
+          ))}
         </select>
+
+        <button
+          onClick={() => setShowCreateSectionModal(true)}
+          className="ml-4 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm"
+        >
+          + New Section
+        </button>
       </div>
+
+      {/* Section Reordering Controls */}
+      {sections.length > 1 && (
+        <div className="mb-4">
+          <label className="text-sm text-gray-600 mb-2 block">
+            Reorder Sections:
+          </label>
+          <div className="space-y-2">
+            {sections.map((section, index) => (
+              <div
+                key={section.id}
+                className="flex items-center gap-2 bg-gray-50 p-2 rounded"
+              >
+                <span className="text-sm font-medium">{section.header}</span>
+                <span
+                  className={`text-xs px-2 py-1 rounded ${
+                    section.section_type === "carousel"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-green-100 text-green-800"
+                  }`}
+                >
+                  {section.section_type}
+                </span>
+                <div className="ml-auto flex gap-1">
+                  <button
+                    onClick={() => moveSection(section.id, "up")}
+                    disabled={index === 0}
+                    className="px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => moveSection(section.id, "down")}
+                    disabled={index === sections.length - 1}
+                    className="px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded"
+                  >
+                    ↓
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mb-6">
         <div className="flex gap-2">
@@ -376,6 +673,76 @@ export default function FeaturedManager() {
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
               >
                 Add to {placement}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Create Section Modal */}
+      {showCreateSectionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Create New Section</h3>
+
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-600">
+                Section Type
+              </label>
+              <select
+                value={newSectionPlacement}
+                onChange={(e) =>
+                  setNewSectionPlacement(e.target.value as Placement)
+                }
+                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="carousel">Carousel</option>
+                <option value="gallery">Gallery</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Choose whether this section will display as a carousel or
+                gallery
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-600">
+                Section Header
+              </label>
+              <input
+                type="text"
+                value={newSectionHeader}
+                onChange={(e) => setNewSectionHeader(e.target.value)}
+                placeholder="e.g., More Programs, Featured Organizations, etc."
+                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                This will be displayed as the section title on the dashboard
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowCreateSectionModal(false);
+                  setNewSectionHeader("");
+                  setNewSectionPlacement("carousel");
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createSection}
+                disabled={saving}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-md text-sm font-medium"
+              >
+                {saving
+                  ? "Creating..."
+                  : `Create ${
+                      newSectionPlacement === "carousel"
+                        ? "Carousel"
+                        : "Gallery"
+                    } Section`}
               </button>
             </div>
           </div>
