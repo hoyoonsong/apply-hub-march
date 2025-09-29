@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://omnipply.com/sitemap.xml
+
+# Disallow protected/admin areas
+Disallow: /super/
+Disallow: /org-admin/
+Disallow: /coalition-manager/
+Disallow: /review/
+Disallow: /applications/
+Disallow: /post-auth/
+Disallow: /onboarding/
+
+# Allow public pages
+Allow: /org/
+Allow: /coalitions/
+Allow: /programs/
+Allow: /features
+Allow: /dashboard
+Allow: /profile
+Allow: /my-submissions
