@@ -583,15 +583,15 @@ function FeaturedPrograms() {
   };
 
   if (loading) {
-  return (
+    return (
       <div className="w-full py-16 flex justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading Featured Programs...</p>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   return (
     <div className="w-full">
@@ -731,7 +731,7 @@ function FeaturedPrograms() {
                   </span>
                 </div>
                 {item.description && (
-                  <p className="text-gray-700 text-xs md:text-sm mb-2 md:mb-4 line-clamp-2">
+                  <p className="text-gray-700 text-sm md:text-base mb-2 md:mb-4 line-clamp-2">
                     {item.description}
                   </p>
                 )}
@@ -741,20 +741,20 @@ function FeaturedPrograms() {
                   <div className="mb-3 md:mb-4 mt-2 md:mt-4">
                     {item.open_at && (
                       <div className="flex items-center mb-1">
-                        <span className="text-gray-600 text-xs md:text-sm font-bold mr-2">
+                        <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
                           Opens:
                         </span>
-                        <span className="text-gray-800 text-xs md:text-sm font-bold">
+                        <span className="text-gray-800 text-sm md:text-base font-bold">
                           {new Date(item.open_at).toLocaleDateString()}
                         </span>
                       </div>
                     )}
                     {item.close_at && (
                       <div className="flex items-center">
-                        <span className="text-gray-600 text-xs md:text-sm font-bold mr-2">
+                        <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
                           Deadline:
                         </span>
-                        <span className="text-gray-800 text-xs md:text-sm font-bold">
+                        <span className="text-gray-800 text-sm md:text-base font-bold">
                           {new Date(item.close_at).toLocaleDateString()}
                         </span>
                       </div>
@@ -767,7 +767,7 @@ function FeaturedPrograms() {
                   <button
                     className={`${
                       item.button_color || "bg-blue-600 hover:bg-blue-700"
-                    } text-white px-2 md:px-3 py-1 rounded-md md:rounded-lg text-xs font-medium transition-colors`}
+                    } text-white px-2 md:px-3 py-1 rounded-md md:rounded-lg text-sm md:text-base font-medium transition-colors`}
                     onClick={() => handlePrimaryClick(item)}
                   >
                     {item.button_label || "View"}
@@ -917,7 +917,7 @@ function AllOrgs() {
   }, [searchTerm, organizations]);
 
   if (loading) {
-  return (
+    return (
       <div className="w-full px-2 md:px-0">
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
@@ -1132,7 +1132,7 @@ function AllPrograms() {
         <div className="relative max-w-3xl mx-auto">
           <div className="flex items-center bg-white border-2 border-gray-300 rounded-full focus-within:border-blue-500 shadow-lg hover:shadow-xl focus-within:shadow-xl transition-all duration-200">
             {/* Type Filter Dropdown */}
-    <div className="relative">
+            <div className="relative">
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
