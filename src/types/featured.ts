@@ -24,12 +24,14 @@ export type FeaturedItem = {
   button_color: string | null;
   image_url: string | null;
   card_color: string | null;
-  // Program-specific fields
+  // Program-specific fields (populated when target_type is "program")
   program_type?: string | null;
   open_at?: string | null;
   close_at?: string | null;
-  organization_name?: string | null;
-  organization_slug?: string | null;
-  coalition_name?: string | null;
+  published?: boolean | null;
+  slug?: string | null;
+  // Organization fields (populated when target_type is "org")
+  org_slug?: string | null;
+  // Coalition fields (populated when target_type is "coalition")
   coalition_slug?: string | null;
 };

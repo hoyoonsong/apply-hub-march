@@ -6,7 +6,7 @@ import CapabilityHub from "./components/CapabilityHub.tsx";
 import { loadCapabilities, hasAnyCapabilities } from "./lib/capabilities";
 import { supabase } from "./lib/supabase";
 import { startOrGetApplication } from "./lib/rpc";
-import { useFeaturedSections } from "./hooks/useFeaturedSections";
+import { useFeaturedSections } from "./hooks/useFeaturedSections.ts";
 import { toCardStyle } from "./lib/colors";
 
 // Expanded corps data
@@ -520,28 +520,29 @@ function HeroCarousel({
                     {item.program_type ? ` · ${item.program_type}` : ""}
                   </span>
                 </div>
-                {item.description && (
-                  <p className="text-xs md:text-xl mb-2 md:mb-6 opacity-90 max-w-2xl mx-auto">
-                    {item.description}
-                  </p>
-                )}
-
-                {/* Deadline Information for Programs */}
-                {(item.open_at || item.close_at) && (
-                  <div className="mb-3 md:mb-6 text-white/90 mt-4 md:mt-6">
-                    {item.open_at && (
-                      <div className="text-xs md:text-sm mb-1">
-                        <span className="font-semibold">Opens:</span>{" "}
-                        {new Date(item.open_at).toLocaleDateString()}
-                      </div>
-                    )}
-                    {item.close_at && (
-                      <div className="text-xs md:text-sm">
-                        <span className="font-semibold">Deadline:</span>{" "}
-                        {new Date(item.close_at).toLocaleDateString()}
-                      </div>
-                    )}
+                {/* Show organization name for programs, description for others */}
+                {item.target_type === "program" && item.organization ? (
+                  <div className="mb-3 md:mb-6 text-white/90 max-w-2xl mx-auto">
+                    <div className="text-xs md:text-lg">
+                      Offered by {item.organization}
+                      <span className="ml-4 md:ml-6">
+                        {item.close_at ? (
+                          <>
+                            Deadline:{" "}
+                            {new Date(item.close_at).toLocaleDateString()}
+                          </>
+                        ) : (
+                          "No deadline"
+                        )}
+                      </span>
+                    </div>
                   </div>
+                ) : (
+                  item.description && (
+                    <p className="text-xs md:text-xl mb-2 md:mb-6 opacity-90 max-w-2xl mx-auto">
+                      {item.description}
+                    </p>
+                  )
                 )}
 
                 <button
@@ -622,7 +623,7 @@ function ProgramGrid({
             </h3>
           </div>
           <div className="p-2 md:p-4 flex flex-col flex-grow">
-            <div className="flex flex-col md:flex-row md:items-center mb-2 md:mb-3">
+            <div className="flex items-center mb-2 md:mb-3 flex-wrap">
               <span
                 className={`${
                   item.target_type === "org"
@@ -632,10 +633,16 @@ function ProgramGrid({
                     : item.target_type === "program"
                     ? "bg-blue-100 text-blue-800"
                     : "bg-gray-100 text-gray-800"
-                } text-xs font-semibold px-2 py-1 rounded-full mb-1 md:mb-0 capitalize w-fit`}
+                } text-xs font-semibold px-2 py-1 rounded-full capitalize w-fit`}
               >
                 {item.target_type}
               </span>
+              {/* Subtle organization name for programs */}
+              {item.target_type === "program" && item.organization && (
+                <span className="text-gray-500 text-xs md:text-sm ml-2 md:ml-3 whitespace-nowrap">
+                  by {item.organization}
+                </span>
+              )}
             </div>
             {item.description && (
               <p className="text-gray-700 text-sm md:text-base mb-2 md:mb-4 line-clamp-2">
@@ -643,33 +650,23 @@ function ProgramGrid({
               </p>
             )}
 
-            {/* Deadline Information */}
-            {(item.open_at || item.close_at) && (
-              <div className="mb-3 md:mb-4 mt-2 md:mt-4">
-                {item.open_at && (
-                  <div className="flex items-center mb-1">
-                    <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
-                      Opens:
-                    </span>
-                    <span className="text-gray-800 text-sm md:text-base font-bold">
-                      {new Date(item.open_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
-                {item.close_at && (
-                  <div className="flex items-center">
-                    <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
-                      Deadline:
-                    </span>
-                    <span className="text-gray-800 text-sm md:text-base font-bold">
-                      {new Date(item.close_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
+            {/* Spacer to push dates to bottom */}
             <div className="flex-grow" />
+
+            {/* Deadline Information - anchored to bottom */}
+            <div className="mb-3 md:mb-4">
+              <div className="flex items-center">
+                <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
+                  Deadline:
+                </span>
+                <span className="text-gray-800 text-sm md:text-base font-bold">
+                  {item.close_at
+                    ? new Date(item.close_at).toLocaleDateString()
+                    : "No deadline"}
+                </span>
+              </div>
+            </div>
+
             <div className="flex justify-between items-center mt-auto">
               <button
                 className={`${
