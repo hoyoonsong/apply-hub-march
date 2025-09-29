@@ -151,12 +151,19 @@ export default function FeaturedManager() {
     const a = items[idx];
     const b = items[swapIdx];
 
-    const { error } = await supabase.from("featured").upsert([
-      { id: a.id, sort_index: b.sort_index },
-      { id: b.id, sort_index: a.sort_index },
-    ]);
-    if (error) {
-      console.error(error);
+    // Use separate update calls instead of upsert to avoid null constraint issues
+    const { error: error1 } = await supabase
+      .from("featured")
+      .update({ sort_index: b.sort_index })
+      .eq("id", a.id);
+
+    const { error: error2 } = await supabase
+      .from("featured")
+      .update({ sort_index: a.sort_index })
+      .eq("id", b.id);
+
+    if (error1 || error2) {
+      console.error(error1 || error2);
       alert("Failed to reorder");
       return;
     }
