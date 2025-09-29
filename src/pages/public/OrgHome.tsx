@@ -18,11 +18,13 @@ type Org = {
 export default function OrgHome() {
   const { orgSlug } = useParams();
   const [org, setOrg] = useState<Org | null>(null);
-  const [programs, setPrograms] = useState<Program[]>([]);
+  const [allPrograms, setAllPrograms] = useState<Program[]>([]);
+  const [filteredPrograms, setFilteredPrograms] = useState<Program[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load organization and programs data (only once)
   useEffect(() => {
     let mounted = true;
 
@@ -72,19 +74,8 @@ export default function OrgHome() {
             !program.deleted_at
         );
 
-        // Apply search filter
-        const filteredPrograms = search
-          ? orgPrograms.filter(
-              (program: Program) =>
-                program.name.toLowerCase().includes(search.toLowerCase()) ||
-                (program.description &&
-                  program.description
-                    .toLowerCase()
-                    .includes(search.toLowerCase()))
-            )
-          : orgPrograms;
-
-        setPrograms(filteredPrograms);
+        setAllPrograms(orgPrograms);
+        setFilteredPrograms(orgPrograms);
         setLoading(false);
       } catch (err: any) {
         if (!mounted) return;
@@ -97,7 +88,22 @@ export default function OrgHome() {
     return () => {
       mounted = false;
     };
-  }, [orgSlug, search]);
+  }, [orgSlug]);
+
+  // Filter programs based on search term (separate effect)
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredPrograms(allPrograms);
+    } else {
+      const filtered = allPrograms.filter(
+        (program: Program) =>
+          program.name.toLowerCase().includes(search.toLowerCase()) ||
+          (program.description &&
+            program.description.toLowerCase().includes(search.toLowerCase()))
+      );
+      setFilteredPrograms(filtered);
+    }
+  }, [search, allPrograms]);
 
   if (loading)
     return (
@@ -171,13 +177,15 @@ export default function OrgHome() {
           />
         </div>
 
-        {programs.length === 0 ? (
+        {filteredPrograms.length === 0 ? (
           <div className="bg-white border rounded-lg p-8 text-center text-gray-600">
-            No published programs yet for this organization.
+            {search
+              ? "No programs match your search."
+              : "No published programs yet for this organization."}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {programs.map((p) => (
+            {filteredPrograms.map((p) => (
               <ProgramCard key={p.id} program={p} />
             ))}
           </div>
