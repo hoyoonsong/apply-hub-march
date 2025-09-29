@@ -53,6 +53,9 @@ export default function FeaturedManager() {
   const [newSectionPlacement, setNewSectionPlacement] =
     useState<Placement>("carousel");
   const [saving, setSaving] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
+  const [startAt, setStartAt] = useState<string>("");
+  const [endAt, setEndAt] = useState<string>("");
 
   const loadItems = async () => {
     if (!selectedSectionId) {
@@ -60,13 +63,17 @@ export default function FeaturedManager() {
       return;
     }
 
-    // Load items for the selected section (any type)
+    // Load items for the selected section (any type) - only show active and non-expired items
+    const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("featured")
       .select(
-        "id, placement, target_type, target_id, sort_index, title, description, card_color, section_id"
+        "id, placement, target_type, target_id, sort_index, title, description, card_color, section_id, starts_at, ends_at"
       )
       .eq("section_id", selectedSectionId)
+      .eq("active", true)
+      .or(`starts_at.is.null,starts_at.lte.${now}`)
+      .or(`ends_at.is.null,ends_at.gte.${now}`)
       .order("sort_index", { ascending: true });
 
     if (error) {
@@ -121,9 +128,12 @@ export default function FeaturedManager() {
       const { data: updatedData } = await supabase
         .from("featured")
         .select(
-          "id, placement, target_type, target_id, sort_index, title, description, card_color, section_id"
+          "id, placement, target_type, target_id, sort_index, title, description, card_color, section_id, starts_at, ends_at"
         )
         .eq("section_id", selectedSectionId)
+        .eq("active", true)
+        .or(`starts_at.is.null,starts_at.lte.${now}`)
+        .or(`ends_at.is.null,ends_at.gte.${now}`)
         .order("sort_index", { ascending: true });
       setItems(updatedData || []);
     } else {
@@ -150,6 +160,7 @@ export default function FeaturedManager() {
           header: newSectionHeader.trim(), // e.g., "Drum Corps International"
           slug: slugify(newSectionHeader.trim()), // your slugify(header), make unique client-side if needed
           sort_index: nextSortIndex,
+          active: true, // New sections are active by default
         })
         .select()
         .single();
@@ -251,22 +262,127 @@ export default function FeaturedManager() {
     await reorderSections(orderedIds);
   };
 
+  // Hide/unhide section functions
+  const hideSection = async (sectionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("featured_sections")
+        .update({
+          active: false,
+          deleted_at: new Date().toISOString(),
+        })
+        .eq("id", sectionId);
+
+      if (error) throw error;
+
+      // Reload sections to reflect changes
+      await loadSections();
+      alert("Section hidden. It will be permanently deleted in 30 days.");
+    } catch (error) {
+      console.error("Failed to hide section:", error);
+      alert("Failed to hide section");
+    }
+  };
+
+  const unhideSection = async (sectionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("featured_sections")
+        .update({
+          active: true,
+          deleted_at: null,
+        })
+        .eq("id", sectionId);
+
+      if (error) throw error;
+
+      // Reload sections to reflect changes
+      await loadSections();
+      alert("Section restored successfully.");
+    } catch (error) {
+      console.error("Failed to unhide section:", error);
+      alert("Failed to restore section");
+    }
+  };
+
+  // Helper function to calculate days until purge
+  const daysUntilPurge = (section: any) => {
+    if (!section.deleted_at) return null;
+    const ms = Date.now() - new Date(section.deleted_at).getTime();
+    return Math.max(0, 30 - Math.floor(ms / 86_400_000));
+  };
+
+  // Helper function to convert datetime-local to ISO or null
+  const toIsoOrNull = (v?: string) => (v ? new Date(v).toISOString() : null);
+
+  // Helper function to get current section type
+  const getCurrentSectionType = () => {
+    const selectedSection = sections.find((s) => s.id === selectedSectionId);
+    return selectedSection?.section_type || "carousel";
+  };
+
+  // Filter sections based on showHidden state
+  const visibleSections = showHidden
+    ? sections
+    : sections.filter((s) => s.active);
+
+  // Helper function to set duration presets
+  const setDurationDays = (days: number) => {
+    const start = new Date();
+    const end = new Date();
+    end.setDate(start.getDate() + days);
+    setStartAt(start.toISOString().slice(0, 16)); // yyyy-MM-ddTHH:mm (local)
+    setEndAt(end.toISOString().slice(0, 16));
+  };
+
+  // Helper function to get scheduling status
+  const getSchedulingStatus = (item: any) => {
+    const now = new Date();
+    const startTime = item.starts_at ? new Date(item.starts_at) : null;
+    const endTime = item.ends_at ? new Date(item.ends_at) : null;
+
+    if (startTime && startTime > now) {
+      return {
+        status: "scheduled",
+        text: `Starts ${startTime.toLocaleDateString()}`,
+      };
+    }
+    if (endTime && endTime < now) {
+      return {
+        status: "expired",
+        text: `Expired ${endTime.toLocaleDateString()}`,
+      };
+    }
+    if (startTime || endTime) {
+      return { status: "active", text: "Scheduled" };
+    }
+    return { status: "permanent", text: "Always visible" };
+  };
+
   const loadSections = async () => {
     try {
       // Load ALL sections (both carousel and gallery) sorted by sort_index
-      const { data, error } = await supabase.rpc("featured_sections_public", {
-        p_type: null, // Load all types
-      });
+      // Include deleted_at field for purge countdown
+      const { data, error } = await supabase
+        .from("featured_sections")
+        .select(
+          "id, section_type, header, slug, sort_index, active, deleted_at, created_at"
+        )
+        .order("sort_index", { ascending: true })
+        .order("created_at", { ascending: true });
 
       if (error) throw error;
 
       const sectionsData = data ?? [];
       setSections(sectionsData);
 
-      // Auto-select first section if none selected
+      // Auto-select first active section if none selected
       if (!selectedSectionId && sectionsData.length > 0) {
-        setSelectedSectionId(sectionsData[0].id);
-        setPlacement(sectionsData[0].section_type);
+        const firstActiveSection = sectionsData.find((s) => s.active);
+        if (firstActiveSection) {
+          setSelectedSectionId(firstActiveSection.id);
+          setPlacement(firstActiveSection.section_type);
+        }
       }
     } catch (error) {
       console.error("Failed to load sections:", error);
@@ -347,23 +463,40 @@ export default function FeaturedManager() {
   const showAddModal = (sel: SearchResult) => {
     setSelectedItem(sel);
     setCardColor(""); // Reset color selection
+    setStartAt(""); // Reset scheduling
+    setEndAt(""); // Reset scheduling
     setShowColorModal(true);
   };
 
   const confirmAddItem = async () => {
     if (!selectedItem || !selectedSectionId) return;
 
+    // Get the placement from the selected section to ensure it matches
+    const selectedSection = sections.find((s) => s.id === selectedSectionId);
+    if (!selectedSection) {
+      alert("Selected section not found");
+      return;
+    }
+
+    // Optional sanity check
+    if (startAt && endAt && new Date(endAt) < new Date(startAt)) {
+      alert("End time must be after start time.");
+      return;
+    }
+
     const nextIndex = items.length; // Compute from current list length
 
     const { error } = await supabase.from("featured").upsert(
       {
-        placement, // 'carousel' | 'gallery'
+        placement: selectedSection.section_type, // Use section's actual type
         section_id: selectedSectionId,
         target_type: selectedItem.type, // 'org' | 'program' | 'coalition'
         target_id: selectedItem.id,
         sort_index: nextIndex, // compute from current list length
         title: selectedItem.name, // Set the actual name as title
         card_color: cardColor?.trim() || null, // optional
+        starts_at: toIsoOrNull(startAt), // scheduling
+        ends_at: toIsoOrNull(endAt), // scheduling
       },
       {
         onConflict: "section_id,target_type,target_id",
@@ -380,6 +513,8 @@ export default function FeaturedManager() {
     setShowColorModal(false);
     setSelectedItem(null);
     setCardColor("");
+    setStartAt("");
+    setEndAt("");
     setQuery("");
     setResults([]);
     loadItems();
@@ -442,11 +577,13 @@ export default function FeaturedManager() {
           className="border rounded px-3 py-2"
         >
           <option value="">Select a section...</option>
-          {sections.map((section) => (
-            <option key={section.id} value={section.id}>
-              {section.header} ({section.section_type})
-            </option>
-          ))}
+          {sections
+            .filter((s) => s.active)
+            .map((section) => (
+              <option key={section.id} value={section.id}>
+                {section.header} ({section.section_type})
+              </option>
+            ))}
         </select>
 
         <button
@@ -455,16 +592,29 @@ export default function FeaturedManager() {
         >
           + New Section
         </button>
+
+        <button
+          onClick={() => setShowHidden(!showHidden)}
+          className={`ml-2 px-3 py-2 rounded text-sm ${
+            showHidden
+              ? "bg-gray-600 hover:bg-gray-700 text-white"
+              : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+          }`}
+        >
+          {showHidden
+            ? "Hide Deleted"
+            : `Show Hidden (${sections.filter((s) => !s.active).length})`}
+        </button>
       </div>
 
       {/* Section Reordering Controls */}
-      {sections.length > 1 && (
+      {visibleSections.length > 1 && (
         <div className="mb-4">
           <label className="text-sm text-gray-600 mb-2 block">
             Reorder Sections:
           </label>
           <div className="space-y-2">
-            {sections.map((section, index) => (
+            {visibleSections.map((section, index) => (
               <div
                 key={section.id}
                 className="flex items-center gap-2 bg-gray-50 p-2 rounded"
@@ -479,6 +629,12 @@ export default function FeaturedManager() {
                 >
                   {section.section_type}
                 </span>
+                {/* Show purge countdown for hidden sections */}
+                {!section.active && section.deleted_at && (
+                  <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-800">
+                    Hidden • deletes in {daysUntilPurge(section)}d
+                  </span>
+                )}
                 <div className="ml-auto flex gap-1">
                   <button
                     onClick={() => moveSection(section.id, "up")}
@@ -489,11 +645,27 @@ export default function FeaturedManager() {
                   </button>
                   <button
                     onClick={() => moveSection(section.id, "down")}
-                    disabled={index === sections.length - 1}
+                    disabled={index === visibleSections.length - 1}
                     className="px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded"
                   >
                     ↓
                   </button>
+                  {/* Delete/Hide buttons */}
+                  {section.active ? (
+                    <button
+                      onClick={() => hideSection(section.id)}
+                      className="px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded"
+                    >
+                      Hide
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => unhideSection(section.id)}
+                      className="px-2 py-1 text-xs bg-green-500 hover:bg-green-600 text-white rounded"
+                    >
+                      Unhide
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -540,7 +712,7 @@ export default function FeaturedManager() {
                   className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
                   onClick={() => showAddModal(r)}
                 >
-                  Add to {placement}
+                  Add to {getCurrentSectionType()}
                 </button>
               </li>
             ))}
@@ -574,6 +746,25 @@ export default function FeaturedManager() {
                     title={i.card_color}
                   />
                 )}
+                {/* Scheduling status indicator */}
+                {(() => {
+                  const scheduling = getSchedulingStatus(i);
+                  return (
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        scheduling.status === "scheduled"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : scheduling.status === "active"
+                          ? "bg-green-100 text-green-800"
+                          : scheduling.status === "permanent"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {scheduling.text}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -608,7 +799,7 @@ export default function FeaturedManager() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">
-              Add "{selectedItem.name}" to {placement}
+              Add "{selectedItem.name}" to {getCurrentSectionType()}
             </h3>
 
             <div className="mb-4">
@@ -657,12 +848,72 @@ export default function FeaturedManager() {
               </div>
             </div>
 
+            {/* Scheduling Section */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-600">
+                Show from
+              </label>
+              <input
+                type="datetime-local"
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-600">
+                Hide after
+              </label>
+              <input
+                type="datetime-local"
+                value={endAt}
+                onChange={(e) => setEndAt(e.target.value)}
+                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave blank to show immediately and/or never auto-hide.
+              </p>
+            </div>
+
+            {/* Quick Presets */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-600 mb-2">
+                Quick presets
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDurationDays(7)}
+                  className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
+                >
+                  7d
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDurationDays(14)}
+                  className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
+                >
+                  14d
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDurationDays(30)}
+                  className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
+                >
+                  30d
+                </button>
+              </div>
+            </div>
+
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => {
                   setShowColorModal(false);
                   setSelectedItem(null);
                   setCardColor("");
+                  setStartAt("");
+                  setEndAt("");
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
@@ -672,7 +923,7 @@ export default function FeaturedManager() {
                 onClick={confirmAddItem}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
               >
-                Add to {placement}
+                Add to {getCurrentSectionType()}
               </button>
             </div>
           </div>

@@ -25,41 +25,68 @@ export function useFeaturedSections() {
           sections.map(async (s) => {
             const items = await fetchFeaturedItemsBySection(s.id);
 
-            // Enrich items with actual names if title is not available
+            // Enrich items with full data including descriptions, deadlines, etc.
             const enrichedItems = await Promise.all(
               items.map(async (item) => {
-                if (item.title) {
-                  return item; // Already has title
-                }
-
                 try {
-                  let name = null;
                   if (item.target_type === "org") {
                     const { data: orgData } = await supabase
                       .from("organizations")
-                      .select("name")
+                      .select("name, slug")
                       .eq("id", item.target_id)
                       .single();
-                    name = orgData?.name;
+
+                    return {
+                      ...item,
+                      title: item.title || orgData?.name,
+                      organization_name: orgData?.name,
+                      organization_slug: orgData?.slug,
+                    };
                   } else if (item.target_type === "program") {
                     const { data: programData } = await supabase
                       .from("programs")
-                      .select("name")
+                      .select(
+                        `
+                        name, 
+                        description, 
+                        type, 
+                        open_at, 
+                        close_at,
+                        organization_id,
+                        organizations(name, slug)
+                      `
+                      )
                       .eq("id", item.target_id)
                       .single();
-                    name = programData?.name;
+
+                    return {
+                      ...item,
+                      title: item.title || programData?.name,
+                      description: item.description || programData?.description,
+                      program_type: programData?.type,
+                      open_at: programData?.open_at,
+                      close_at: programData?.close_at,
+                      organization_name: programData?.organizations?.name,
+                      organization_slug: programData?.organizations?.slug,
+                    };
                   } else if (item.target_type === "coalition") {
                     const { data: coalitionData } = await supabase
                       .from("coalitions")
-                      .select("name")
+                      .select("name, slug")
                       .eq("id", item.target_id)
                       .single();
-                    name = coalitionData?.name;
+
+                    return {
+                      ...item,
+                      title: item.title || coalitionData?.name,
+                      coalition_name: coalitionData?.name,
+                      coalition_slug: coalitionData?.slug,
+                    };
                   }
 
-                  return { ...item, title: name };
+                  return item;
                 } catch (err) {
-                  console.error("Failed to fetch name for item:", item.id, err);
+                  console.error("Failed to fetch data for item:", item.id, err);
                   return item;
                 }
               })
