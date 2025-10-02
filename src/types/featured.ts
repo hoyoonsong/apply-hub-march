@@ -1,44 +1,36 @@
-// Featured types used across dashboard and super tools
-
-export type FeaturedSection = {
+export interface FeaturedSection {
   id: string;
-  header: string;
   section_type: "carousel" | "gallery";
+  header: string;
+  slug: string;
   sort_index: number;
   active: boolean;
-  deleted_at: string | null;
-  starts_at?: string | null;
-  ends_at?: string | null;
-};
+  deleted_at?: string | null;
+  created_at: string;
+}
 
-export type FeaturedItem = {
+export interface FeaturedItem {
   id: string;
   placement: "carousel" | "gallery";
   target_type: "org" | "program" | "coalition";
   target_id: string;
   sort_index: number;
   title: string | null;
-  subtitle?: string | null;
   description: string | null;
-  gradient?: string | null;
-  tag_color?: string | null;
-  button_label?: string | null;
-  button_color?: string | null;
-  image_url?: string | null;
-  card_color?: string | null;
+  card_color: string | null;
+  section_id: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  active: boolean;
 
-  // Program-specific fields (optional, present when target_type === "program")
-  program_type?: string | null;
+  // Enriched data from useFeaturedSections
+  name?: string;
+  slug?: string;
+  program_type?: string;
   open_at?: string | null;
   close_at?: string | null;
-  published?: boolean | null;
-  slug?: string | null;
-  organization?: string | null;
-  organizationSlug?: string | null;
-  coalitionDisplay?: string | null;
-
-  // Org/coalition slugs for routing (optional)
-  org_slug?: string | null;
-  coalition_slug?: string | null;
-};
-
+  published?: boolean;
+  organization?: string;
+  org_slug?: string;
+  coalition_slug?: string;
+}

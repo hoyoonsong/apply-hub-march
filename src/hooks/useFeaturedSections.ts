@@ -4,7 +4,7 @@ import {
   fetchFeaturedItemsBySection,
 } from "../lib/featuredClient";
 import { supabase } from "../lib/supabase";
-import type { FeaturedSection, FeaturedItem } from "../types/featured";
+import type { FeaturedSection, FeaturedItem } from "../types/featured.ts";
 
 export function useFeaturedSections() {
   const [sections, setSections] = useState<

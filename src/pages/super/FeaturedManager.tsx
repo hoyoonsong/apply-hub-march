@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import type { FeaturedSection } from "../../types/featured";
+import type { FeaturedSection } from "../../types/featured.ts";
 
 // ------------- helpers -------------
 const slugify = (s: string) =>
