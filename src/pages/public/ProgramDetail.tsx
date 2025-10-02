@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { startOrGetApplication } from "../../lib/rpc";
 import { loadApplicationSchemaById } from "../../lib/schemaLoader";
@@ -38,7 +38,7 @@ export default function ProgramDetail() {
   const navigate = useNavigate();
   const programId = useMemo(() => (params?.id as string) || "", [params]);
   const [program, setProgram] = useState<ProgramPublic | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -197,17 +197,19 @@ export default function ProgramDetail() {
                   </h3>
                   {program.application_schema.builder?.length ? (
                     <ul className="list-disc ml-6 text-sm text-gray-600">
-                      {program.application_schema.builder.map((item, i) => (
-                        <li key={i}>
-                          <code className="bg-gray-100 px-1 rounded text-xs">
-                            {item.type}
-                          </code>{" "}
-                          — {item.label}
-                          {item.required && (
-                            <span className="text-red-500 ml-1">*</span>
-                          )}
-                        </li>
-                      ))}
+                      {program.application_schema.builder.map(
+                        (item: any, i: number) => (
+                          <li key={i}>
+                            <code className="bg-gray-100 px-1 rounded text-xs">
+                              {item.type}
+                            </code>{" "}
+                            — {item.label}
+                            {item.required && (
+                              <span className="text-red-500 ml-1">*</span>
+                            )}
+                          </li>
+                        )
+                      )}
                     </ul>
                   ) : (
                     <p className="text-sm text-gray-500">

@@ -19,7 +19,7 @@ export default function ProtectedRoute({
     isSuperAdmin,
     isOrgAdmin,
     loading: capsLoading,
-    userRole,
+    userRole: _userRole,
   } = useCapabilities();
   const loc = useLocation();
 

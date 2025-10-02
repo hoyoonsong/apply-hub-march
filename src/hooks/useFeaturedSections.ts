@@ -27,7 +27,7 @@ export function useFeaturedSections() {
 
             // Enrich items with detailed data based on target type
             const enrichedItems = await Promise.all(
-              (items || []).map(async (item) => {
+              (items || []).map(async (item: any) => {
                 try {
                   if (item.target_type === "org") {
                     const { data: orgData } = await supabase
@@ -86,8 +86,8 @@ export function useFeaturedSections() {
                         "Unknown Coalition";
                     } else {
                       const coalitionNames = coalitionMemberships
-                        .map((membership) => membership?.coalitions?.name)
-                        .filter((name) => name)
+                        .map((membership: any) => membership?.coalitions?.name)
+                        .filter((name: any) => name)
                         .slice(0, 2);
 
                       if (coalitionNames.length === 2) {

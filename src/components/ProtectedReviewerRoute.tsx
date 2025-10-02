@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { loadCapabilities } from "../lib/capabilities";
 
@@ -12,9 +12,9 @@ export default function ProtectedReviewerRoute({
   useEffect(() => {
     loadCapabilities()
       .then((caps) => {
-        const hasReviewerOrgs = caps.reviewerOrgs.length > 0;
+        const hasReviewerPrograms = caps.reviewerPrograms.length > 0;
         const isSuper = localStorage.getItem("isSuper") === "1";
-        setOk(hasReviewerOrgs || isSuper);
+        setOk(hasReviewerPrograms || isSuper);
       })
       .catch(() => setOk(false));
   }, []);

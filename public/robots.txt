@@ -21,3 +21,4 @@ Allow: /features
 Allow: /dashboard
 Allow: /profile
 Allow: /my-submissions
+

@@ -1,21 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
 import { isUUID } from "../../lib/id";
-import {
-  saveBuilderSchema,
-  orgSubmitProgramForReview,
-  type ProgramApplicationDraft,
-  getCoalitionTemplate,
-} from "../../lib/programs";
+import { saveBuilderSchema } from "../../lib/programs";
 import { loadApplicationSchema } from "../../lib/schemaLoader";
-import type {
-  ProgramApplicationSchema,
-  AppItem,
-} from "../../types/application";
+import type { AppItem } from "../../types/application";
 import OptionsInput from "../../components/OptionsInput";
 import ApplicationPreview from "../../components/ApplicationPreview";
+import ProgramReviewerFormCard from "../../components/ProgramReviewerFormCard";
 import {
   DndContext,
   closestCenter,
@@ -607,7 +600,6 @@ export default function CoalitionProgramBuilder() {
   const status =
     typeof meta?.review_status === "string" ? meta.review_status : "draft";
   const isSubmitted = status === "submitted";
-  const hasPendingChanges = status === "pending_changes";
   const isDisabled = isSubmitted && !isEditing;
 
   return (

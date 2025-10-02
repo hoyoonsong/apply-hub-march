@@ -37,8 +37,12 @@ export default function Orgs() {
       const allOrgs = await listOrgs(true); // Get all orgs including deleted
 
       // Split client-side into active and deleted
-      const activeOrgs = allOrgs.filter((org) => org.deleted_at === null);
-      const deletedOrgs = allOrgs.filter((org) => org.deleted_at !== null);
+      const activeOrgs = allOrgs.filter(
+        (org: Organization) => org.deleted_at === null
+      );
+      const deletedOrgs = allOrgs.filter(
+        (org: Organization) => org.deleted_at !== null
+      );
 
       setOrgs(activeOrgs);
       setDeletedOrgs(deletedOrgs);

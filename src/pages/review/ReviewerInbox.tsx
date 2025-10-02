@@ -3,6 +3,14 @@ import { useParams, Link } from "react-router-dom";
 import { listReviewQueue } from "../../lib/api";
 import { supabase } from "../../lib/supabase";
 
+type ReviewerListItem = {
+  application_id: string;
+  applicant_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export default function ReviewerInboxPage() {
   const { programId } = useParams<{ programId: string }>();
   const [rows, setRows] = useState<ReviewerListItem[] | null>(null);
@@ -26,11 +34,11 @@ export default function ReviewerInboxPage() {
           .maybeSingle();
         if (!pErr && p?.name) setProgramName(p.name);
 
-        const data = await listReviewerApplications(
+        const data = await listReviewQueue(
           programId!,
           statusFilter || undefined
         );
-        if (active) setRows(data);
+        if (active) setRows(data as ReviewerListItem[]);
       } catch (e: any) {
         setErr(e.message ?? "Failed to load.");
       } finally {
@@ -111,18 +119,11 @@ export default function ReviewerInboxPage() {
                   </td>
                   <td className="px-4 py-2 text-sm">
                     <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs capitalize">
-                      {r.application_status}
+                      {r.status}
                     </span>
                   </td>
                   <td className="px-4 py-2 text-sm">
-                    {r.my_review_status === "none" ? (
-                      <span className="text-gray-400">Not started</span>
-                    ) : (
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs">
-                        {r.my_review_status}{" "}
-                        {r.my_score != null && `• ${r.my_score}`}
-                      </span>
-                    )}
+                    <span className="text-gray-400">Not available</span>
                   </td>
                   <td className="px-4 py-2 text-right">
                     <Link

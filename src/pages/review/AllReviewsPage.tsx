@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useCapabilities } from "../../lib/capabilities";
@@ -19,7 +19,7 @@ export default function AllReviewsPage() {
     Record<string, any>
   >({});
 
-  const { reviewerPrograms, loading: capabilitiesLoading } = useCapabilities();
+  const { reviewerPrograms } = useCapabilities();
 
   // Load form configurations for all unique programs
   async function loadProgramFormConfigs(reviews: ReviewsListRow[]) {
@@ -190,9 +190,6 @@ export default function AllReviewsPage() {
       supabase.removeChannel(ch);
     };
   }, [supabase, fetchList]);
-
-  // Always show decisions column
-  const hasAnyDecisionsEnabled = true;
 
   // Color mapping for decision options
   const getDecisionColor = (decision: string) => {

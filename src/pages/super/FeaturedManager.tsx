@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import type { FeaturedSection } from "../../types/featured";
 
@@ -35,7 +35,6 @@ type FeaturedRow = {
 };
 
 export default function FeaturedManager() {
-  const [placement, setPlacement] = useState<Placement>("carousel");
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const [sections, setSections] = useState<FeaturedSection[]>([]);
   const [query, setQuery] = useState("");
@@ -381,7 +380,6 @@ export default function FeaturedManager() {
         const firstActiveSection = sectionsData.find((s) => s.active);
         if (firstActiveSection) {
           setSelectedSectionId(firstActiveSection.id);
-          setPlacement(firstActiveSection.section_type);
         }
       }
     } catch (error) {
@@ -568,11 +566,6 @@ export default function FeaturedManager() {
           onChange={(e) => {
             const sectionId = e.target.value;
             setSelectedSectionId(sectionId);
-            // Update placement based on selected section
-            const selectedSection = sections.find((s) => s.id === sectionId);
-            if (selectedSection) {
-              setPlacement(selectedSection.section_type);
-            }
           }}
           className="border rounded px-3 py-2"
         >

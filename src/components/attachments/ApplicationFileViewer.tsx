@@ -22,7 +22,7 @@ export function ApplicationFileViewer({
 
   // Extract file information from application answers
   const fileFields = Object.entries(applicationAnswers)
-    .filter(([key, value]) => {
+    .filter(([_key, value]) => {
       // Check if this looks like a file field (contains file metadata)
       if (typeof value !== "string") return false;
       try {

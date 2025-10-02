@@ -1,4 +1,3 @@
-import React from "react";
 import { supabase } from "../lib/supabase";
 
 function startOAuth(intent: "signup" | "login") {

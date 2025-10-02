@@ -84,21 +84,24 @@ export function FilePreview({ fileInfo }: { fileInfo: FileInfo }) {
     );
   }
 
-  const contentType = fileInfo.contentType?.toLowerCase() || fileInfo.fileType?.toLowerCase() || '';
+  const contentType = fileInfo.contentType?.toLowerCase() || "";
   const isImage =
     contentType.startsWith("image/") && !contentType.includes("heic");
   const isVideo = contentType.startsWith("video/");
   const isAudio = contentType.startsWith("audio/");
   const isPdf = contentType.includes("pdf");
   const isHeic = contentType.includes("heic") || contentType.includes("heif");
-  
+
   // Fallback: try to determine type from file extension if contentType is empty
-  const fileName = fileInfo.fileName || '';
-  const fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
-  const isPdfByExtension = fileExtension === 'pdf' || isPdf;
-  const isImageByExtension = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension) || isImage;
-  const isVideoByExtension = ['mp4', 'mov', 'avi', 'webm'].includes(fileExtension) || isVideo;
-  const isAudioByExtension = ['mp3', 'wav', 'ogg', 'm4a'].includes(fileExtension) || isAudio;
+  const fileName = fileInfo.fileName || "";
+  const fileExtension = fileName.split(".").pop()?.toLowerCase() || "";
+  const isPdfByExtension = fileExtension === "pdf" || isPdf;
+  const isImageByExtension =
+    ["jpg", "jpeg", "png", "gif", "webp"].includes(fileExtension) || isImage;
+  const isVideoByExtension =
+    ["mp4", "mov", "avi", "webm"].includes(fileExtension) || isVideo;
+  const isAudioByExtension =
+    ["mp3", "wav", "ogg", "m4a"].includes(fileExtension) || isAudio;
 
   return (
     <div className="bg-white p-4">
@@ -167,8 +170,15 @@ export function FilePreview({ fileInfo }: { fileInfo: FileInfo }) {
           </div>
         )}
 
-        {(isHeic || (!isImage && !isVideo && !isAudio && !isPdf && 
-          !isImageByExtension && !isVideoByExtension && !isAudioByExtension && !isPdfByExtension)) && (
+        {(isHeic ||
+          (!isImage &&
+            !isVideo &&
+            !isAudio &&
+            !isPdf &&
+            !isImageByExtension &&
+            !isVideoByExtension &&
+            !isAudioByExtension &&
+            !isPdfByExtension)) && (
           <div className="bg-gray-50 border border-gray-200 rounded p-4 text-center">
             <div className="text-sm text-gray-600 mb-2">
               Preview not available for this file type

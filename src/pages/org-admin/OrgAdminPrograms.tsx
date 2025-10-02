@@ -5,8 +5,6 @@ import { getOrgBySlug } from "../../lib/orgs";
 import {
   listOrgPrograms,
   orgCreateProgramDraft,
-  ProgramRow,
-  getProgramRowReviewStatus,
   getReviewStatus,
   Program,
 } from "../../lib/programs";
@@ -14,7 +12,6 @@ import {
 type ProgramWithDeleted = Program & {
   deleted_at?: string | null;
 };
-import { supabase } from "../../lib/supabase";
 import {
   adminListPrograms,
   adminSoftDeleteProgram,

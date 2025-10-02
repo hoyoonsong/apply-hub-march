@@ -27,6 +27,19 @@ function useDebounce<T extends (...args: any[]) => void>(fn: T, wait = 600) {
   };
 }
 
+type ReviewRow = {
+  id: string;
+  application_id: string;
+  reviewer_id: string;
+  ratings: Record<string, any>;
+  score: number | null;
+  comments: string | null;
+  status: string;
+  decision: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export default function ReviewWorkspacePage() {
   const { applicationId } = useParams<{ applicationId: string }>();
   const [app, setApp] = useState<AppRow | null>(null);
@@ -79,9 +92,13 @@ export default function ReviewWorkspacePage() {
     let active = true;
     (async () => {
       try {
-        const r = await getMyReview(applicationId!);
+        const { data: r, error: reviewError } = await supabase
+          .from("reviews")
+          .select("*")
+          .eq("application_id", applicationId!)
+          .single();
         if (!active) return;
-        if (r) {
+        if (r && !reviewError) {
           setReview(r);
           setScore(r.score ?? null);
           setRatings(r.ratings ?? {});
@@ -108,7 +125,7 @@ export default function ReviewWorkspacePage() {
       try {
         setSaving("saving");
         const saved = await upsertReview({
-          application_id: applicationId!,
+          applicationId: applicationId!,
           score: payload.score,
           ratings: payload.ratings,
           comments: payload.comments,
@@ -140,7 +157,7 @@ export default function ReviewWorkspacePage() {
       return;
     try {
       const saved = await upsertReview({
-        application_id: applicationId!,
+        applicationId: applicationId!,
         score,
         ratings,
         comments,

@@ -128,7 +128,7 @@ export async function generateSitemap(): Promise<string> {
 }
 
 // Function to save sitemap to file (for server-side generation)
-export async function saveSitemapToFile(filePath: string): Promise<void> {
+export async function saveSitemapToFile(_filePath: string): Promise<void> {
   const sitemapXml = await generateSitemap();
   // This would be used in a Node.js environment to write to file
   // For now, you can copy the output and save it manually

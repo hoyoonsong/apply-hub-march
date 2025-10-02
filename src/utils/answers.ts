@@ -1,4 +1,4 @@
-import type { ApplicationSchema, Answers } from "@/types/application";
+import type { ApplicationSchema, Answers } from "../types/application";
 
 export function reconcileAnswers(
   schema: ApplicationSchema,
@@ -45,7 +45,7 @@ export function missingRequired(
   for (const f of schema.fields) {
     if (!f.required) continue;
     const v = answers[f.key];
-    const isCheckbox = f.type === "CHECKBOX" || f.type === "checkbox";
+    const isCheckbox = f.type === "CHECKBOX";
     const empty =
       v === null ||
       v === undefined ||

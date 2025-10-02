@@ -189,7 +189,7 @@ export default function ApplicationForm() {
       setErr(null);
       // Don't merge profile data for draft saves - only save the actual form answers
       const updated = await saveApplication(applicationId, answers);
-      setApp((r) => (r ? { ...r, ...updated } : (updated as any)));
+      setApp((r: any) => (r ? { ...r, ...updated } : (updated as any)));
     } catch (e: any) {
       setErr(e.message ?? "Save failed");
     } finally {
@@ -258,7 +258,7 @@ export default function ApplicationForm() {
       }
 
       const updated = await saveApplication(applicationId, finalAnswers);
-      setApp((r) => (r ? { ...r, ...updated } : (updated as any)));
+      setApp((r: any) => (r ? { ...r, ...updated } : (updated as any)));
       alert("Application submitted!");
       // Navigate back to the program
       navigate("/");

@@ -5,7 +5,7 @@ import { supabase } from "../../lib/supabase";
 export default function ApplicationReview() {
   const { applicationId } = useParams();
   const [app, setApp] = useState<any | null>(null);
-  const [review, setReview] = useState<any | null>(null);
+  const [_review, setReview] = useState<any | null>(null);
   const [score, setScore] = useState<number>(0);
   const [comments, setComments] = useState<string>("");
   const [saving, setSaving] = useState(false);

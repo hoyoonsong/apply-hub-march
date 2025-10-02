@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router-dom";
 import UserInfo from "./UserInfo";
 
@@ -11,7 +10,7 @@ interface DashboardHeaderProps {
 }
 
 export default function DashboardHeader({
-  title,
+  title: _title,
   showTabs = false,
   activeTab,
   onTabChange,

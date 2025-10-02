@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { startOrGetApplication } from "../lib/rpc";
 import { isBeforeOpenDate, isPastDeadline } from "../lib/deadlineUtils";

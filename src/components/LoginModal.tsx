@@ -1,4 +1,3 @@
-import React from "react";
 import { GoogleLoginButton, GoogleSignupButton } from "./GoogleButtons";
 
 export default function LoginModal({

@@ -1,19 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import { getOrgBySlug } from "../../lib/orgs";
+import { getOrgBySlug, type Org } from "../../lib/orgs";
 import ProgramCard from "../../components/ProgramCard";
 import type { Program } from "../../types/programs";
-
-type Org = {
-  id: string;
-  name: string;
-  slug: string | null;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-};
 
 export default function OrgHome() {
   const { orgSlug } = useParams();

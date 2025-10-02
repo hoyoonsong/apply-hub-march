@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { getProgramPublicationCount } from "../../lib/publicationQueries";
-import { logOnce } from "../../lib/logger";
 
 type Program = {
   id: string;

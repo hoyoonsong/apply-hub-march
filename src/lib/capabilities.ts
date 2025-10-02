@@ -203,6 +203,7 @@ export function hasAnyCapabilities(capabilities: Capabilities): boolean {
   // Fallback: check if they have a role that should show capabilities
   const hasRoleBasedCapabilities =
     capabilities.userRole &&
+    typeof capabilities.userRole === "string" &&
     (capabilities.userRole === "admin" ||
       capabilities.userRole === "reviewer" ||
       capabilities.userRole === "coalition_manager" ||
@@ -215,5 +216,5 @@ export function hasAnyCapabilities(capabilities: Capabilities): boolean {
     capabilities.userRole
   );
 
-  return hasRoleBasedCapabilities;
+  return Boolean(hasRoleBasedCapabilities);
 }

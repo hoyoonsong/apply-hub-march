@@ -4,9 +4,10 @@ import { listReviewQueue } from "../../../../lib/api";
 
 type ReviewQueueItem = {
   application_id: string;
-  applicant_name: string | null;
-  submitted_at: string | null;
+  applicant_id: string;
   status: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export default function ReviewerQueue() {
@@ -21,15 +22,7 @@ export default function ReviewerQueue() {
     (async () => {
       try {
         setLoading(true);
-        const { data, error } = await listReviewQueue(programId!, statusFilter);
-        if (error) {
-          if (error.code === "42501") {
-            navigate("/unauthorized");
-            return;
-          }
-          setError(error.message);
-          return;
-        }
+        const data = await listReviewQueue(programId!, statusFilter);
         setItems(data || []);
       } catch (e: any) {
         setError(e.message ?? "Failed to load queue");
@@ -122,9 +115,7 @@ export default function ReviewerQueue() {
                 items.map((item) => (
                   <tr key={item.application_id}>
                     <td className="px-4 py-2 text-sm">
-                      <span className="font-medium">
-                        {item.applicant_name ?? "Unknown Applicant"}
-                      </span>
+                      <span className="font-medium">{item.applicant_id}</span>
                     </td>
                     <td className="px-4 py-2 text-sm">
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs capitalize">
@@ -132,8 +123,8 @@ export default function ReviewerQueue() {
                       </span>
                     </td>
                     <td className="px-4 py-2 text-sm text-gray-500">
-                      {item.submitted_at
-                        ? new Date(item.submitted_at).toLocaleString()
+                      {item.created_at
+                        ? new Date(item.created_at).toLocaleString()
                         : "—"}
                     </td>
                     <td className="px-4 py-2 text-right">

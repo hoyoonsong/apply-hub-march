@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 
@@ -12,14 +12,12 @@ type Program = {
   organization_id: string;
   organization_name: string;
 };
-type User = { id: string; full_name: string; role: string };
 
 export default function Assignments() {
   const [activeTab, setActiveTab] = useState<Tab>("org-admins");
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [coalitions, setCoalitions] = useState<Coalition[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -62,7 +60,6 @@ export default function Assignments() {
       setOrgs(orgsRes.data ?? []);
       setCoalitions(coalitionsRes.data ?? []);
       setPrograms(programsRes.data ?? []);
-      setUsers(usersRes.data ?? []);
     } catch (err: any) {
       setError(err.message);
     } finally {

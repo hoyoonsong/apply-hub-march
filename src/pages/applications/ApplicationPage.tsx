@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { isUUID } from "../../lib/id";
 import {
@@ -348,7 +348,10 @@ export default function ApplicationPage() {
 
     // Validate required fields before submitting
     if (schema) {
-      const missing = missingRequired({ fields: schema.items || [] }, answers);
+      const missing = missingRequired(
+        { fields: (schema.items || []) as any },
+        answers
+      );
       if (missing.length > 0) {
         alert(
           `Please complete the following required fields: ${missing.join(", ")}`

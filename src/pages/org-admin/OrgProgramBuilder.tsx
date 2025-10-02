@@ -1,22 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
-import {
-  getBuilderSchema,
-  setBuilderSchema,
-  type ApplicationSchema,
-} from "../../data/api";
+import { setBuilderSchema, type ApplicationSchema } from "../../data/api";
 import { loadApplicationSchema } from "../../lib/schemaLoader";
-import {
-  orgSubmitProgramForReview,
-  type ProgramApplicationDraft,
-  getCoalitionTemplate,
-} from "../../lib/programs";
-import type {
-  ProgramApplicationSchema,
-  AppItem,
-} from "../../types/application";
+import type { AppItem } from "../../types/application";
 import OptionsInput from "../../components/OptionsInput";
 import ApplicationPreview from "../../components/ApplicationPreview";
 import ProgramReviewerFormCard from "../../components/ProgramReviewerFormCard";
@@ -213,7 +201,7 @@ export default function OrgProgramBuilder() {
 
   const [org, setOrg] = useState<Org | null>(null);
   const [program, setProgram] = useState<Program | null>(null);
-  const [includeApplyHubCommon, setIncludeApplyHubCommon] =
+  const [_includeApplyHubCommon, setIncludeApplyHubCommon] =
     useState<boolean>(true);
   const [includeCoalitionCommon, setIncludeCoalitionCommon] =
     useState<boolean>(false);
@@ -226,7 +214,7 @@ export default function OrgProgramBuilder() {
   const [fields, setFields] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [schema, setSchema] = useState<ApplicationSchema>({ fields: [] });
+  const [_schema, setSchema] = useState<ApplicationSchema>({ fields: [] });
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -740,7 +728,6 @@ export default function OrgProgramBuilder() {
   const status =
     typeof meta?.review_status === "string" ? meta.review_status : "draft";
   const isSubmitted = status === "submitted";
-  const hasPendingChanges = status === "pending_changes";
   const isDisabled = isSuperAdmin || (isSubmitted && !isEditing);
 
   return (

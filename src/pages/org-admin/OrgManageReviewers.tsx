@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import { listOrgPrograms } from "../../lib/programs";
 import ProgramAssignmentManager from "../../components/ProgramAssignmentManager";
 
 interface Program {

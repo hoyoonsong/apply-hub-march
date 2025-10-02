@@ -41,3 +41,4 @@ export type FeaturedItem = {
   org_slug?: string | null;
   coalition_slug?: string | null;
 };
+

@@ -38,6 +38,7 @@ export interface ProgramWithMetadata {
     application?: {
       schema?: any;
       profile?: any;
+      builder?: any;
     };
     application_schema?: any;
     pending_schema?: any;

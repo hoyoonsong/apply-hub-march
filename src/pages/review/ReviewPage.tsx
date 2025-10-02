@@ -19,7 +19,7 @@ type AppRow = {
 export default function ReviewApplication() {
   const { applicationId } = useParams();
   const [appRow, setAppRow] = useState<AppRow | null>(null);
-  const [ratings, setRatings] = useState<any>({});
+  const [ratings, _setRatings] = useState<any>({});
   const [score, setScore] = useState<number | undefined>();
   const [comments, setComments] = useState("");
 

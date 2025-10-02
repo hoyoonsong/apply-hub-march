@@ -1,11 +1,9 @@
 // src/pages/super/SuperProgramsReview.tsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   superListProgramSubmissions,
-  superReviewProgram,
   superPublishProgram,
-  superUnpublishProgram,
   getReviewStatus,
   Program,
   ReviewStatus,
@@ -103,7 +101,7 @@ export default function SuperProgramsReview() {
       setLoading(true);
 
       // Use the existing superPublishProgram RPC function
-      const publishedProgram = await superPublishProgram({
+      await superPublishProgram({
         program_id: program.id,
         scope: program.published_scope === "coalition" ? "coalition" : "org",
         coalition_id: program.published_coalition_id,

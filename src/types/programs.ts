@@ -14,4 +14,5 @@ export type Program = {
   published_by: string | null;
   published_at: string | null;
   published_coalition_id: string | null;
+  deleted_at: string | null;
 };

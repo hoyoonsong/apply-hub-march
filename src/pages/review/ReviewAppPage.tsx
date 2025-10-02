@@ -1,4 +1,3 @@
-import React from "react";
 import { useParams } from "react-router-dom";
 import { useCollaborativeReview } from "../../hooks/useCollaborativeReview";
 import AnswersViewer from "../../components/review/AnswersViewer";
@@ -23,59 +22,8 @@ export default function ReviewAppPage() {
     submit,
     setScore,
     setComments,
-    setRatingsJSON,
     setDecision,
-    getRatingsJSON,
   } = useCollaborativeReview(applicationId);
-
-  // Color mapping for decision options (same as AllReviewsPage)
-  const getDecisionColor = (decision: string) => {
-    const colorMap: Record<string, { bg: string; text: string }> = {
-      // Standard decisions with specific colors
-      accept: { bg: "bg-green-100", text: "text-green-800" },
-      waitlist: { bg: "bg-yellow-100", text: "text-yellow-800" },
-      reject: { bg: "bg-red-100", text: "text-red-800" },
-
-      // Additional common decisions
-      approved: { bg: "bg-emerald-100", text: "text-emerald-800" },
-      denied: { bg: "bg-rose-100", text: "text-rose-800" },
-      pending: { bg: "bg-blue-100", text: "text-blue-800" },
-      "on-hold": { bg: "bg-orange-100", text: "text-orange-800" },
-      conditional: { bg: "bg-purple-100", text: "text-purple-800" },
-      deferred: { bg: "bg-indigo-100", text: "text-indigo-800" },
-      withdrawn: { bg: "bg-gray-100", text: "text-gray-600" },
-    };
-
-    // If we have a predefined color, use it
-    if (colorMap[decision.toLowerCase()]) {
-      return colorMap[decision.toLowerCase()];
-    }
-
-    // For custom decisions, generate a consistent color based on the string
-    const colors = [
-      { bg: "bg-cyan-100", text: "text-cyan-800" },
-      { bg: "bg-teal-100", text: "text-teal-800" },
-      { bg: "bg-lime-100", text: "text-lime-800" },
-      { bg: "bg-amber-100", text: "text-amber-800" },
-      { bg: "bg-pink-100", text: "text-pink-800" },
-      { bg: "bg-violet-100", text: "text-violet-800" },
-      { bg: "bg-sky-100", text: "text-sky-800" },
-      { bg: "bg-emerald-100", text: "text-emerald-800" },
-      { bg: "bg-rose-100", text: "text-rose-800" },
-      { bg: "bg-fuchsia-100", text: "text-fuchsia-800" },
-    ];
-
-    // Simple hash function to get consistent color for same decision
-    let hash = 0;
-    for (let i = 0; i < decision.length; i++) {
-      const char = decision.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-
-    const colorIndex = Math.abs(hash) % colors.length;
-    return colors[colorIndex];
-  };
 
   if (loading) {
     return (

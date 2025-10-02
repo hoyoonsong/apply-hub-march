@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   findUserByEmail,
   addProgramReviewer,
@@ -7,7 +7,6 @@ import {
   removeProgramAdmin,
   listProgramAssignments,
   ProgramAssignments,
-  ProgramAssignment,
 } from "../lib/programAssignments";
 
 interface ProgramAssignmentManagerProps {

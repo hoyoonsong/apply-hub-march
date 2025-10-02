@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { FilePreview } from "../attachments/FilePreview";
 
 export default function ProfileCard({
@@ -14,7 +14,6 @@ export default function ProfileCard({
   };
 }) {
   const addr = profile?.address || {};
-  const files: any[] = Array.isArray(profile?.files) ? profile.files : [];
 
   const [expandedSections, setExpandedSections] = useState({
     personal: true,
@@ -337,7 +336,7 @@ export default function ProfileCard({
                 </div>
                 {profile?.profile_files && profile.profile_files.length > 0 ? (
                   <div className="space-y-4 mt-2">
-                    {profile.profile_files.map((fi, i) => (
+                    {profile.profile_files.map((fi: any, i: number) => (
                       <div
                         key={i}
                         className="border border-gray-200 rounded-lg overflow-hidden"

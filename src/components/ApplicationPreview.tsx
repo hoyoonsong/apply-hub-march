@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
+import { useState, useEffect } from "react";
 import { ApplicationFileViewer } from "./attachments/ApplicationFileViewer";
 import { SimpleFileUpload } from "./attachments/SimpleFileUpload";
 import { Program } from "../lib/programs";
-import ProfileCard from "./profile/ProfileCard";
 import { FilePreview } from "./attachments/FilePreview";
 import { loadApplicationSchema } from "../lib/schemaLoader";
 import WordLimitedTextarea from "./WordLimitedTextarea";
@@ -537,7 +535,7 @@ export default function ApplicationPreview({
     );
   };
 
-  const renderField = (field: Field, index: number) => {
+  const renderField = (field: Field, _index: number) => {
     const val = answers[field.id];
 
     switch (field.type) {

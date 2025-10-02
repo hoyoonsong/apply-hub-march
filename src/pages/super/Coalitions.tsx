@@ -68,10 +68,10 @@ export default function Coalitions() {
 
       // Split client-side into active and deleted
       const activeCoalitions = allCoalitions.filter(
-        (coalition) => coalition.deleted_at === null
+        (coalition: Coalition) => coalition.deleted_at === null
       );
       const deletedCoalitions = allCoalitions.filter(
-        (coalition) => coalition.deleted_at !== null
+        (coalition: Coalition) => coalition.deleted_at !== null
       );
 
       setCoalitions(activeCoalitions);

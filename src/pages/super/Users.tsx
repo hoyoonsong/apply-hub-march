@@ -1,13 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import {
   listUserAssignments,
-  listAllOrgs,
-  listProgramsByOrg,
-  listAllCoalitions,
   upsertOrgAdmin,
-  upsertReviewer,
   upsertCoalitionManager,
   updateUserRoleV2,
   getEffectiveRoles,
@@ -30,6 +26,7 @@ type Profile = {
   role: UserRole;
   created_at: string;
   updated_at: string | null;
+  deleted_at: string | null;
 };
 
 type ProfileRow = {
@@ -37,7 +34,7 @@ type ProfileRow = {
   full_name: string | null;
   role: string;
   created_at: string;
-  updated_at: string;
+  updated_at: string | null;
   deleted_at?: string | null;
 };
 
@@ -149,7 +146,6 @@ export default function Users() {
   // data
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // filters
   const [searchInput, setSearchInput] = useState("");
@@ -186,7 +182,6 @@ export default function Users() {
 
   async function fetchUsers() {
     setLoading(true);
-    setFetchError(null);
     setBanner(null);
 
     try {
@@ -199,7 +194,6 @@ export default function Users() {
       });
       setUsers(data ?? []);
     } catch (error: any) {
-      setFetchError(error?.message ?? "Failed to fetch users");
       setUsers([]);
     } finally {
       setLoading(false);
@@ -294,37 +288,6 @@ export default function Users() {
       setEffectiveCache((prev) => ({ ...prev, [userId]: eff }));
     } catch (error: any) {
       console.error("Failed to load effective roles:", error);
-    }
-  }
-
-  async function onChangeRole(u: ProfileRow, newRole: string) {
-    if (newRole === u.role) return;
-
-    setRowBusy((m) => ({ ...m, [u.id]: true }));
-    setBanner(null);
-
-    try {
-      if (newRole === "applicant") {
-        const wipe = window.confirm(
-          "Demote to applicant and revoke ALL assignments? OK = revoke, Cancel = keep assignments."
-        );
-        await updateUserRoleV2(u.id, "applicant", wipe, "all");
-      } else {
-        const { error } = await supabase.rpc("super_update_user_role_v2", {
-          p_user_id: u.id,
-          p_new_role: newRole,
-          p_wipe: false,
-          p_target: "all",
-        });
-        if (error) throw error;
-      }
-      setBanner({ type: "success", msg: "Role updated." });
-      await fetchUsers();
-      await loadEffective(u.id);
-    } catch (error: any) {
-      setBanner({ type: "error", msg: error.message });
-    } finally {
-      setRowBusy((m) => ({ ...m, [u.id]: false }));
     }
   }
 
@@ -800,31 +763,6 @@ function Card({
     <div className="bg-white border rounded-lg shadow-sm">
       <div className="px-4 py-3 border-b font-semibold">{title}</div>
       <div className="p-4 space-y-3">{children}</div>
-    </div>
-  );
-}
-
-function RowItem({
-  name,
-  meta,
-  onRevoke,
-}: {
-  name: string;
-  meta: string;
-  onRevoke: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <div>
-        <div className="font-medium">{name}</div>
-        <div className="text-xs text-gray-500">{meta}</div>
-      </div>
-      <button
-        onClick={onRevoke}
-        className="text-red-600 text-sm hover:underline"
-      >
-        Revoke
-      </button>
     </div>
   );
 }

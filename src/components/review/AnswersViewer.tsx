@@ -1,5 +1,4 @@
 import React from "react";
-import { FilePreview } from "../attachments/FilePreview";
 import ProfileCard from "../profile/ProfileCard";
 
 type RawField = {
@@ -69,24 +68,7 @@ function formatValue(value: any, field: Field): string {
         try {
           const fileInfo = JSON.parse(value);
           if (fileInfo && fileInfo.fileName) {
-            return (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl">📎</div>
-                  <div className="flex-1">
-                    <div className="text-base font-medium text-gray-900">
-                      {fileInfo.fileName}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {(fileInfo.fileSize / (1024 * 1024)).toFixed(2)} MB
-                    </div>
-                  </div>
-                </div>
-                <div className="border rounded-lg p-3 bg-gray-50">
-                  <FilePreview fileInfo={fileInfo} />
-                </div>
-              </div>
-            );
+            return fileInfo.fileName;
           }
         } catch {
           // Not JSON, treat as regular text
