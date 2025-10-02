@@ -330,8 +330,19 @@ export default function FeaturedManager() {
     const start = new Date();
     const end = new Date();
     end.setDate(start.getDate() + days);
-    setStartAt(start.toISOString().slice(0, 16)); // yyyy-MM-ddTHH:mm (local)
-    setEndAt(end.toISOString().slice(0, 16));
+
+    // Convert to local datetime-local format (YYYY-MM-DDTHH:MM)
+    const formatForInput = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
+    setStartAt(formatForInput(start));
+    setEndAt(formatForInput(end));
   };
 
   // Helper function to get scheduling status

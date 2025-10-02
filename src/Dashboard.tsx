@@ -204,19 +204,21 @@ function ProgramGrid({
             {/* Spacer to push dates to bottom */}
             <div className="flex-grow" />
 
-            {/* Deadline Information - anchored to bottom */}
-            <div className="mb-3 md:mb-4">
-              <div className="flex items-center">
-                <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
-                  Deadline:
-                </span>
-                <span className="text-gray-800 text-sm md:text-base font-bold">
-                  {item.close_at
-                    ? new Date(item.close_at).toLocaleDateString()
-                    : "No deadline"}
-                </span>
+            {/* Deadline Information - only for programs */}
+            {item.target_type === "program" && (
+              <div className="mb-3 md:mb-4">
+                <div className="flex items-center">
+                  <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
+                    Deadline:
+                  </span>
+                  <span className="text-gray-800 text-sm md:text-base font-bold">
+                    {item.close_at
+                      ? new Date(item.close_at).toLocaleDateString()
+                      : "No deadline"}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex justify-between items-center mt-auto">
               <button
