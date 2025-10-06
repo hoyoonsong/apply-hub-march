@@ -45,13 +45,15 @@ export function missingRequired(
   for (const f of schema.fields) {
     if (!f.required) continue;
     const v = answers[f.key];
-    const isCheckbox = f.type === "CHECKBOX";
+    const typeUpper = String(f.type).toUpperCase();
+    const isCheckbox = typeUpper === "CHECKBOX";
     const empty =
       v === null ||
       v === undefined ||
       (typeof v === "string" && v.trim() === "") ||
       (Array.isArray(v) && v.length === 0) ||
-      (isCheckbox && v === false);
+      // For required checkboxes, only a strict true counts as filled
+      (isCheckbox && v !== true);
     if (empty) missing.push(f.label || f.key);
   }
   return missing;
