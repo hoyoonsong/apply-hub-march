@@ -228,7 +228,8 @@ export async function fetchProfileSnapshot(): Promise<ProfileSnapshot | null> {
     family_name: data.family_name,
     date_of_birth: data.date_of_birth,
     phone_number: data.phone_number,
-    email: data.email,
+    // Ensure email is always present: fall back to auth user email if missing in profile
+    email: data.email ?? user.email ?? null,
     address_line1: data.address_line1,
     address_line2: data.address_line2,
     address_city: data.address_city,

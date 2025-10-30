@@ -40,6 +40,7 @@ import ReviewAppPage from "./pages/review/ReviewAppPage";
 import AllReviewsPage from "./pages/review/AllReviewsPage";
 import OrgReviewsPage from "./pages/org/admin/OrgReviewsPage";
 import OrgManageReviewers from "./pages/org-admin/OrgManageReviewers";
+import OrgMyTeams from "./pages/org-admin/OrgMyTeams";
 import PublishResultsPage from "./pages/org-admin/PublishResultsPage";
 import PublishResultsHomePage from "./pages/org-admin/PublishResultsHomePage";
 import MySubmissionsPage from "./pages/applicant/MySubmissionsPage";
@@ -182,6 +183,16 @@ export default function App() {
                 <ProtectedRoute>
                   <ProtectedOrgAdminRoute>
                     <OrgManageReviewers />
+                  </ProtectedOrgAdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/:orgSlug/admin/teams"
+              element={
+                <ProtectedRoute>
+                  <ProtectedOrgAdminRoute>
+                    <OrgMyTeams />
                   </ProtectedOrgAdminRoute>
                 </ProtectedRoute>
               }

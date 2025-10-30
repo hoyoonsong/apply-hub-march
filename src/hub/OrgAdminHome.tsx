@@ -72,10 +72,10 @@ export default function OrgAdminHome() {
               onClick={() => {}}
             />
           </Link>
-          <Link to={`/org/${orgSlug}/admin/reviewers`} className="block">
+          <Link to={`/org/${orgSlug}/admin/teams`} className="block">
             <HubTile
-              title="Manage Reviewers"
-              subtitle="Assign reviewers to org/program scopes"
+              title="My Teams"
+              subtitle="Manage team members and their roles"
               disabled={false}
               onClick={() => {}}
             />

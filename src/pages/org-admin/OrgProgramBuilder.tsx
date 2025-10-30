@@ -8,6 +8,7 @@ import type { AppItem } from "../../types/application";
 import OptionsInput from "../../components/OptionsInput";
 import ApplicationPreview from "../../components/ApplicationPreview";
 import ProgramReviewerFormCard from "../../components/ProgramReviewerFormCard";
+import { adminUpdateProgramBasics } from "../../services/admin";
 import {
   DndContext,
   closestCenter,
@@ -35,6 +36,8 @@ type Program = {
   published: boolean;
   published_scope: string | null;
   published_coalition_id: string | null;
+  open_at?: string | null;
+  close_at?: string | null;
 };
 
 type Org = { id: string; slug: string; name: string };
@@ -217,6 +220,12 @@ export default function OrgProgramBuilder() {
   const [_schema, setSchema] = useState<ApplicationSchema>({ fields: [] });
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [basicsName, setBasicsName] = useState<string>("");
+  const [basicsOpenAt, setBasicsOpenAt] = useState<string>("");
+  const [basicsCloseAt, setBasicsCloseAt] = useState<string>("");
+  const [basicsDescription, setBasicsDescription] = useState<string>("");
+  const [basicsSaving, setBasicsSaving] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false); // State for modal
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -334,6 +343,37 @@ export default function OrgProgramBuilder() {
         const row = Array.isArray(data) ? data[0] : data;
         if (mounted) {
           setProgram(row);
+          setBasicsName(row.name || "");
+          // Fetch open/close directly from programs to ensure availability
+          try {
+            const { data: timing } = await supabase
+              .from("programs")
+              .select("open_at, close_at, description")
+              .eq("id", row.id)
+              .single();
+            const openAtVal = timing?.open_at || row.open_at;
+            const closeAtVal = timing?.close_at || row.close_at;
+            setBasicsOpenAt(
+              openAtVal ? new Date(openAtVal).toISOString().slice(0, 16) : ""
+            );
+            setBasicsCloseAt(
+              closeAtVal ? new Date(closeAtVal).toISOString().slice(0, 16) : ""
+            );
+            setBasicsDescription(timing?.description ?? row.description ?? "");
+          } catch (e) {
+            setBasicsOpenAt(
+              row.open_at
+                ? new Date(row.open_at).toISOString().slice(0, 16)
+                : ""
+            );
+            setBasicsCloseAt(
+              row.close_at
+                ? new Date(row.close_at).toISOString().slice(0, 16)
+                : ""
+            );
+            setBasicsDescription(row.description || "");
+          }
+          setBasicsDescription(row.description || "");
 
           const appMeta = row.metadata?.application || {};
           const formMeta = row.metadata?.form || {};
@@ -747,7 +787,26 @@ export default function OrgProgramBuilder() {
                 <span className="font-medium">{org?.name || "Loading..."}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowDetailsModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                Edit Details
+              </button>
               <Link
                 to={
                   isSuperAdmin
@@ -1190,6 +1249,158 @@ export default function OrgProgramBuilder() {
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
       />
+
+      {/* Edit Details Modal */}
+      {showDetailsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Edit Details
+                </h3>
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Title
+                  </label>
+                  <input
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                    value={basicsName}
+                    onChange={(e) => setBasicsName(e.target.value)}
+                    placeholder="Program title"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Opens
+                    </label>
+                    <input
+                      type="datetime-local"
+                      step="60"
+                      className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      value={basicsOpenAt}
+                      onChange={(e) => setBasicsOpenAt(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Closes
+                    </label>
+                    <input
+                      type="datetime-local"
+                      step="60"
+                      className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      value={basicsCloseAt}
+                      onChange={(e) => setBasicsCloseAt(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
+                    rows={4}
+                    value={basicsDescription}
+                    onChange={(e) => setBasicsDescription(e.target.value)}
+                    placeholder="Program description"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!program) return;
+                  const toISO = (v: string) =>
+                    v ? new Date(v).toISOString() : null;
+                  try {
+                    setBasicsSaving(true);
+                    await adminUpdateProgramBasics(program.id, {
+                      name: basicsName.trim(),
+                      description: basicsDescription.trim() || null,
+                      open_at: toISO(basicsOpenAt),
+                      close_at: toISO(basicsCloseAt),
+                    });
+                    setProgram({
+                      ...program,
+                      name: basicsName.trim(),
+                      description: basicsDescription.trim(),
+                      open_at: toISO(basicsOpenAt),
+                      close_at: toISO(basicsCloseAt),
+                    } as any);
+                    setShowDetailsModal(false);
+                  } catch (e) {
+                    console.error(e);
+                  } finally {
+                    setBasicsSaving(false);
+                  }
+                }}
+                disabled={basicsSaving}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                {basicsSaving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

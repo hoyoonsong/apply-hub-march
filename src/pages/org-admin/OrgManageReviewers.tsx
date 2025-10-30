@@ -60,25 +60,34 @@ export default function OrgManageReviewers() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="bg-white border-b">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold text-gray-900">
-                Manage Reviewers
-              </h1>
+        <div className="bg-white border-b shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-6">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Manage Reviewers
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Assign reviewers and admins to your organization's programs
+                </p>
+              </div>
               <Link
                 to={`/org/${orgSlug}/admin`}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
               >
-                ← Back to Admin
+                Back to Org Admin
               </Link>
             </div>
           </div>
         </div>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-            <span className="text-gray-600">Loading programs...</span>
+            <div className="flex items-center gap-3 px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-indigo-600 border-t-transparent"></div>
+              <span className="text-gray-600 font-medium">
+                Loading programs...
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -88,24 +97,40 @@ export default function OrgManageReviewers() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="bg-white border-b">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold text-gray-900">
-                Manage Reviewers
-              </h1>
+        <div className="bg-white border-b shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-6">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Manage Reviewers
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Assign reviewers and admins to your organization's programs
+                </p>
+              </div>
               <Link
                 to={`/org/${orgSlug}/admin`}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
               >
-                ← Back to Admin
+                Back to Org Admin
               </Link>
             </div>
           </div>
         </div>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <p className="text-red-800">{error}</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex items-center gap-2 px-6 py-4 bg-red-50 border border-red-200 rounded-lg">
+            <svg
+              className="w-5 h-5 text-red-500"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <p className="text-red-800 font-medium">{error}</p>
           </div>
         </div>
       </div>
@@ -114,89 +139,163 @@ export default function OrgManageReviewers() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+      <div className="bg-white border-b shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
                 Manage Reviewers
               </h1>
-              <p className="text-gray-600 mt-2">
+              <p className="text-sm text-gray-500">
                 Assign reviewers and admins to your organization's programs
               </p>
             </div>
             <Link
               to={`/org/${orgSlug}/admin`}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
             >
-              ← Back to Admin
+              Back to Org Admin
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
         {programs.length === 0 ? (
-          <div className="bg-white border rounded-lg p-8 text-center">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No Programs Found
-            </h3>
-            <p className="text-gray-600 mb-4">
-              You need to create programs before you can assign reviewers.
-            </p>
-            <Link
-              to={`/org/${orgSlug}/admin/programs`}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Create Your First Program
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Program Selection */}
-            <div className="bg-white border rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Select a Program
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {programs.map((program) => (
-                  <button
-                    key={program.id}
-                    onClick={() => setSelectedProgram(program)}
-                    className={`p-4 border rounded-lg text-left transition-colors ${
-                      selectedProgram?.id === program.id
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                    }`}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-12 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-10 h-10 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  No Programs Found
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  You need to create programs before you can assign reviewers.
+                </p>
+                <Link
+                  to={`/org/${orgSlug}/admin/programs`}
+                  className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <h3 className="font-medium text-gray-900">
-                      {program.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {program.description || "No description"}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-gray-500">
-                        {program.type}
-                      </span>
-                      {program.published && (
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                          Published
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  Create Your First Program
+                </Link>
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Program Selection */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-lg">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-2 h-8 bg-gradient-to-b from-indigo-500 to-indigo-600 rounded-full shadow-sm"></div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Select a Program
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Choose a program to manage reviewer assignments
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-8">
+                {/* Render programs in rows of 3 */}
+                {Array.from(
+                  { length: Math.ceil(programs.length / 3) },
+                  (_, rowIndex) => {
+                    const startIndex = rowIndex * 3;
+                    const rowPrograms = programs.slice(
+                      startIndex,
+                      startIndex + 3
+                    );
+                    const hasSelectedInRow = rowPrograms.some(
+                      (p) => selectedProgram?.id === p.id
+                    );
 
-            {/* Assignment Manager */}
-            {selectedProgram && (
-              <ProgramAssignmentManager
-                programId={selectedProgram.id}
-                programName={selectedProgram.name}
-              />
-            )}
+                    return (
+                      <div key={rowIndex} className="space-y-6">
+                        {/* Program Cards Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {rowPrograms.map((program) => (
+                            <button
+                              key={program.id}
+                              onClick={() => setSelectedProgram(program)}
+                              className={`p-6 border-2 rounded-xl text-left transition-all duration-200 transform hover:scale-105 ${
+                                selectedProgram?.id === program.id
+                                  ? "border-indigo-500 bg-white shadow-lg shadow-indigo-100/50"
+                                  : "border-gray-200 hover:border-indigo-300 hover:bg-white shadow-sm hover:shadow-lg"
+                              }`}
+                            >
+                              <h3 className="font-bold text-gray-900 text-lg mb-2">
+                                {program.name}
+                              </h3>
+                              <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                                {program.description || "No description"}
+                              </p>
+                              <div className="flex items-center gap-3">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+                                  {program.type}
+                                </span>
+                                {program.published && (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                                    Published
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Management Section - appears right under this row if a program is selected */}
+                        {hasSelectedInRow && selectedProgram && (
+                          <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
+                            <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                              <div className="flex items-center gap-3">
+                                <div className="w-2 h-6 bg-gradient-to-b from-gray-600 to-gray-700 rounded-full"></div>
+                                <h2 className="text-xl font-bold text-gray-900">
+                                  Manage Reviewers for {selectedProgram.name}
+                                </h2>
+                              </div>
+                            </div>
+                            <div className="p-8">
+                              <ProgramAssignmentManager
+                                programId={selectedProgram.id}
+                                programName={selectedProgram.name}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

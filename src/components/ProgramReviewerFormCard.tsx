@@ -21,6 +21,9 @@ export default function ProgramReviewerFormCard({
   programId: string;
 }) {
   const [form, setForm] = useState<ReviewForm>(DEFAULTS);
+  const [loadedFormSnapshot, setLoadedFormSnapshot] = useState<ReviewForm>(
+    DEFAULTS
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newOption, setNewOption] = useState("");
@@ -30,7 +33,9 @@ export default function ProgramReviewerFormCard({
       setLoading(true);
       try {
         const data = await getProgramReviewForm(programId);
-        setForm({ ...DEFAULTS, ...(data ?? {}) });
+        const merged = { ...DEFAULTS, ...(data ?? {}) } as ReviewForm;
+        setForm(merged);
+        setLoadedFormSnapshot(merged);
       } catch (error) {
         console.error("Failed to load reviewer form config:", error);
         alert("Failed to load reviewer form config");
@@ -41,19 +46,28 @@ export default function ProgramReviewerFormCard({
   }, [programId]);
 
   const save = async () => {
+    // Prevent redundant saves if nothing changed
+    const normalizedCurrent: ReviewForm = {
+      ...form,
+      decision_options:
+        form.show_decision && form.decision_options.length === 0
+          ? DEFAULTS.decision_options
+          : form.decision_options,
+    };
+    if (JSON.stringify(normalizedCurrent) === JSON.stringify(loadedFormSnapshot)) {
+      return;
+    }
     setSaving(true);
     try {
-      const payload = {
-        ...form,
-        decision_options:
-          form.show_decision && form.decision_options.length === 0
-            ? DEFAULTS.decision_options
-            : form.decision_options,
-      };
+      const payload = normalizedCurrent;
       console.log("Saving reviewer form with payload:", payload);
       await setProgramReviewForm(programId, payload);
       console.log("Reviewer form saved successfully");
-      alert("Reviewer form saved successfully");
+      // Re-fetch to ensure UI reflects persisted state and avoid multi-click issues
+      const latest = await getProgramReviewForm(programId);
+      const merged = { ...DEFAULTS, ...(latest ?? {}) } as ReviewForm;
+      setForm(merged);
+      setLoadedFormSnapshot(merged);
     } catch (error) {
       console.error("Failed to save reviewer form:", error);
       alert("Failed to save reviewer form");

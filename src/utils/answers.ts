@@ -47,13 +47,24 @@ export function missingRequired(
     const v = answers[f.key];
     const typeUpper = String(f.type).toUpperCase();
     const isCheckbox = typeUpper === "CHECKBOX";
+    // Normalize checkbox-like string values that might come back from older drafts
+    const vNormalized = (() => {
+      if (!isCheckbox) return v;
+      if (typeof v === "string") {
+        const s = v.trim().toLowerCase();
+        if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
+        if (s === "false" || s === "0" || s === "no" || s === "off" || s === "")
+          return false;
+      }
+      return v;
+    })();
     const empty =
-      v === null ||
-      v === undefined ||
-      (typeof v === "string" && v.trim() === "") ||
-      (Array.isArray(v) && v.length === 0) ||
+      vNormalized === null ||
+      vNormalized === undefined ||
+      (typeof vNormalized === "string" && vNormalized.trim() === "") ||
+      (Array.isArray(vNormalized) && vNormalized.length === 0) ||
       // For required checkboxes, only a strict true counts as filled
-      (isCheckbox && v !== true);
+      (isCheckbox && vNormalized !== true);
     if (empty) missing.push(f.label || f.key);
   }
   return missing;

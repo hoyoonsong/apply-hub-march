@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { getOrgBySlug } from "../../lib/orgs";
 import {
-  listOrgPrograms,
   orgCreateProgramDraft,
   getReviewStatus,
   Program,
@@ -43,6 +42,7 @@ export default function OrgAdminPrograms() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [form, setForm] = useState<CreateState>({
     name: "",
@@ -55,6 +55,45 @@ export default function OrgAdminPrograms() {
   // Small helper: convert datetime-local to ISO or undefined
   const toISOorNull = (v: string) =>
     v ? new Date(v).toISOString() : undefined;
+
+  // Helper function to convert database errors to user-friendly messages
+  const getUserFriendlyError = (error: any): string => {
+    const message = error?.message || "";
+
+    // Check for specific database constraint violations
+    if (
+      message.includes("programs_org_name_idx") ||
+      message.includes("duplicate key value violates unique constraint")
+    ) {
+      return "A program with this name already exists. Please choose a different name.";
+    }
+
+    if (message.includes("foreign key constraint")) {
+      return "There was an issue with the program data. Please try again.";
+    }
+
+    if (message.includes("not null constraint")) {
+      return "Please fill in all required fields.";
+    }
+
+    if (message.includes("check constraint")) {
+      return "Please check your input values and try again.";
+    }
+
+    if (
+      message.includes("permission denied") ||
+      message.includes("insufficient_privilege")
+    ) {
+      return "You don't have permission to perform this action.";
+    }
+
+    if (message.includes("connection") || message.includes("timeout")) {
+      return "Connection issue. Please check your internet and try again.";
+    }
+
+    // For other errors, return a generic message
+    return "Something went wrong. Please try again.";
+  };
 
   // Gate: ensure user is allowed (reuse existing /unauthorized route if checks fail)
   useEffect(() => {
@@ -101,7 +140,7 @@ export default function OrgAdminPrograms() {
           navigate("/unauthorized", { replace: true });
           return;
         }
-        setListError(e?.message ?? "Failed to load programs");
+        setListError(getUserFriendlyError(e));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -113,7 +152,7 @@ export default function OrgAdminPrograms() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!orgId) return;
+    if (!orgId || !orgSlug) return;
     setCreating(true);
     setCreateError(null);
     setSuccessMsg(null);
@@ -125,7 +164,7 @@ export default function OrgAdminPrograms() {
         return;
       }
 
-      await orgCreateProgramDraft({
+      const newProgram = await orgCreateProgramDraft({
         organization_id: orgId,
         name: form.name,
         type: form.type,
@@ -134,7 +173,7 @@ export default function OrgAdminPrograms() {
         close_at: toISOorNull(form.close_at),
       });
 
-      setSuccessMsg("Draft program created.");
+      // Reset form
       setForm({
         name: "",
         type: "audition",
@@ -143,23 +182,15 @@ export default function OrgAdminPrograms() {
         close_at: "",
       });
 
-      // refresh list
-      const rows = await listOrgPrograms(orgId);
-      // Convert ProgramRow to ProgramWithDeleted
-      const convertedRows = rows.map((row) => ({
-        ...row,
-        organization_id: orgId,
-        published_by: null,
-        published_coalition_id: null,
-      })) as ProgramWithDeleted[];
-      setPrograms(convertedRows);
+      // Redirect to the application editor immediately
+      navigate(`/org/${orgSlug}/admin/programs/${newProgram.id}/builder`);
     } catch (e: any) {
       // If forbidden from creating, bounce to unauthorized
       if (e?.code === "42501" || `${e?.message ?? ""}`.includes("forbidden")) {
         navigate("/unauthorized", { replace: true });
         return;
       }
-      setCreateError(e?.message ?? "Failed to create program");
+      setCreateError(getUserFriendlyError(e));
     } finally {
       setCreating(false);
     }
@@ -182,7 +213,7 @@ export default function OrgAdminPrograms() {
         setDeletedList(deletedPrograms as ProgramWithDeleted[]);
       }
     } catch (e: any) {
-      setListError(e?.message ?? "Delete failed");
+      setListError(getUserFriendlyError(e));
     }
   };
 
@@ -203,11 +234,21 @@ export default function OrgAdminPrograms() {
         setDeletedList(deletedPrograms as ProgramWithDeleted[]);
       }
     } catch (e: any) {
-      setListError(e?.message ?? "Restore failed");
+      setListError(getUserFriendlyError(e));
     }
   };
 
-  const hasPrograms = useMemo(() => (programs?.length ?? 0) > 0, [programs]);
+  // Filter programs based on search term
+  const filteredPrograms = useMemo(() => {
+    if (!searchTerm.trim()) return programs;
+    const term = searchTerm.toLowerCase();
+    return programs.filter(
+      (p) =>
+        p.name.toLowerCase().includes(term) ||
+        p.type.toLowerCase().includes(term) ||
+        (p.description && p.description.toLowerCase().includes(term))
+    );
+  }, [programs, searchTerm]);
 
   if (loading) {
     return (
@@ -243,131 +284,184 @@ export default function OrgAdminPrograms() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Create form */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Create Draft Program
-            </h2>
-            <p className="text-sm text-gray-500">
-              Drafts must be reviewed/approved before publishing.
-            </p>
+        {/* Create form - Enhanced Program Basics style */}
+        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200/60 rounded-2xl p-6 shadow-lg shadow-indigo-100/50">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-2 h-6 bg-gradient-to-b from-indigo-500 to-indigo-600 rounded-full shadow-sm"></div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                Create New Program
+              </h2>
+              <p className="text-sm text-gray-600 mt-0.5">
+                Set up your program details and jump straight into building
+              </p>
+            </div>
           </div>
-          <form
-            onSubmit={handleCreate}
-            className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4"
-          >
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Name
-              </label>
-              <input
-                className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-                placeholder="e.g., 2026 Auditions"
-                required
-              />
+          <form onSubmit={handleCreate}>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-end">
+              <div className="md:col-span-4">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Title
+                </label>
+                <input
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                  placeholder="e.g., 2026 Auditions"
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Type
+                </label>
+                <select
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  value={form.type}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      type: e.target.value as
+                        | "audition"
+                        | "scholarship"
+                        | "application"
+                        | "competition",
+                    }))
+                  }
+                >
+                  <option value="audition">Audition</option>
+                  <option value="scholarship">Scholarship</option>
+                  <option value="application">Application</option>
+                  <option value="competition">Competition</option>
+                </select>
+              </div>
+              <div className="md:col-span-3">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Opens
+                </label>
+                <input
+                  type="datetime-local"
+                  step="60"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  value={form.open_at}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, open_at: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="md:col-span-3">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Closes
+                </label>
+                <input
+                  type="datetime-local"
+                  step="60"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  value={form.close_at}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, close_at: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="md:col-span-12">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Description
+                </label>
+                <textarea
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
+                  rows={3}
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, description: e.target.value }))
+                  }
+                  placeholder="Brief description…"
+                />
+              </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Type
-              </label>
-              <select
-                className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                value={form.type}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    type: e.target.value as
-                      | "audition"
-                      | "scholarship"
-                      | "application"
-                      | "competition",
-                  }))
-                }
-              >
-                <option value="audition">Audition</option>
-                <option value="scholarship">Scholarship</option>
-                <option value="application">Application</option>
-                <option value="competition">Competition</option>
-              </select>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Description
-              </label>
-              <textarea
-                className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                rows={3}
-                value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
-                placeholder="Brief description…"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Opens
-              </label>
-              <input
-                type="datetime-local"
-                className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                value={form.open_at}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, open_at: e.target.value }))
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Closes
-              </label>
-              <input
-                type="datetime-local"
-                className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                value={form.close_at}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, close_at: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="md:col-span-2 flex items-center gap-3">
+            <div className="mt-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {createError && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+                    <svg
+                      className="w-4 h-4 text-red-500"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <p className="text-sm text-red-700 font-medium">
+                      {createError}
+                    </p>
+                  </div>
+                )}
+                {successMsg && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                    <svg
+                      className="w-4 h-4 text-green-500"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <p className="text-sm text-green-700 font-medium">
+                      {successMsg}
+                    </p>
+                  </div>
+                )}
+              </div>
               <button
                 type="submit"
                 disabled={creating}
-                className="inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-60"
+                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105"
               >
-                {creating ? "Creating…" : "Create Draft"}
+                {creating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Creating…
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Create & Open Editor
+                  </>
+                )}
               </button>
-
-              {createError && (
-                <p className="text-sm text-red-600">{createError}</p>
-              )}
-              {successMsg && (
-                <p className="text-sm text-green-600">{successMsg}</p>
-              )}
             </div>
           </form>
         </div>
 
         {/* Deleted Programs Section */}
-        <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white shadow-lg rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
             <button
               onClick={() => setShowDeleted(!showDeleted)}
-              className="flex items-center text-lg font-semibold text-gray-900"
+              className="flex items-center gap-3 text-lg font-bold text-gray-900 hover:text-gray-700 transition-colors duration-150"
             >
+              <div className="w-2 h-6 bg-gradient-to-b from-gray-600 to-gray-700 rounded-full"></div>
               <svg
-                className={`w-5 h-5 mr-2 transform transition-transform ${
+                className={`w-5 h-5 transform transition-transform duration-200 ${
                   showDeleted ? "rotate-90" : ""
                 }`}
                 fill="none"
@@ -479,15 +573,86 @@ export default function OrgAdminPrograms() {
         </div>
 
         {/* List */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
+          <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Programs for {orgName}
-              </h2>
-              <div className="text-sm text-gray-600">
-                {success && <span className="text-green-700">{success}</span>}
-                {listError && <span className="text-red-700">{listError}</span>}
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-6 bg-gradient-to-b from-gray-600 to-gray-700 rounded-full"></div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Programs for {orgName}
+                </h2>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-gray-600">
+                  {success && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                      <svg
+                        className="w-3 h-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      {success}
+                    </span>
+                  )}
+                  {listError && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                      <svg
+                        className="w-3 h-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      {listError}
+                    </span>
+                  )}
+                </div>
+
+                {/* Search Bar - anchored to the rightmost side */}
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg
+                        className="h-4 w-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search programs..."
+                      className="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="text-gray-400 hover:text-gray-600 text-sm"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -499,61 +664,72 @@ export default function OrgAdminPrograms() {
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-to-r from-gray-100 to-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Type
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Published
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Opens
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Closes
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Created
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {hasPrograms ? (
-                    programs.map((p) => (
-                      <tr key={p.id}>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {p.name}
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {filteredPrograms.length > 0 ? (
+                    filteredPrograms.map((p) => (
+                      <tr
+                        key={p.id}
+                        className="hover:bg-gray-50 transition-colors duration-150"
+                      >
+                        <td className="px-6 py-5 text-sm text-gray-900 text-center">
+                          <Link
+                            to={`/org/${orgSlug}/admin/programs/${p.id}/builder`}
+                            className="text-indigo-600 hover:text-indigo-800 font-semibold hover:underline transition-colors duration-150"
+                            title="Open application editor"
+                          >
+                            {p.name}
+                          </Link>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          {p.type}
+                        <td className="px-6 py-5 text-sm text-gray-700 text-center">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+                            {p.type}
+                          </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-5 text-center">
                           {(() => {
                             const status = getReviewStatus(p);
                             return (
                               <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
                                   status === "submitted"
-                                    ? "bg-blue-100 text-blue-800"
+                                    ? "bg-blue-100 text-blue-800 border border-blue-200"
                                     : status === "pending_changes"
-                                    ? "bg-orange-100 text-orange-800"
+                                    ? "bg-orange-100 text-orange-800 border border-orange-200"
                                     : status === "changes_requested"
-                                    ? "bg-yellow-100 text-yellow-800"
+                                    ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
                                     : status === "published"
-                                    ? "bg-green-100 text-green-800"
+                                    ? "bg-green-100 text-green-800 border border-green-200"
                                     : status === "unpublished"
-                                    ? "bg-purple-100 text-purple-800"
-                                    : "bg-gray-100 text-gray-800"
+                                    ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                    : "bg-gray-100 text-gray-800 border border-gray-200"
                                 }`}
                               >
                                 {(status === "pending_changes"
@@ -564,16 +740,16 @@ export default function OrgAdminPrograms() {
                             );
                           })()}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-5 text-center">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
                               p.published
                                 ? p.published_scope === "coalition"
-                                  ? "bg-yellow-100 text-yellow-800"
+                                  ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
                                   : p.published_scope === "org"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-800"
+                                  ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                  : "bg-green-100 text-green-800 border border-green-200"
+                                : "bg-gray-100 text-gray-800 border border-gray-200"
                             }`}
                           >
                             {p.published
@@ -581,34 +757,48 @@ export default function OrgAdminPrograms() {
                               : "draft"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
+                        <td className="px-6 py-5 text-sm text-gray-600 text-center font-medium">
                           {p.open_at
                             ? new Date(p.open_at).toLocaleString()
                             : "—"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
+                        <td className="px-6 py-5 text-sm text-gray-600 text-center font-medium">
                           {p.close_at
                             ? new Date(p.close_at).toLocaleString()
                             : "—"}
                         </td>
-                        <td className="px-6 py-4 text-right text-sm text-gray-500">
+                        <td className="px-6 py-5 text-center text-sm text-gray-500">
                           {new Date(p.created_at).toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 text-right text-sm">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="px-6 py-5 text-center text-sm">
+                          <div className="flex items-center justify-center gap-3">
                             <Link
                               to={`/org/${orgSlug}/admin/programs/${p.id}/builder`}
-                              className="text-indigo-600 hover:text-indigo-800 font-medium"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors duration-150"
+                              title="Edit application"
                             >
-                              Edit application
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
+                              Edit
                             </Link>
                             <button
                               onClick={() => onDelete(p.id)}
-                              className="text-red-600 hover:text-red-800 p-1 ml-2"
+                              className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors duration-150"
                               title="Delete program"
                             >
                               <svg
-                                className="w-4 h-4"
+                                className="w-3 h-3"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -627,11 +817,36 @@ export default function OrgAdminPrograms() {
                     ))
                   ) : (
                     <tr>
-                      <td
-                        colSpan={8}
-                        className="px-6 py-8 text-sm text-gray-500"
-                      >
-                        No programs yet. Create your first draft above.
+                      <td colSpan={8} className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                            <svg
+                              className="w-8 h-8 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                              />
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                              {searchTerm
+                                ? "No matching programs"
+                                : "No programs yet"}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              {searchTerm
+                                ? `No programs match "${searchTerm}". Try a different search term.`
+                                : "Create your first program using the form above to get started."}
+                            </p>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   )}

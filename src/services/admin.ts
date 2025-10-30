@@ -37,6 +37,9 @@ export async function adminListPrograms(orgId: string, includeDeleted = false) {
     query = query.is("deleted_at", null);
   }
 
+  // Order by most recently updated first
+  query = query.order("updated_at", { ascending: false });
+
   const { data, error } = await query;
 
   console.log("Direct query result:", { data, error });
@@ -85,5 +88,33 @@ export async function adminRestoreProgram(p_program_id: string) {
     console.error("Restore error:", error);
     throw error;
   }
+  return data;
+}
+
+export async function adminUpdateProgramBasics(
+  p_program_id: string,
+  updates: {
+    name?: string;
+    description?: string | null;
+    open_at?: string | null;
+    close_at?: string | null;
+  }
+) {
+  const payload: Record<string, any> = {};
+  if (typeof updates.name !== "undefined") payload.name = updates.name;
+  if (typeof updates.description !== "undefined")
+    payload.description = updates.description;
+  if (typeof updates.open_at !== "undefined") payload.open_at = updates.open_at;
+  if (typeof updates.close_at !== "undefined")
+    payload.close_at = updates.close_at;
+
+  const { data, error } = await supabase
+    .from("programs")
+    .update(payload)
+    .eq("id", p_program_id)
+    .select()
+    .single();
+
+  if (error) throw error;
   return data;
 }

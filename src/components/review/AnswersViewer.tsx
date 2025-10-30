@@ -1,5 +1,6 @@
 import React from "react";
 import ProfileCard from "../profile/ProfileCard";
+import { FilePreview } from "../attachments/FilePreview";
 
 type RawField = {
   id?: string;
@@ -223,6 +224,22 @@ export default function AnswersViewer({
             const rawValue = getAnswerForField(field, idx, answers);
             const display = formatValue(rawValue, field);
 
+            // Determine if this is a file field (case-insensitive)
+            const isFileField = (field.type || "").toLowerCase() === "file";
+
+            // Try to parse file metadata from the answer value if file field
+            let fileInfo: any = null;
+            if (isFileField && rawValue) {
+              if (typeof rawValue === "string") {
+                try {
+                  const parsed = JSON.parse(rawValue);
+                  if (parsed && parsed.filePath) fileInfo = parsed;
+                } catch {}
+              } else if (typeof rawValue === "object") {
+                if ((rawValue as any).filePath) fileInfo = rawValue;
+              }
+            }
+
             return (
               <div
                 key={field.id ?? `f-${idx}`}
@@ -231,7 +248,14 @@ export default function AnswersViewer({
                 <div className="text-sm font-medium text-gray-600">
                   {field.label}
                 </div>
-                <div className="text-base text-gray-900">{display}</div>
+                {!isFileField || !fileInfo ? (
+                  <div className="text-base text-gray-900">{display}</div>
+                ) : null}
+                {isFileField && fileInfo && (
+                  <div className="mt-2">
+                    <FilePreview fileInfo={fileInfo} />
+                  </div>
+                )}
               </div>
             );
           })}
