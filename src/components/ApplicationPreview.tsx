@@ -31,6 +31,24 @@ export default function ApplicationPreview({
   onClose,
   alwaysOpen = false,
 }: ApplicationPreviewProps) {
+  // In-preview, avoid hitting storage for signed URLs. Use a lightweight mock preview.
+  const MockFilePreview = ({ fileInfo }: { fileInfo: any }) => {
+    const name = fileInfo?.fileName || "Example_Document.pdf";
+    const sizeMb = fileInfo?.fileSize
+      ? (fileInfo.fileSize / (1024 * 1024)).toFixed(2)
+      : "0.25";
+    return (
+      <div className="bg-white border rounded p-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm font-medium text-gray-900">{name}</div>
+          <div className="text-xs text-gray-500">{sizeMb} MB</div>
+        </div>
+        <div className="w-full h-48 bg-gray-100 border border-dashed border-gray-300 rounded flex items-center justify-center text-gray-400 text-xs">
+          Preview placeholder (preview mode)
+        </div>
+      </div>
+    );
+  };
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [fields, setFields] = useState<Field[]>(propFields || []);
   const [loading, setLoading] = useState(false);
@@ -466,7 +484,8 @@ export default function ApplicationPreview({
                         </div>
                       </div>
                     </div>
-                    <FilePreview fileInfo={profile.resume} />
+                    {/* Use mock preview in preview modal to avoid storage lookups */}
+                    <MockFilePreview fileInfo={profile.resume} />
                   </div>
                 ) : (
                   <div className="bg-white rounded border p-3">
@@ -507,7 +526,8 @@ export default function ApplicationPreview({
                                 </div>
                               </div>
                             </div>
-                            <FilePreview fileInfo={fi} />
+                            {/* Use mock preview in preview modal to avoid storage lookups */}
+                            <MockFilePreview fileInfo={fi} />
                           </div>
                         ))}
                       </div>
@@ -701,10 +721,42 @@ export default function ApplicationPreview({
           </div>
         </div>
 
-        {/* File Attachments Section */}
+        {/* File Attachments Section (preview-safe) */}
         <div className="mt-6 pt-4 border-t">
           <h3 className="text-lg font-semibold mb-4">File Attachments</h3>
-          <ApplicationFileViewer applicationAnswers={answers} />
+          {(() => {
+            // Build a preview-safe list of file-like answers without storage calls
+            const fileEntries = Object.entries(answers || {})
+              .map(([k, v]) => {
+                try {
+                  if (typeof v === "string") {
+                    const parsed = JSON.parse(v);
+                    if (parsed && parsed.fileName) return { k, fi: parsed };
+                  } else if (v && typeof v === "object" && (v as any).fileName) {
+                    return { k, fi: v as any };
+                  }
+                } catch {}
+                return null;
+              })
+              .filter(Boolean) as Array<{ k: string; fi: any }>;
+
+            if (fileEntries.length === 0) {
+              return (
+                <div className="text-sm text-gray-500">No file attachments</div>
+              );
+            }
+
+            return (
+              <div className="space-y-3">
+                {fileEntries.map(({ k, fi }) => (
+                  <div key={k} className="space-y-1">
+                    <div className="text-xs text-gray-500">Field: {k}</div>
+                    <MockFilePreview fileInfo={fi} />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="mt-6 pt-4 border-t">
