@@ -606,7 +606,9 @@ export default function OrgProgramBuilder() {
         }
 
         setMsg(
-          "Changes saved as draft! These changes require super admin approval before going live."
+          program?.published
+            ? "Draft saved. Click ‘Update Live Page’ to push your changes live."
+            : "Draft saved. Click ‘Publish Program’ to make your changes live."
         );
       } else {
         // If not published, save normally to the live schema
@@ -837,8 +839,8 @@ export default function OrgProgramBuilder() {
               <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md">
                 <div className="font-semibold">Changes requested. </div>
                 <div className="text-sm whitespace-pre-wrap">
-                  {note} <br /> <br /> This form has been unpublished and will
-                  require super admin approval to republish.
+                  {note} <br /> <br /> This form has been unpublished. Publish
+                  again when you're ready.
                 </div>
               </div>
             </div>
@@ -858,11 +860,12 @@ export default function OrgProgramBuilder() {
           return (
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
               <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-md">
-                <div className="font-semibold">⏳ Changes Pending Approval</div>
+                <div className="font-semibold">Draft saved</div>
                 <div className="text-sm">
-                  Your changes have been saved but require super admin approval
-                  before going live. The current published version remains
-                  active until approved.
+                  Your changes are saved as a draft.{" "}
+                  {program?.published
+                    ? "Click ‘Update Live Page’ to push them live."
+                    : "Click ‘Publish Program’ to make them live."}
                 </div>
               </div>
             </div>
