@@ -30,7 +30,23 @@ export default function ReviewerIndex() {
           setError(error.message);
           return;
         }
-        setPrograms(progs || []);
+        const allProgs = progs || [];
+        // Filter out deleted programs
+        if (allProgs.length > 0) {
+          const programIds = allProgs.map((p: ReviewerProgram) => p.program_id);
+          const { data: deletedCheck } = await supabase
+            .from("programs")
+            .select("id")
+            .in("id", programIds)
+            .not("deleted_at", "is", null);
+          const deletedIds = new Set((deletedCheck || []).map((p: any) => p.id));
+          const filtered = allProgs.filter(
+            (p: ReviewerProgram) => !deletedIds.has(p.program_id)
+          );
+          setPrograms(filtered);
+        } else {
+          setPrograms(allProgs);
+        }
       } catch (e: any) {
         setError(e.message ?? "Failed to load programs");
       } finally {

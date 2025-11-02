@@ -26,7 +26,23 @@ export default function ReviewerHome() {
         supabase.rpc("my_reviewer_programs_v2"),
       ]);
       if (!o.error) setOrgs(o.data ?? []);
-      if (!p.error) setPrograms(p.data ?? []);
+      if (!p.error) {
+        const progs = p.data ?? [];
+        // Filter out deleted programs
+        if (progs.length > 0) {
+          const programIds = progs.map((pr: Prog) => pr.program_id);
+          const { data: deletedCheck } = await supabase
+            .from("programs")
+            .select("id")
+            .in("id", programIds)
+            .not("deleted_at", "is", null);
+          const deletedIds = new Set((deletedCheck || []).map((p: any) => p.id));
+          const filtered = progs.filter((pr: Prog) => !deletedIds.has(pr.program_id));
+          setPrograms(filtered);
+        } else {
+          setPrograms(progs);
+        }
+      }
       setLoading(false);
     })();
   }, []);

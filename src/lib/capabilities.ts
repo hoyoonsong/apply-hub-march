@@ -65,7 +65,19 @@ export async function fetchReviewerPrograms(): Promise<ProgramMini[]> {
     console.warn("my_reviewer_programs_v2 RPC not available:", error.message);
     return [];
   }
-  return data ?? [];
+  const allProgs = data ?? [];
+  // Filter out deleted programs
+  if (allProgs.length > 0) {
+    const programIds = allProgs.map((p: any) => p.program_id || p.id);
+    const { data: deletedCheck } = await supabase
+      .from("programs")
+      .select("id")
+      .in("id", programIds)
+      .not("deleted_at", "is", null);
+    const deletedIds = new Set((deletedCheck || []).map((p: any) => p.id));
+    return allProgs.filter((p: any) => !deletedIds.has(p.program_id || p.id));
+  }
+  return allProgs;
 }
 
 export type Capabilities = {
