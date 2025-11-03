@@ -64,20 +64,12 @@ export default function ApplyProgramPage() {
   const handleStart = async () => {
     if (!programId) return;
     setStarting(true);
-    const { data, error } = await supabase.rpc(
-      "app_start_or_get_application_v1",
-      {
-        p_program_id: programId,
-      }
-    );
-    setStarting(false);
-    if (error || !data) {
-      console.error("Failed to start application:", error);
-      alert("Could not start application. Please try again.");
-      return;
+    try {
+      // Stable URL; DirectApplication will create/load the application row
+      navigate(`/programs/${programId}/apply`);
+    } finally {
+      setStarting(false);
     }
-    // data is the application row created/found
-    navigate(`/applications/${data.id}`);
   };
 
   if (authLoading || loading || !program) return null;

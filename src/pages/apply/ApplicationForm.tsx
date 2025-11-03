@@ -1,233 +1,282 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getApplication, saveApplication } from "../../lib/rpc";
+import {
+  getApplication,
+  submitApplication,
+  saveApplication,
+} from "../../lib/rpc";
 import { loadApplicationSchemaById } from "../../lib/schemaLoader";
-import { missingRequired } from "../../utils/answers";
-import { supabase } from "../../lib/supabase";
+import { useApplicationAutosave } from "../../components/useApplicationAutosave";
 import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
 import ProfileCard from "../../components/profile/ProfileCard";
 import WordLimitedTextarea from "../../components/WordLimitedTextarea";
 import {
+  programUsesProfile,
   fetchProfileSnapshot,
   mergeProfileIntoAnswers,
-  programUsesProfile,
   getRequiredProfileSections,
   validateProfileSections,
 } from "../../lib/profileFill";
+import type { ProgramApplicationSchema } from "../../types/application";
+import { missingRequired } from "../../utils/answers";
+import {
+  isPastDeadline,
+  isBeforeOpenDate,
+  isApplicationOpen,
+  getDeadlineMessage,
+  getOpenDateMessage,
+} from "../../lib/deadlineUtils";
+import { supabase } from "../../lib/supabase";
+import { isUUID } from "../../lib/id";
+import { useAuth } from "../../auth/AuthProvider";
+import LoginModal from "../../components/LoginModal";
 
-/**
- * We expect the program builder to have saved metadata like:
- * {
- *   form: {
- *     include_common_app: boolean,
- *     include_coalition_common_app: boolean,
- *     fields: [
- *       { id: 'q1', type: 'short_text' | 'long_text' | 'date' | 'select' | 'checkbox' | 'file',
- *         label: 'This is a short text query', required: true, options?: string[] , maxLength?: number }
- *     ]
- *   }
- * }
- *
- * If your builder uses a slightly different shape, tweak the accessors below.
- */
-
-type Field =
-  | {
-      id: string;
-      type: "short_text";
-      label: string;
-      required?: boolean;
-      maxLength?: number;
-    }
-  | {
-      id: string;
-      type: "long_text";
-      label: string;
-      required?: boolean;
-      maxLength?: number;
-      maxWords?: number;
-    }
-  | { id: string; type: "date"; label: string; required?: boolean }
-  | {
-      id: string;
-      type: "select";
-      label: string;
-      required?: boolean;
-      options: string[];
-    }
-  | { id: string; type: "checkbox"; label: string; required?: boolean }
-  | { id: string; type: "file"; label: string; required?: boolean };
-
-type ProgramMeta = {
-  form?: {
-    include_common_app?: boolean;
-    include_coalition_common_app?: boolean;
-    fields?: Field[];
-  };
+type AppRow = {
+  id: string;
+  program_id: string;
+  user_id: string;
+  status:
+    | "draft"
+    | "submitted"
+    | "reviewing"
+    | "accepted"
+    | "rejected"
+    | "waitlisted";
+  answers: any;
+  created_at: string;
+  updated_at: string;
+  program_name?: string;
+  program_metadata?: any;
 };
 
-export default function ApplicationForm() {
+export default function ApplicationForm({
+  applicationIdProp,
+  programIdProp,
+}: {
+  applicationIdProp?: string;
+  programIdProp?: string;
+} = {}) {
   const params = useParams();
   const navigate = useNavigate();
-  const applicationId = useMemo(() => (params?.id as string) || "", [params]);
+  const { user, loading: authLoading } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const applicationId = useMemo(() => {
+    return applicationIdProp || (params?.id as string) || "";
+  }, [params, applicationIdProp]);
 
-  const [app, setApp] = useState<any>(null);
-  const [program, setProgram] = useState<any>(null);
+  const [appRow, setAppRow] = useState<AppRow | null>(null);
+
+  // Get programId from prop or from appRow (if accessing via /applications/:id)
+  const programId = useMemo(() => {
+    return programIdProp || appRow?.program_id || null;
+  }, [programIdProp, appRow?.program_id]);
+  const [schema, setSchema] = useState<ProgramApplicationSchema>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [programDeadline, setProgramDeadline] = useState<string | null>(null);
+  const [programOpenDate, setProgramOpenDate] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileSnap, setProfileSnap] = useState<any>(null);
   const [programDetails, setProgramDetails] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
-  const [answers, setAnswers] = useState<Record<string, any>>({});
-  const [saving, setSaving] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [profileSnap, setProfileSnap] = useState<any>(null);
 
-  // Load app and program meta
+  // Load application data if we have an applicationId (user is logged in)
   useEffect(() => {
-    let mounted = true;
+    if (!isUUID(applicationId)) return;
+
     (async () => {
       try {
-        if (!applicationId) return;
-        const data = await getApplication(applicationId);
-        if (!mounted) return;
-        setApp(data);
-        setAnswers(data.answers ?? {});
+        const app = await getApplication(applicationId!);
 
-        // Load schema using centralized loader
-        const schema = await loadApplicationSchemaById(data.program_id);
-        console.log("🔍 ApplicationForm - Loaded schema:", schema);
-
-        // Set program data with loaded schema
-        setProgram({
-          id: data.program_id,
-          name: data.program_name || "Application",
-          metadata: { form: { fields: schema.fields } },
-        });
-
-        // Load full program details and organization
-        try {
-          // Get program details from programs table (not programs_public) to get metadata
-          const { data: programData, error: programError } = await supabase
-            .from("programs")
-            .select("id, name, description, organization_id, metadata")
-            .eq("id", data.program_id)
-            .single();
-
-          if (!programError && programData) {
-            setProgramDetails(programData);
-
-            // Update program with full metadata including profile flags
-            setProgram({
-              id: programData.id,
-              name: programData.name || "Application",
-              metadata: {
-                ...programData.metadata,
-                form: {
-                  ...programData.metadata?.form,
-                  fields: schema.fields, // Preserve the loaded schema fields
-                },
-              },
-            });
-
-            // Load organization details
-            const { data: orgData, error: orgError } = await supabase
-              .from("organizations")
-              .select("id, name")
-              .eq("id", programData.organization_id)
-              .single();
-
-            if (!orgError && orgData) {
-              setOrganization(orgData);
-            }
-          }
-        } catch (e) {
-          console.error("Failed to load program details:", e);
-        }
-      } catch (e: any) {
-        if (!mounted) return;
-        if (e.message?.includes("Not authorized or application not found")) {
+        if (!app || !app.program_id) {
           navigate("/unauthorized");
           return;
         }
-        setErr(e.message ?? "Failed to load application");
+
+        setAppRow(app);
+
+        // Load schema and program details (shared logic)
+        await loadProgramData(app.program_id, app);
+
+        // Set editing mode: draft apps are editable, submitted apps are read-only by default
+        setIsEditing(app.status === "draft");
+      } catch (e: any) {
+        console.error("Error loading application:", e);
+        navigate("/unauthorized");
       }
     })();
-    return () => {
-      mounted = false;
-    };
   }, [applicationId, navigate]);
 
-  // Load profile snapshot when program uses profile autofill
+  // Load program data when we have programId but no applicationId (user not logged in)
   useEffect(() => {
-    if (!program || !app) return;
+    if (isUUID(applicationId) || !programId) return;
 
-    if (!programUsesProfile(program)) return;
     (async () => {
-      // If application is submitted, use the snapshot from answers
-      // If application is draft, use live profile data
-      if (app.status === "submitted" && app.answers?.profile) {
-        // Use the snapshot that was saved when submitted
-        setProfileSnap(app.answers.profile);
-        console.log("Using profile snapshot from submitted application");
-      } else {
-        // For draft applications, fetch live profile
-        const profile = await fetchProfileSnapshot();
-        setProfileSnap(profile);
-        console.log("Using live profile data for draft application");
+      try {
+        await loadProgramData(programId, null);
+      } catch (e: any) {
+        console.error("Error loading program:", e);
       }
     })();
-  }, [program, app]);
+  }, [programId, applicationId, user]);
 
-  const fields: Field[] = useMemo(() => {
-    const meta = (program?.metadata ?? {}) as ProgramMeta;
-    return meta.form?.fields ?? [];
-  }, [program]);
+  // Shared function to load program data
+  const loadProgramData = async (progId: string, app: AppRow | null) => {
+    // Load schema using centralized loader
+    const loadedSchema = await loadApplicationSchemaById(progId);
+    console.log("🔍 ApplicationForm - Loaded schema:", loadedSchema);
+    // Convert fields to items format (matching ApplicationPage structure)
+    const items = (loadedSchema.fields || []).map((f: any) => ({
+      key: f.key || f.id || `q_${Math.random()}`,
+      type: f.type?.toLowerCase() || f.type,
+      label: f.label || f.name || "",
+      required: f.required,
+      maxLength: f.maxLength,
+      maxWords: f.maxWords,
+      options: f.options,
+    }));
+    setSchema({ items });
 
-  async function onSave() {
-    if (!applicationId) return;
-    try {
-      setSaving(true);
-      setErr(null);
-      // Don't merge profile data for draft saves - only save the actual form answers
-      const updated = await saveApplication(applicationId, answers);
-      setApp((r: any) => (r ? { ...r, ...updated } : (updated as any)));
-    } catch (e: any) {
-      setErr(e.message ?? "Save failed");
-    } finally {
-      setSaving(false);
-    }
-  }
+    // Get program details for deadline info - check if program is published
+    const { data: progData, error: progError } = await supabase
+      .from("programs_public")
+      .select("open_at, close_at, published")
+      .eq("id", progId)
+      .single();
 
-  async function onSubmitApp() {
-    if (!applicationId) return;
-
-    // Validate required fields before submitting
-    const fields = (program?.metadata as any)?.form?.fields || [];
-    const schema = {
-      fields: fields.map((f: any) => ({
-        key: f.id,
-        label: f.label,
-        required: f.required,
-        type: f.type,
-      })),
-    };
-    const missing = missingRequired(schema, answers);
-    if (missing.length > 0) {
-      setErr(
-        `Please complete the following required fields: ${missing.join(", ")}`
-      );
+    if (progError || !progData) {
+      if (isUUID(applicationId)) {
+        navigate("/unauthorized");
+      }
       return;
     }
 
-    // Validate profile sections if program uses profile autofill
-    if (programUsesProfile(program)) {
-      const requiredSections = getRequiredProfileSections(program);
+    // Check if program is published
+    if (!progData.published) {
+      if (isUUID(applicationId)) {
+        navigate("/unauthorized");
+      }
+      return;
+    }
+
+    setProgramDeadline(progData?.close_at || null);
+    setProgramOpenDate(progData?.open_at || null);
+
+    // Load full program details and organization
+    try {
+      const { data: programData, error: programError } = await supabase
+        .from("programs")
+        .select(
+          "id, name, description, organization_id, metadata, open_at, close_at"
+        )
+        .eq("id", progId)
+        .single();
+
+      if (!programError && programData) {
+        setProgramDetails(programData);
+
+        // Load profile snapshot if program uses profile autofill (only if logged in and we have an app)
+        // Check user from hook context, not parameter
+        const currentUser = user;
+        if (currentUser && app) {
+          const program = {
+            id: programData.id,
+            name: programData.name,
+            metadata: programData.metadata,
+          };
+
+          if (programUsesProfile(program)) {
+            if (app.status === "submitted" && app.answers?.profile) {
+              setProfileSnap(app.answers.profile);
+            } else {
+              const profile = await fetchProfileSnapshot();
+              setProfileSnap(profile);
+            }
+          }
+        }
+
+        // Load organization details
+        const { data: orgData, error: orgError } = await supabase
+          .from("organizations")
+          .select("id, name")
+          .eq("id", programData.organization_id)
+          .single();
+
+        if (!orgError && orgData) {
+          setOrganization(orgData);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load program details:", e);
+    }
+  };
+
+  const { answers, setAnswers } = useApplicationAutosave(
+    applicationId || "",
+    appRow?.answers ?? {},
+    appRow?.updated_at ?? undefined
+  );
+
+  // Update answers when appRow changes
+  useEffect(() => {
+    if (appRow?.answers) {
+      setAnswers(appRow.answers);
+    }
+  }, [appRow?.answers, setAnswers]);
+
+  const items = useMemo(() => schema.items ?? [], [schema]);
+
+  // Check if application is currently open
+  const isOpen = isApplicationOpen(programOpenDate, programDeadline);
+  const isBeforeOpen = isBeforeOpenDate(programOpenDate);
+  const isPastDeadlineFlag = isPastDeadline(programDeadline);
+
+  // Check if editing is allowed (must be logged in)
+  const canEdit = user && isOpen && !isPastDeadlineFlag;
+  const isFormEditable =
+    canEdit && (isEditing || !appRow || (appRow && appRow.status === "draft"));
+
+  const update = (name: string, value: any) => {
+    if (!isFormEditable) return;
+    setAnswers((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async () => {
+    if (!appRow || !isUUID(applicationId)) return;
+    if (!canEdit) {
+      if (isBeforeOpen) {
+        alert("Cannot submit - application has not opened yet");
+      } else if (isPastDeadlineFlag) {
+        alert("Cannot submit - deadline has passed");
+      } else {
+        alert("Cannot submit - application is not currently open");
+      }
+      return;
+    }
+
+    // Validate required fields
+    if (schema) {
+      const missing = missingRequired(
+        { fields: (schema.items || []) as any },
+        answers
+      );
+      if (missing.length > 0) {
+        alert(
+          `Please complete the following required fields: ${missing.join(", ")}`
+        );
+        return;
+      }
+    }
+
+    // Validate profile sections
+    if (programDetails && programUsesProfile(programDetails)) {
+      const requiredSections = getRequiredProfileSections(programDetails);
       const profileValidation = validateProfileSections(
         profileSnap,
         requiredSections
       );
 
       if (!profileValidation.isValid) {
-        setErr(
+        alert(
           `Please complete the following required profile sections:\n${profileValidation.missingSections.join(
             "\n"
           )}`
@@ -238,294 +287,536 @@ export default function ApplicationForm() {
 
     setSubmitting(true);
     try {
-      setErr(null);
-
-      // For profile-enabled programs, take a fresh snapshot at submission time
-      let finalAnswers = answers ?? {};
-      if (programUsesProfile(program)) {
-        // Fetch fresh profile data at submission time to capture any recent edits
-        const freshProfile = await fetchProfileSnapshot();
-        if (freshProfile) {
-          finalAnswers = mergeProfileIntoAnswers(answers, freshProfile);
-          console.log(
-            "🔍 ApplicationForm - Taking fresh profile snapshot at submission time"
-          );
-        } else {
-          console.warn(
-            "🔍 ApplicationForm - Profile enabled but no profile data found"
-          );
+      if (appRow.status === "draft") {
+        let finalAnswers = answers;
+        if (programDetails && programUsesProfile(programDetails)) {
+          const freshProfile = await fetchProfileSnapshot();
+          if (freshProfile) {
+            finalAnswers = mergeProfileIntoAnswers(answers, freshProfile);
+          }
         }
-      }
 
-      const updated = await saveApplication(applicationId, finalAnswers);
-      setApp((r: any) => (r ? { ...r, ...updated } : (updated as any)));
-      alert("Application submitted!");
-      // Navigate back to the program
-      navigate("/");
+        await submitApplication(applicationId!, finalAnswers);
+        const updatedApp = await getApplication(applicationId!);
+        setAppRow(updatedApp);
+        localStorage.removeItem(`app:${applicationId}:answers`);
+        alert("Application submitted!");
+        navigate("/");
+      } else if (appRow.status === "submitted" && isEditing) {
+        await saveApplication(applicationId!, answers);
+        const updatedApp = await getApplication(applicationId!);
+        setAppRow(updatedApp);
+        setIsEditing(false);
+        alert("Changes saved!");
+      }
     } catch (e: any) {
-      setErr(e.message ?? "Submit failed");
+      alert(e.message ?? "Submit failed");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Show loading while auth is loading or while we're still loading program data
+  if (
+    authLoading ||
+    (!programDetails && !programId && !isUUID(applicationId))
+  ) {
+    return <div className="p-6">Loading...</div>;
   }
 
-  if (!applicationId) return <div className="p-6">Loading…</div>;
-
-  if (err) {
-    return (
-      <div className="max-w-3xl mx-auto p-6">
-        <p className="text-red-600">{err}</p>
-      </div>
-    );
+  // Don't render form if we don't have program details and schema
+  if (!programDetails || !schema.items) {
+    return <div className="p-6">Loading program details...</div>;
   }
-  if (!app) return <div className="p-6">Loading application…</div>;
+
+  const isNotLoggedIn = !user && !authLoading;
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {programDetails?.name || program.name}
-          </h1>
-          {programDetails?.description && (
-            <p className="mt-1 text-gray-600">{programDetails.description}</p>
-          )}
-          {organization && (
-            <p className="mt-1 text-sm text-gray-500">
-              Organization: {organization.name}
-            </p>
-          )}
-        </div>
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="px-3 py-2 border rounded-md text-sm"
-        >
-          Back to Dashboard
-        </button>
-      </div>
-
-      {/* Common App badges (for show, actual fields would be assembled server-side later) */}
-      <div className="bg-white border rounded-lg p-4">
-        <h2 className="font-semibold mb-2">Includes</h2>
-        <div className="flex gap-2 text-sm">
-          {(program.metadata?.form?.include_common_app ?? false) && (
-            <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded">
-              Omnipply Common App
-            </span>
-          )}
-          {(program.metadata?.form?.include_coalition_common_app ?? false) && (
-            <span className="px-2 py-1 bg-orange-50 text-orange-700 rounded">
-              Coalition Common App
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Profile Autofill Notice and Card */}
-      {(() => {
-        const shouldShow = programUsesProfile(program);
-        return (
-          shouldShow && (
-            <div className="mb-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-blue-900">
-                      Profile Autofill Active
-                    </span>
-                  </div>
-                  <a
-                    href="/profile"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:text-blue-800 underline"
-                  >
-                    Edit Profile →
-                  </a>
-                </div>
-                <p className="text-xs text-blue-700 mt-1">
-                  {app?.status === "submitted"
-                    ? "Your profile information was included at submission time and is now locked."
-                    : "Your profile information will be automatically included in this application."}
-                </p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Sign-in Banner - shown when user is not logged in */}
+      {isNotLoggedIn && (
+        <div className="bg-blue-600 text-white py-3 px-4 md:py-4 md:px-6">
+          <div className="max-w-4xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <div className="font-semibold text-sm md:text-base">
+                Sign in to start or continue your application
               </div>
+              <div className="text-xs md:text-sm text-blue-100">
+                You can view the application below, but you'll need to sign in
+                to submit.
+              </div>
+            </div>
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="bg-white text-blue-600 font-semibold py-2 px-4 rounded-md hover:bg-blue-50 transition-colors text-sm whitespace-nowrap"
+            >
+              Sign up / Log in
+            </button>
+          </div>
+        </div>
+      )}
 
-              {profileSnap ? (
-                <div className="mb-4">
-                  <ProfileCard
-                    profile={profileSnap}
-                    sectionSettings={
-                      program?.metadata?.application?.profile?.sections
-                    }
-                  />
-                </div>
-              ) : (
-                <div className="mb-4">
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <p className="text-sm text-yellow-800">
-                      🔍 Debug: Profile autofill is enabled but no profile data
-                      loaded yet. Check console for debugging info.
-                    </p>
-                  </div>
-                </div>
+      <div className="max-w-4xl mx-auto p-3 md:p-6">
+        {/* Header Section */}
+        <div className="mb-4 md:mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold">
+                {programDetails?.name || appRow?.program_name || "Application"}
+              </h1>
+              {programDetails?.description && (
+                <p className="mt-1 text-sm md:text-base text-gray-600">
+                  {programDetails.description}
+                </p>
+              )}
+              {organization && (
+                <p className="mt-1 text-xs md:text-sm text-gray-500">
+                  Organization: {organization.name}
+                </p>
               )}
             </div>
-          )
-        );
-      })()}
-
-      {/* Dynamic fields */}
-      <div className="space-y-6">
-        {fields.length === 0 && (
-          <div className="bg-white border rounded-lg p-6">
-            <p className="text-sm text-gray-500">
-              This program has no custom questions yet.
-            </p>
-          </div>
-        )}
-
-        {fields.map((f) => {
-          const val = answers[f.id];
-          const setVal = (v: any) => setAnswers((a) => ({ ...a, [f.id]: v }));
-
-          switch (f.type) {
-            case "short_text":
-              return (
-                <div
-                  key={f.id}
-                  className="bg-white border rounded-lg p-6 space-y-3"
-                >
-                  <label className="block text-sm font-medium text-gray-700">
-                    {f.label}
-                    {f.required && " *"}
-                  </label>
-                  <input
-                    className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    type="text"
-                    maxLength={f.maxLength}
-                    value={val ?? ""}
-                    onChange={(e) => setVal(e.target.value)}
-                  />
-                </div>
-              );
-            case "long_text":
-              return (
-                <div
-                  key={f.id}
-                  className="bg-white border rounded-lg p-6 space-y-3"
-                >
-                  <WordLimitedTextarea
-                    label={f.label}
-                    value={val ?? ""}
-                    onChange={setVal}
-                    maxWords={f.maxWords ?? 100}
-                    rows={5}
-                    required={f.required}
-                  />
-                </div>
-              );
-            case "date":
-              return (
-                <div
-                  key={f.id}
-                  className="bg-white border rounded-lg p-6 space-y-3"
-                >
-                  <label className="block text-sm font-medium text-gray-700">
-                    {f.label}
-                    {f.required && " *"}
-                  </label>
-                  <input
-                    className="rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    type="date"
-                    value={val ?? ""}
-                    onChange={(e) => setVal(e.target.value)}
-                  />
-                </div>
-              );
-            case "select":
-              return (
-                <div
-                  key={f.id}
-                  className="bg-white border rounded-lg p-6 space-y-3"
-                >
-                  <label className="block text-sm font-medium text-gray-700">
-                    {f.label}
-                    {f.required && " *"}
-                  </label>
-                  <select
-                    className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    value={val ?? ""}
-                    onChange={(e) => setVal(e.target.value)}
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                <span>←</span>
+                Back to Dashboard
+              </button>
+              {appRow &&
+                appRow.status === "submitted" &&
+                canEdit &&
+                !isEditing && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="px-4 py-2 text-white bg-purple-600 rounded-md hover:bg-purple-700"
                   >
-                    <option value="">Select an option...</option>
-                    {f.options?.map((option, index) => (
-                      <option key={index} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              );
-            case "checkbox":
-              return (
-                <div key={f.id} className="bg-white border rounded-lg p-6">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      className="h-5 w-5 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                      checked={!!val}
-                      onChange={(e) => setVal(e.target.checked)}
-                    />
-                    <label className="text-sm font-medium text-gray-700">
-                      {f.label}
-                      {f.required && " *"}
-                    </label>
-                  </div>
-                </div>
-              );
-            case "file":
-              return (
-                <div
-                  key={f.id}
-                  className="bg-white border rounded-lg p-6 space-y-3"
+                    Edit Application
+                  </button>
+                )}
+              {isEditing && appRow && appRow.status === "submitted" && (
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="px-4 py-2 text-white bg-gray-500 rounded-md hover:bg-gray-600"
                 >
-                  <label className="block text-sm font-medium text-gray-700">
-                    {f.label}
-                    {f.required && " *"}
-                  </label>
-                  <SimpleFileUpload
-                    applicationId={applicationId}
-                    fieldId={f.id}
-                    value={answers[f.id] || ""}
-                    onChange={(value) =>
-                      setAnswers((prev) => ({ ...prev, [f.id]: value }))
-                    }
-                  />
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Application Status */}
+        <div className="mb-6">
+          <div
+            className={`rounded-lg border p-4 ${
+              isBeforeOpen
+                ? "bg-yellow-50 border-yellow-200"
+                : isPastDeadlineFlag
+                ? "bg-red-50 border-red-200"
+                : "bg-green-50 border-green-200"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">
+                {isBeforeOpen
+                  ? "⏰"
+                  : isPastDeadlineFlag
+                  ? "🔒"
+                  : canEdit
+                  ? "📅"
+                  : "🔒"}
+              </span>
+              <div>
+                <div className="font-semibold text-gray-900">
+                  {isBeforeOpen
+                    ? "Application Coming Soon"
+                    : isPastDeadlineFlag
+                    ? "Applications Closed"
+                    : "Applications Open"}
                 </div>
-              );
-            default:
-              return null;
-          }
-        })}
+                <div className="text-sm text-gray-600">
+                  {isBeforeOpen
+                    ? getOpenDateMessage(programOpenDate)
+                    : programDeadline
+                    ? getDeadlineMessage(programDeadline)
+                    : "No deadline set"}
+                </div>
+                {appRow && appRow.status === "submitted" && canEdit && (
+                  <div className="text-sm text-green-600 mt-1">
+                    ✓ Application submitted - You can still edit until the
+                    deadline
+                  </div>
+                )}
+                {isBeforeOpen && (
+                  <div className="text-sm text-yellow-600 mt-1">
+                    Application will be available soon
+                  </div>
+                )}
+                {!canEdit && !isBeforeOpen && (
+                  <div
+                    className={`text-sm mt-1 ${
+                      isPastDeadlineFlag ? "text-red-600" : "text-gray-600"
+                    }`}
+                  >
+                    {isNotLoggedIn
+                      ? "Application is locked - please sign in to apply"
+                      : "Application is locked - deadline has passed"}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Application Card */}
+        <div className="bg-white rounded-lg border shadow-sm">
+          <div className="p-6">
+            {!isBeforeOpen && (
+              <div className="space-y-6">
+                {/* Profile Autofill Section */}
+                {(() => {
+                  const program = {
+                    id: programDetails?.id,
+                    name: programDetails?.name,
+                    metadata: programDetails?.metadata,
+                  };
+
+                  return (
+                    programUsesProfile(program) && (
+                      <div className="mb-8">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <h2 className="text-lg font-semibold text-blue-900">
+                                Applicant Profile (Autofilled)
+                              </h2>
+                            </div>
+                            <a
+                              href="/profile"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Edit Profile →
+                            </a>
+                          </div>
+                          <p className="text-sm text-blue-700 mb-6">
+                            {appRow?.status === "submitted"
+                              ? "This information was automatically filled from your profile at the time of submission and is now locked."
+                              : isNotLoggedIn
+                              ? "These sections will be automatically filled from your profile once you sign in. Sign in to see your profile data or edit your profile."
+                              : "This information was automatically filled from your profile and will be updated as you make changes."}
+                          </p>
+
+                          {profileSnap || isNotLoggedIn ? (
+                            <ProfileCard
+                              profile={profileSnap || {}}
+                              sectionSettings={
+                                programDetails?.metadata?.application?.profile
+                                  ?.sections
+                              }
+                            />
+                          ) : (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                              <p className="text-sm text-yellow-800">
+                                🔍 Debug: Profile autofill is enabled but no
+                                profile data loaded yet. Check console for
+                                debugging info.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  );
+                })()}
+
+                {/* Organization Application Questions Section */}
+                {(() => {
+                  const program = {
+                    id: programDetails?.id,
+                    name: programDetails?.name,
+                    metadata: programDetails?.metadata,
+                  };
+                  const hasOtherSections = programUsesProfile(program);
+
+                  return items.length === 0 ? (
+                    <div className="p-6">
+                      {hasOtherSections && (
+                        <>
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <h2 className="text-lg font-semibold text-gray-900">
+                              Organization-Specific Application
+                            </h2>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Custom questions created by this organization.
+                          </p>
+                        </>
+                      )}
+                      <div className="text-sm text-slate-500">
+                        This application doesn't include custom questions.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-6">
+                      {hasOtherSections && (
+                        <>
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <h2 className="text-lg font-semibold text-gray-900">
+                              Organization Application Questions
+                            </h2>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-6">
+                            Custom questions created by this organization.
+                          </p>
+                        </>
+                      )}
+                      <div className="space-y-6">
+                        {items.map((item, idx) => {
+                          const key = item.key || `q_${idx}`;
+                          const val = answers?.[key] ?? "";
+
+                          switch (item.type) {
+                            case "short_text":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                >
+                                  <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
+                                    {item.label}
+                                    {item.required && " *"}
+                                  </label>
+                                  <input
+                                    className={`w-full rounded-md border border-gray-300 px-3 md:px-4 py-2 md:py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                      !isFormEditable
+                                        ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                        : ""
+                                    }`}
+                                    value={val}
+                                    maxLength={item.maxLength}
+                                    onChange={(e) =>
+                                      update(key, e.target.value)
+                                    }
+                                    disabled={!isFormEditable}
+                                    readOnly={!isFormEditable}
+                                    style={{
+                                      cursor: isFormEditable
+                                        ? "text"
+                                        : "not-allowed",
+                                    }}
+                                  />
+                                </div>
+                              );
+                            case "long_text":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                >
+                                  <WordLimitedTextarea
+                                    label={item.label}
+                                    value={val}
+                                    onChange={(value) => update(key, value)}
+                                    maxWords={item.maxWords ?? 100}
+                                    rows={3}
+                                    required={item.required}
+                                    disabled={!isFormEditable}
+                                  />
+                                </div>
+                              );
+                            case "checkbox":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                >
+                                  <div className="flex items-center gap-2 md:gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!val}
+                                      onChange={(e) =>
+                                        update(key, e.target.checked)
+                                      }
+                                      disabled={!isFormEditable}
+                                      className={`h-4 w-4 md:h-5 md:w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
+                                        !isFormEditable ? "opacity-50" : ""
+                                      }`}
+                                      style={{
+                                        cursor: isFormEditable
+                                          ? "pointer"
+                                          : "not-allowed",
+                                      }}
+                                    />
+                                    <label className="text-sm font-medium text-gray-700">
+                                      {item.label}
+                                      {item.required && " *"}
+                                    </label>
+                                  </div>
+                                </div>
+                              );
+                            case "date":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                >
+                                  <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
+                                    {item.label}
+                                    {item.required && " *"}
+                                  </label>
+                                  <input
+                                    type="date"
+                                    className={`w-full rounded-md border border-gray-300 px-3 md:px-4 py-2 md:py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                      !isFormEditable
+                                        ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                        : ""
+                                    }`}
+                                    value={val}
+                                    onChange={(e) =>
+                                      update(key, e.target.value)
+                                    }
+                                    disabled={!isFormEditable}
+                                    readOnly={!isFormEditable}
+                                    style={{
+                                      cursor: isFormEditable
+                                        ? "text"
+                                        : "not-allowed",
+                                    }}
+                                  />
+                                </div>
+                              );
+                            case "select":
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                >
+                                  <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
+                                    {item.label}
+                                    {item.required && " *"}
+                                  </label>
+                                  <select
+                                    className={`w-full rounded-md border border-gray-300 px-3 md:px-4 py-2 md:py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                      !isFormEditable
+                                        ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
+                                        : ""
+                                    }`}
+                                    value={val}
+                                    onChange={(e) =>
+                                      update(key, e.target.value)
+                                    }
+                                    disabled={!isFormEditable}
+                                    style={{
+                                      cursor: isFormEditable
+                                        ? "pointer"
+                                        : "not-allowed",
+                                    }}
+                                  >
+                                    <option value="">
+                                      Select an option...
+                                    </option>
+                                    {item.options?.map((option: string) => (
+                                      <option key={option} value={option}>
+                                        {option}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              );
+                            case "file":
+                              // Sanitize the value to ensure it's actually a file, not profile data
+                              let fileValue = answers[key] || "";
+                              if (fileValue && typeof fileValue === "string") {
+                                try {
+                                  const parsed = JSON.parse(fileValue);
+                                  // If it looks like profile data (has __source, full_name, etc.), clear it
+                                  if (
+                                    parsed &&
+                                    typeof parsed === "object" &&
+                                    (parsed.__source ||
+                                      parsed.full_name ||
+                                      parsed.email ||
+                                      parsed.address)
+                                  ) {
+                                    fileValue = "";
+                                  }
+                                } catch (e) {
+                                  // If it's not JSON, keep it as is (might be a filename string)
+                                }
+                              } else if (
+                                fileValue &&
+                                typeof fileValue === "object" &&
+                                (fileValue.__source ||
+                                  fileValue.full_name ||
+                                  fileValue.email ||
+                                  fileValue.address)
+                              ) {
+                                // If it's already an object with profile data, clear it
+                                fileValue = "";
+                              }
+
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                >
+                                  <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
+                                    {item.label}
+                                    {item.required && " *"}
+                                  </label>
+                                  <SimpleFileUpload
+                                    applicationId={applicationId || ""}
+                                    fieldId={key}
+                                    value={fileValue}
+                                    onChange={(value) => update(key, value)}
+                                    disabled={!isFormEditable || !applicationId}
+                                  />
+                                </div>
+                              );
+                            default:
+                              return null;
+                          }
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Submit button */}
+            {!isBeforeOpen &&
+              appRow &&
+              (appRow.status === "draft" ||
+                (appRow.status === "submitted" && isEditing)) && (
+                <div className="flex justify-end pt-4 border-t">
+                  <button
+                    onClick={handleSubmit}
+                    className="rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
+                    disabled={submitting || !canEdit}
+                    title={
+                      !canEdit ? "Cannot submit - deadline has passed" : ""
+                    }
+                  >
+                    {submitting ? "Submitting..." : "Submit Application"}
+                  </button>
+                </div>
+              )}
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onSave}
-          disabled={saving || submitting}
-          className="px-4 py-2 rounded-md bg-indigo-600 text-white disabled:opacity-50"
-        >
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button
-          onClick={onSubmitApp}
-          disabled={saving || submitting}
-          className="ml-3 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {submitting ? "Submitting…" : "Submit Application"}
-        </button>
-      </div>
+      {/* Login Modal */}
+      <LoginModal
+        open={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
     </div>
   );
 }

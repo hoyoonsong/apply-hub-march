@@ -66,6 +66,8 @@ function formatValue(value: any, field: Field): string {
     case "file":
       // Check if this is a file field with metadata
       if (typeof value === "string") {
+        // If empty string, return "--"
+        if (value.trim() === "") return "—";
         try {
           const fileInfo = JSON.parse(value);
           if (fileInfo && fileInfo.fileName) {
@@ -76,9 +78,19 @@ function formatValue(value: any, field: Field): string {
         }
       }
       if (typeof value === "object" && value !== null) {
-        return value.name ?? value.path ?? JSON.stringify(value);
+        // If it has fileName, return it
+        if (value.fileName) return value.fileName;
+        // If it has name or path, return those
+        if (value.name || value.path) return value.name ?? value.path;
+        // Otherwise, it's not a valid file object
+        return "—";
       }
-      return String(value);
+      // For boolean values (true/false) or other non-file types, return "--"
+      if (typeof value === "boolean") return "—";
+      // If it's a string that doesn't look like JSON, check if it's empty
+      if (typeof value === "string" && value.trim() === "") return "—";
+      // Last resort: return "--" for any other non-file value
+      return "—";
     default:
       if (typeof value === "object" && value !== null) {
         // If it's profile data, don't show it

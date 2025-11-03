@@ -462,9 +462,7 @@ function NewLaunchPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button
-              onClick={() =>
-                navigate("/applications/ed757042-a574-4927-abfd-0604e13d6a8d")
-              }
+              onClick={() => navigate("/dashboard")}
               className="bg-white hover:bg-gray-50 text-blue-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
             >
               Organizations Start Here

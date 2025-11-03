@@ -130,11 +130,30 @@ export function SimpleFileUpload({
   let currentFile: any = null;
   try {
     if (value) {
-      currentFile = JSON.parse(value);
+      const parsed = JSON.parse(value);
+      // Only treat it as a file if it has the expected file structure
+      // Check for file-specific properties to avoid treating profile data as files
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        (parsed.fileName || parsed.filePath) &&
+        !parsed.__source &&
+        !parsed.full_name &&
+        !parsed.email &&
+        !parsed.address
+      ) {
+        currentFile = parsed;
+      } else if (typeof value === "string" && !value.startsWith("{")) {
+        // If it's a simple string (not JSON), treat it as a filename
+        currentFile = { fileName: value };
+      }
+      // Otherwise, treat as empty/invalid (don't set currentFile)
     }
   } catch (e) {
-    // If it's not JSON, treat it as a simple filename
-    currentFile = { fileName: value };
+    // If it's not JSON, treat it as a simple filename only if it's not empty
+    if (value && typeof value === "string" && value.trim() !== "") {
+      currentFile = { fileName: value };
+    }
   }
 
   return (
@@ -151,13 +170,26 @@ export function SimpleFileUpload({
       {/* Current file display */}
       {currentFile && (
         <div className="space-y-3">
-          <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
-            <strong>Saved:</strong> {currentFile.fileName}
-            {currentFile.fileSize && (
-              <span className="text-gray-500">
-                {" "}
-                • {(currentFile.fileSize / (1024 * 1024)).toFixed(2)} MB
-              </span>
+          <div className="flex items-center justify-between text-sm text-green-600 bg-green-50 p-2 rounded">
+            <div>
+              <strong>Saved:</strong> {currentFile.fileName}
+              {currentFile.fileSize && (
+                <span className="text-gray-500">
+                  {" "}
+                  • {(currentFile.fileSize / (1024 * 1024)).toFixed(2)} MB
+                </span>
+              )}
+            </div>
+            {!disabled && (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange("");
+                }}
+                className="text-red-600 hover:text-red-800 font-medium text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
+              >
+                Remove
+              </button>
             )}
           </div>
 

@@ -24,8 +24,7 @@ export default function ProgramCard({ program }: { program: Program }) {
 
     setStarting(true);
     try {
-      const app = await startOrGetApplication(program.id);
-      navigate(`/applications/${app.id}`);
+      navigate(`/programs/${program.id}/apply`);
     } catch (error) {
       console.error("Failed to start application:", error);
       // You could show a toast or error message here

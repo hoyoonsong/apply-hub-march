@@ -169,29 +169,52 @@ export default function ReviewerApplication() {
       return <span className="text-gray-400">—</span>;
     switch (question.type) {
       case "FILE":
+        // If it's a boolean, return "--"
+        if (typeof value === "boolean") {
+          return <span className="text-gray-400">—</span>;
+        }
         // Check if this is a file field with metadata
-        try {
-          const fileInfo = JSON.parse(value);
-          if (fileInfo && fileInfo.fileName) {
+        if (typeof value === "string") {
+          // If empty string, return "--"
+          if (value.trim() === "") {
+            return <span className="text-gray-400">—</span>;
+          }
+          try {
+            const fileInfo = JSON.parse(value);
+            if (fileInfo && fileInfo.fileName) {
+              return (
+                <div className="text-sm text-gray-600">
+                  <div className="font-medium">📎 {fileInfo.fileName}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(fileInfo.fileSize / (1024 * 1024)).toFixed(2)} MB •{" "}
+                    {fileInfo.contentType}
+                  </div>
+                </div>
+              );
+            }
+          } catch {
+            // Not JSON, treat as regular text
+          }
+        }
+        // If it's an object, check for file properties
+        if (typeof value === "object" && value !== null) {
+          if (value.fileName) {
             return (
               <div className="text-sm text-gray-600">
-                <div className="font-medium">📎 {fileInfo.fileName}</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {(fileInfo.fileSize / (1024 * 1024)).toFixed(2)} MB •{" "}
-                  {fileInfo.contentType}
-                </div>
+                <div className="font-medium">📎 {value.fileName}</div>
+                {value.fileSize && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(value.fileSize / (1024 * 1024)).toFixed(2)} MB
+                    {value.contentType && ` • ${value.contentType}`}
+                  </div>
+                )}
               </div>
             );
           }
-        } catch {
-          // Not JSON, treat as regular text
         }
 
-        return (
-          <span className="text-gray-500 italic">
-            See File Attachments section below
-          </span>
-        );
+        // No valid file found, return "--"
+        return <span className="text-gray-400">—</span>;
       case "CHECKBOX":
         return value ? "Yes" : "No";
       case "SELECT":

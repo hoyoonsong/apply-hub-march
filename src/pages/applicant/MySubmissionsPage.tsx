@@ -252,7 +252,7 @@ export default function MySubmissionsPage() {
                             app.status.slice(1)}
                         </span>
                         <Link
-                          to={`/applications/${app.id}`}
+                          to={`/programs/${app.program_id}/apply`}
                           className="inline-flex items-center px-3 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
                         >
                           View Application

@@ -5,7 +5,7 @@ import DashboardNavigation from "./components/DashboardNavigation.tsx";
 import CapabilityHub from "./components/CapabilityHub.tsx";
 import { loadCapabilities } from "./lib/capabilities";
 import { supabase } from "./lib/supabase";
-import { startOrGetApplication } from "./lib/rpc";
+// import { startOrGetApplication } from "./lib/rpc";
 import { useFeaturedSections } from "./hooks/useFeaturedSections.ts";
 
 // HeroCarousel component for individual carousels
@@ -257,8 +257,7 @@ function FeaturedPrograms() {
     if (item.target_type === "program") {
       // For programs, start or get application and navigate to it
       try {
-        const app = await startOrGetApplication(item.target_id);
-        navigate(`/applications/${app.id}`);
+        navigate(`/programs/${item.target_id}/apply`);
       } catch (e) {
         console.error("Failed to start application:", e);
         alert("Could not start application. Please try again.");
@@ -765,8 +764,7 @@ function AllPrograms() {
                   className={`${program.buttonColor} text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors`}
                   onClick={async () => {
                     try {
-                      const app = await startOrGetApplication(program.id);
-                      navigate(`/applications/${app.id}`);
+                      navigate(`/programs/${program.id}/apply`);
                     } catch (error) {
                       console.error("Failed to start application:", error);
                       alert("Could not start application. Please try again.");

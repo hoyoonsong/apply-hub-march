@@ -31,7 +31,7 @@ import OrgAdminPrograms from "./pages/org-admin/OrgAdminPrograms";
 import OrgProgramBuilder from "./pages/org-admin/OrgProgramBuilder";
 import CoalitionProgramBuilder from "./pages/coalition-manager/CoalitionProgramBuilder";
 import ApplicationForm from "./pages/apply/ApplicationForm";
-import ApplyProgramPage from "./pages/programs/ApplyProgramPage";
+import DirectApplication from "./pages/apply/DirectApplication";
 import ApplicationPage from "./pages/applications/ApplicationPage";
 import ProfilePage from "./pages/profile";
 import QueuePage from "./pages/review/QueuePage";
@@ -264,7 +264,7 @@ export default function App() {
             />
             <Route
               path="/programs/:programId/apply"
-              element={<ApplyProgramPage />}
+              element={<DirectApplication />}
             />
             <Route path="/applications/:appId" element={<ApplicationPage />} />
             <Route

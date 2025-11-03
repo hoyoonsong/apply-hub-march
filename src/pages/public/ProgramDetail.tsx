@@ -83,8 +83,8 @@ export default function ProgramDetail() {
     if (!programId) return;
     setStarting(true);
     try {
-      const app = await startOrGetApplication(programId);
-      navigate(`/applications/${app.id}`);
+      // Keep URL stable; server will create/load application row internally
+      navigate(`/programs/${programId}/apply`);
     } catch (e: any) {
       setError(e.message);
     } finally {
