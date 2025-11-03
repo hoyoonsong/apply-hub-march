@@ -549,7 +549,7 @@ export default function ApplicationForm({
                           <div className="flex items-center gap-3 mb-4">
                             <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
                             <h2 className="text-lg font-semibold text-gray-900">
-                              Organization-Specific Application
+                              Organization Application Questions
                             </h2>
                           </div>
                           <p className="text-sm text-gray-600 mb-4">
