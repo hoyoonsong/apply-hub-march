@@ -129,7 +129,7 @@ export function SimpleFileUpload({
   // Parse the current value to show file info
   let currentFile: any = null;
   try {
-    if (value) {
+    if (value && value.trim() !== "") {
       const parsed = JSON.parse(value);
       // Only treat it as a file if it has the expected file structure
       // Check for file-specific properties to avoid treating profile data as files
@@ -158,14 +158,16 @@ export function SimpleFileUpload({
 
   return (
     <div className="space-y-2 md:space-y-3">
-      {/* File input */}
-      <input
-        type="file"
-        accept={ALLOWED_TYPES.join(",")}
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        disabled={disabled || uploading}
-        className="w-full text-xs md:text-sm text-gray-500 file:mr-2 md:file:mr-4 file:py-1.5 md:file:py-2 file:px-3 md:file:px-4 file:rounded-full file:border-0 file:text-xs md:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
-      />
+      {/* File input - only show when no file is saved */}
+      {!currentFile && (
+        <input
+          type="file"
+          accept={ALLOWED_TYPES.join(",")}
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          disabled={disabled || uploading}
+          className="w-full text-xs md:text-sm text-gray-500 file:mr-2 md:file:mr-4 file:py-1.5 md:file:py-2 file:px-3 md:file:px-4 file:rounded-full file:border-0 file:text-xs md:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+        />
+      )}
 
       {/* Current file display */}
       {currentFile && (
@@ -180,17 +182,36 @@ export function SimpleFileUpload({
                 </span>
               )}
             </div>
-            {!disabled && (
-              <button
-                type="button"
-                onClick={() => {
-                  onChange("");
-                }}
-                className="text-red-600 hover:text-red-800 font-medium text-xs px-3 py-1.5 rounded hover:bg-red-50 transition-colors whitespace-nowrap self-start sm:self-auto"
-              >
-                Remove
-              </button>
-            )}
+            <div className="flex gap-2">
+              {!disabled && (
+                <>
+                  <input
+                    type="file"
+                    accept={ALLOWED_TYPES.join(",")}
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    disabled={disabled || uploading}
+                    className="hidden"
+                    id={`replace-file-${fieldId}`}
+                  />
+                  <label
+                    htmlFor={`replace-file-${fieldId}`}
+                    className="text-blue-600 hover:text-blue-800 font-medium text-xs px-3 py-1.5 rounded hover:bg-blue-50 transition-colors whitespace-nowrap cursor-pointer border border-blue-200"
+                  >
+                    Replace
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange("");
+                      setFile(null);
+                    }}
+                    className="text-red-600 hover:text-red-800 font-medium text-xs px-3 py-1.5 rounded hover:bg-red-50 transition-colors whitespace-nowrap border border-red-200"
+                  >
+                    Remove
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* File preview */}
