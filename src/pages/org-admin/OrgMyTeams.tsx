@@ -86,24 +86,56 @@ export default function OrgMyTeams() {
       setLoading(true);
       setError(null);
 
-      // Load organization-level admins
-      const { data: orgAdmins, error: adminsError } = await supabase
-        .from("admins")
-        .select("user_id, status, created_at")
-        .eq("scope_type", "org")
-        .eq("scope_id", org.id);
+      // Load organization-level admins using RPC function (bypasses RLS)
+      let orgAdmins: any[] = [];
+      
+      const { data: orgAdminsData, error: adminsError } = await supabase.rpc(
+        "org_list_org_admins",
+        { p_org_id: org.id }
+      );
 
-      if (adminsError) throw adminsError;
+      if (adminsError) {
+        console.error("Error calling org_list_org_admins:", adminsError);
+        // If RPC function doesn't exist or fails, try to continue with empty array
+        // This allows the page to still load reviewers from programs
+        console.warn("Continuing without org admins data");
+        orgAdmins = [];
+      } else {
+        // Convert RPC result to expected format
+        orgAdmins = Array.isArray(orgAdminsData) 
+          ? orgAdminsData.map((admin: any) => ({
+              user_id: admin.user_id,
+              status: admin.status,
+              created_at: admin.created_at,
+              email: admin.email,
+              full_name: admin.full_name,
+            }))
+          : [];
+      }
 
-      // Get all programs for this organization to find reviewers
-      const { data: programs, error: programsError } = await supabase
-        .from("programs")
-        .select("id, name")
-        .eq("organization_id", org.id)
-        .is("deleted_at", null);
+      // Get all programs for this organization using RPC function (bypasses RLS)
+      let programs: any[] = [];
+      
+      const { data: programsData, error: programsError } = await supabase.rpc(
+        "org_list_org_programs",
+        { p_org_id: org.id }
+      );
 
-      if (programsError) throw programsError;
-      setPrograms(programs || []);
+      if (programsError) {
+        console.error("Error calling org_list_org_programs:", programsError);
+        // If RPC function doesn't exist or fails, we can't load team members properly
+        throw new Error(`Failed to load programs: ${programsError.message}`);
+      }
+      
+      // Convert RPC result to expected format
+      programs = Array.isArray(programsData)
+        ? programsData.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+          }))
+        : [];
+      
+      setPrograms(programs);
 
       // Get all reviewers for all programs in this organization
       const allReviewers = new Map<string, TeamMember>();
@@ -112,8 +144,8 @@ export default function OrgMyTeams() {
       orgAdmins?.forEach((admin: any) => {
         allReviewers.set(admin.user_id, {
           id: admin.user_id,
-          email: "Loading...", // Will be filled in from program data
-          full_name: "Loading...", // Will be filled in from program data
+          email: admin.email || "Loading...", // Use email from RPC if available
+          full_name: admin.full_name || "Loading...", // Use name from RPC if available
           role: "admin",
           status: admin.status === "active" ? "active" : "revoked",
           assignments: {
@@ -125,14 +157,55 @@ export default function OrgMyTeams() {
         });
       });
 
+      // Load org-level reviewers (reviewers assigned to the org, not specific programs)
+      try {
+        const { data: orgReviewersData, error: orgReviewersError } = await supabase.rpc(
+          "org_list_org_reviewers",
+          { p_org_id: org.id }
+        );
+
+        if (!orgReviewersError && orgReviewersData) {
+          const orgReviewers = Array.isArray(orgReviewersData) ? orgReviewersData : [];
+          
+          orgReviewers.forEach((reviewer: any) => {
+            if (!allReviewers.has(reviewer.user_id)) {
+              allReviewers.set(reviewer.user_id, {
+                id: reviewer.user_id,
+                email: reviewer.email || "Loading...",
+                full_name: reviewer.full_name || "Loading...",
+                role: "reviewer",
+                status: reviewer.status === "active" ? "active" : "revoked",
+                assignments: {
+                  org_admin: false,
+                  reviewer_programs: [],
+                  reviewer_org: true,
+                },
+                created_at: reviewer.created_at,
+              });
+            } else {
+              // Update existing member to mark as org reviewer
+              const existing = allReviewers.get(reviewer.user_id)!;
+              existing.assignments.reviewer_org = true;
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to load org-level reviewers:", err);
+      }
+
       for (const program of programs || []) {
         try {
-          const { data: assignments } = await supabase.rpc(
+          const { data: assignments, error: assignmentsError } = await supabase.rpc(
             "org_list_program_assignments",
             {
               p_program_id: program.id,
             }
           );
+
+          if (assignmentsError) {
+            console.warn(`Error loading assignments for program ${program.id}:`, assignmentsError);
+            continue;
+          }
 
           if (assignments?.reviewers) {
             assignments.reviewers.forEach((reviewer: any) => {
@@ -157,10 +230,17 @@ export default function OrgMyTeams() {
               } else {
                 // Add this program to their assignments and fill in email/name if needed
                 const existing = allReviewers.get(reviewer.user_id)!;
-                existing.assignments.reviewer_programs.push(program.id);
-                if (existing.email === "Loading...") {
+                if (!existing.assignments.reviewer_programs.includes(program.id)) {
+                  existing.assignments.reviewer_programs.push(program.id);
+                }
+                if (existing.email === "Loading..." && reviewer.email) {
                   existing.email = reviewer.email;
                   existing.full_name = reviewer.full_name;
+                }
+                // If this reviewer is active in this program, mark them as active overall
+                // (user is active if they're active in ANY program)
+                if (reviewer.status === "active") {
+                  existing.status = "active";
                 }
               }
             });
@@ -193,6 +273,10 @@ export default function OrgMyTeams() {
                 ) {
                   existing.assignments.reviewer_programs.push(program.id);
                 }
+                // If this admin is active in this program, mark them as active overall
+                if (admin.status === "active") {
+                  existing.status = "active";
+                }
               }
             });
           }
@@ -204,10 +288,26 @@ export default function OrgMyTeams() {
         }
       }
 
-      const teamMembersArray = Array.from(allReviewers.values());
+      // Filter: show members who are active in at least one program/org
+      // Also check if they have any program assignments (active reviewers/admins)
+      const teamMembersArray = Array.from(allReviewers.values())
+        .filter((member) => {
+          // Show if status is active
+          if (member.status === "active") return true;
+          // Also show if they have program assignments (they might be active in some programs)
+          if (member.assignments.reviewer_programs.length > 0) return true;
+          // Show org admins and org reviewers
+          if (member.assignments.org_admin || member.assignments.reviewer_org) return true;
+          return false;
+        });
+      
+      console.log(
+        "All reviewers before filtering:",
+        Array.from(allReviewers.values()).map(m => ({ id: m.id, email: m.email, status: m.status }))
+      );
       console.log(
         "Final team members array:",
-        teamMembersArray,
+        teamMembersArray.map(m => ({ id: m.id, email: m.email, status: m.status })),
         "at",
         new Date().toISOString()
       );
@@ -243,18 +343,6 @@ export default function OrgMyTeams() {
 
       setFoundUser(user);
 
-      if (newMemberRole === "admin") {
-        // Add as organization admin using the admins table
-        const { error } = await supabase.from("admins").upsert({
-          scope_type: "org",
-          scope_id: org.id,
-          user_id: user.user_id,
-          status: "active",
-        });
-        if (error) throw error;
-      }
-
-      // Add as reviewer to ALL programs in the organization (both admins and reviewers)
       // Get all programs for this organization
       const { data: programs, error: programsError } = await supabase
         .from("programs")
@@ -264,21 +352,65 @@ export default function OrgMyTeams() {
 
       if (programsError) throw programsError;
 
-      // Add them as reviewer to each program using the working RPC function
+      if (newMemberRole === "admin") {
+        // Add as organization admin using RPC function (bypasses RLS)
+        const { data: adminResult, error: adminError } = await supabase.rpc(
+          "org_add_org_admin",
+          {
+            p_org_id: org.id,
+            p_user_email: user.email,
+            p_user_name: user.full_name || null,
+          }
+        );
+        if (adminError) throw adminError;
+        if (adminResult && !adminResult.success) {
+          throw new Error(adminResult.error || "Failed to add org admin");
+        }
+
+        // Also add as program admin to ALL programs in the organization
+        let addedCount = 0;
+        for (const program of programs || []) {
+          const { data: result, error } = await supabase.rpc("org_add_program_admin", {
+            p_program_id: program.id,
+            p_user_email: user.email,
+            p_user_name: user.full_name || null,
+          });
+          if (error) {
+            console.warn(
+              `Failed to add admin to program ${program.id}:`,
+              error
+            );
+            // Continue with other programs even if one fails
+          } else if (result?.success) {
+            addedCount++;
+            console.log(`Successfully added admin to program ${program.id}:`, result);
+          }
+        }
+        console.log(`Added admin to ${addedCount} out of ${programs?.length || 0} programs`);
+      }
+
+      // Add as reviewer to ALL programs in the organization (both admins and reviewers)
+      // Note: Admins are also added as reviewers so they can review applications
+      let addedCount = 0;
       for (const program of programs || []) {
-        const { error } = await supabase.rpc("org_add_program_reviewer", {
+        const { data: result, error } = await supabase.rpc("org_add_program_reviewer", {
           p_program_id: program.id,
           p_user_email: user.email,
           p_user_name: user.full_name || null,
         });
         if (error) {
           console.warn(
-            `Failed to add ${newMemberRole} to program ${program.id}:`,
+            `Failed to add reviewer to program ${program.id}:`,
             error
           );
           // Continue with other programs even if one fails
+        } else if (result?.success) {
+          addedCount++;
+          console.log(`Successfully added reviewer to program ${program.id}:`, result);
         }
       }
+
+      console.log(`Added reviewer to ${addedCount} out of ${programs?.length || 0} programs`);
 
       setSuccess(
         `${user.full_name || user.email} added to your team as ${newMemberRole}`
@@ -288,7 +420,10 @@ export default function OrgMyTeams() {
       setFoundUser(null);
       setShowAddForm(false);
 
-      // For now, just reload the simple team list
+      // Small delay to ensure database transaction is committed
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Reload the team list
       await loadTeamMembers();
     } catch (err: any) {
       console.error("Error adding team member:", err);
@@ -354,18 +489,12 @@ export default function OrgMyTeams() {
     if (!org) return;
 
     try {
-      if (role === "admin") {
-        // Remove from organization admins table
-        const { error } = await supabase
-          .from("admins")
-          .delete()
-          .eq("scope_type", "org")
-          .eq("scope_id", org.id)
-          .eq("user_id", userId);
-        if (error) throw error;
-      }
+      // Get the user's email for removal
+      const user = await findUserByEmail(
+        teamMembers.find((m) => m.id === userId)?.email || ""
+      );
+      if (!user) throw new Error("User not found");
 
-      // Remove from ALL programs in the organization (both admins and reviewers)
       // Get all programs for this organization
       const { data: programs, error: programsError } = await supabase
         .from("programs")
@@ -375,13 +504,37 @@ export default function OrgMyTeams() {
 
       if (programsError) throw programsError;
 
-      // Get the user's email for removal
-      const user = await findUserByEmail(
-        teamMembers.find((m) => m.id === userId)?.email || ""
-      );
-      if (!user) throw new Error("User not found");
+      if (role === "admin") {
+        // Remove from organization admins using RPC function (bypasses RLS)
+        const { data: removeResult, error: removeError } = await supabase.rpc(
+          "org_remove_org_admin",
+          {
+            p_org_id: org.id,
+            p_user_email: user.email,
+          }
+        );
+        if (removeError) throw removeError;
+        if (removeResult && !removeResult.success) {
+          throw new Error(removeResult.error || "Failed to remove org admin");
+        }
 
-      // Remove them as reviewer from each program
+        // Also remove as program admin from all programs
+        for (const program of programs || []) {
+          const { error } = await supabase.rpc("org_remove_program_admin", {
+            p_program_id: program.id,
+            p_user_email: user.email,
+          });
+          if (error) {
+            console.warn(
+              `Failed to remove admin from program ${program.id}:`,
+              error
+            );
+            // Continue with other programs even if one fails
+          }
+        }
+      }
+
+      // Remove as reviewer from ALL programs in the organization (both admins and reviewers)
       for (const program of programs || []) {
         const { error } = await supabase.rpc("org_remove_program_reviewer", {
           p_program_id: program.id,
@@ -389,7 +542,7 @@ export default function OrgMyTeams() {
         });
         if (error) {
           console.warn(
-            `Failed to remove ${role} from program ${program.id}:`,
+            `Failed to remove reviewer from program ${program.id}:`,
             error
           );
           // Continue with other programs even if one fails
@@ -397,7 +550,7 @@ export default function OrgMyTeams() {
       }
 
       setSuccess("Team member removed successfully");
-      // For now, just reload the simple team list
+      // Reload the team list
       await loadTeamMembers();
     } catch (err: any) {
       console.error("Error removing team member:", err);
