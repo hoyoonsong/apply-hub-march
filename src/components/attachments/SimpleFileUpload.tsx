@@ -157,26 +157,26 @@ export function SimpleFileUpload({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 md:space-y-3">
       {/* File input */}
       <input
         type="file"
         accept={ALLOWED_TYPES.join(",")}
         onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         disabled={disabled || uploading}
-        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+        className="w-full text-xs md:text-sm text-gray-500 file:mr-2 md:file:mr-4 file:py-1.5 md:file:py-2 file:px-3 md:file:px-4 file:rounded-full file:border-0 file:text-xs md:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
       />
 
       {/* Current file display */}
       {currentFile && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-sm text-green-600 bg-green-50 p-2 rounded">
-            <div>
-              <strong>Saved:</strong> {currentFile.fileName}
+        <div className="space-y-2 md:space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs md:text-sm text-green-600 bg-green-50 p-2.5 md:p-3 rounded">
+            <div className="min-w-0 flex-1">
+              <strong className="font-semibold">Saved:</strong>{" "}
+              <span className="break-words">{currentFile.fileName}</span>
               {currentFile.fileSize && (
-                <span className="text-gray-500">
-                  {" "}
-                  • {(currentFile.fileSize / (1024 * 1024)).toFixed(2)} MB
+                <span className="text-gray-500 block sm:inline sm:ml-1 mt-0.5 sm:mt-0">
+                  {(currentFile.fileSize / (1024 * 1024)).toFixed(2)} MB
                 </span>
               )}
             </div>
@@ -186,7 +186,7 @@ export function SimpleFileUpload({
                 onClick={() => {
                   onChange("");
                 }}
-                className="text-red-600 hover:text-red-800 font-medium text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                className="text-red-600 hover:text-red-800 font-medium text-xs px-3 py-1.5 rounded hover:bg-red-50 transition-colors whitespace-nowrap self-start sm:self-auto"
               >
                 Remove
               </button>
@@ -194,7 +194,7 @@ export function SimpleFileUpload({
           </div>
 
           {/* File preview */}
-          <div className="border rounded-lg p-3 bg-white">
+          <div className="border rounded-lg p-2 md:p-3 bg-white">
             <FilePreview fileInfo={currentFile} />
           </div>
         </div>
@@ -202,8 +202,9 @@ export function SimpleFileUpload({
 
       {/* Uploading status */}
       {uploading && (
-        <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-          <strong>Uploading...</strong> {file?.name}
+        <div className="text-xs md:text-sm text-blue-600 bg-blue-50 p-2.5 md:p-3 rounded">
+          <strong>Uploading...</strong>{" "}
+          <span className="break-words">{file?.name}</span>
         </div>
       )}
     </div>

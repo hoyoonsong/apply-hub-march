@@ -336,19 +336,19 @@ export default function ApplicationForm({
       {/* Sign-in Banner - shown when user is not logged in */}
       {isNotLoggedIn && (
         <div className="bg-blue-600 text-white py-3 px-4 md:py-4 md:px-6">
-          <div className="max-w-4xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="max-w-4xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 md:gap-3">
             <div>
               <div className="font-semibold text-sm md:text-base">
                 Sign in to start or continue your application
               </div>
-              <div className="text-xs md:text-sm text-blue-100">
+              <div className="text-xs md:text-sm text-blue-100 mt-0.5">
                 You can view the application below, but you'll need to sign in
                 to submit.
               </div>
             </div>
             <button
               onClick={() => setShowLoginModal(true)}
-              className="bg-white text-blue-600 font-semibold py-2 px-4 rounded-md hover:bg-blue-50 transition-colors text-sm whitespace-nowrap"
+              className="bg-white text-blue-600 font-semibold py-2 px-3 md:py-2 md:px-4 rounded-md hover:bg-blue-50 transition-colors text-xs md:text-sm whitespace-nowrap"
             >
               Sign up / Log in
             </button>
@@ -356,12 +356,12 @@ export default function ApplicationForm({
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto p-3 md:p-6">
+      <div className="max-w-4xl mx-auto p-4 md:p-6">
         {/* Header Section */}
         <div className="mb-4 md:mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold">
+              <h1 className="text-lg md:text-2xl font-bold">
                 {programDetails?.name || appRow?.program_name || "Application"}
               </h1>
               {programDetails?.description && (
@@ -375,13 +375,13 @@ export default function ApplicationForm({
                 </p>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 md:gap-2 flex-wrap">
               <button
                 onClick={() => navigate("/dashboard")}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-4 md:py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 text-xs md:text-base"
               >
                 <span>←</span>
-                Back to Dashboard
+                <span className="whitespace-nowrap">Back to Dashboard</span>
               </button>
               {appRow &&
                 appRow.status === "submitted" &&
@@ -389,7 +389,7 @@ export default function ApplicationForm({
                 !isEditing && (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="px-4 py-2 text-white bg-purple-600 rounded-md hover:bg-purple-700"
+                    className="px-3 py-2 md:px-4 md:py-2 text-white bg-purple-600 rounded-md hover:bg-purple-700 text-xs md:text-base"
                   >
                     Edit Application
                   </button>
@@ -397,7 +397,7 @@ export default function ApplicationForm({
               {isEditing && appRow && appRow.status === "submitted" && (
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 text-white bg-gray-500 rounded-md hover:bg-gray-600"
+                  className="px-3 py-2 md:px-4 md:py-2 text-white bg-gray-500 rounded-md hover:bg-gray-600 text-xs md:text-base"
                 >
                   Cancel
                 </button>
@@ -407,9 +407,9 @@ export default function ApplicationForm({
         </div>
 
         {/* Application Status */}
-        <div className="mb-6">
+        <div className="mb-4 md:mb-6">
           <div
-            className={`rounded-lg border p-4 ${
+            className={`rounded-lg border p-3 md:p-4 ${
               isBeforeOpen
                 ? "bg-yellow-50 border-yellow-200"
                 : isPastDeadlineFlag
@@ -417,8 +417,8 @@ export default function ApplicationForm({
                 : "bg-green-50 border-green-200"
             }`}
           >
-            <div className="flex items-center gap-3">
-              <span className="text-xl">
+            <div className="flex items-center gap-2.5 md:gap-3">
+              <span className="text-lg md:text-xl">
                 {isBeforeOpen
                   ? "⏰"
                   : isPastDeadlineFlag
@@ -427,15 +427,15 @@ export default function ApplicationForm({
                   ? "📅"
                   : "🔒"}
               </span>
-              <div>
-                <div className="font-semibold text-gray-900">
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-gray-900 text-sm md:text-base">
                   {isBeforeOpen
                     ? "Application Coming Soon"
                     : isPastDeadlineFlag
                     ? "Applications Closed"
                     : "Applications Open"}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-xs md:text-sm text-gray-600 mt-0.5">
                   {isBeforeOpen
                     ? getOpenDateMessage(programOpenDate)
                     : programDeadline
@@ -443,19 +443,19 @@ export default function ApplicationForm({
                     : "No deadline set"}
                 </div>
                 {appRow && appRow.status === "submitted" && canEdit && (
-                  <div className="text-sm text-green-600 mt-1">
+                  <div className="text-xs md:text-sm text-green-600 mt-1">
                     ✓ Application submitted - You can still edit until the
                     deadline
                   </div>
                 )}
                 {isBeforeOpen && (
-                  <div className="text-sm text-yellow-600 mt-1">
+                  <div className="text-xs md:text-sm text-yellow-600 mt-1">
                     Application will be available soon
                   </div>
                 )}
                 {!canEdit && !isBeforeOpen && (
                   <div
-                    className={`text-sm mt-1 ${
+                    className={`text-xs md:text-sm mt-1 ${
                       isPastDeadlineFlag ? "text-red-600" : "text-gray-600"
                     }`}
                   >
@@ -471,9 +471,9 @@ export default function ApplicationForm({
 
         {/* Application Card */}
         <div className="bg-white rounded-lg border shadow-sm">
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {!isBeforeOpen && (
-              <div className="space-y-6">
+              <div className="space-y-5 md:space-y-6">
                 {/* Profile Autofill Section */}
                 {(() => {
                   const program = {
@@ -484,12 +484,12 @@ export default function ApplicationForm({
 
                   return (
                     programUsesProfile(program) && (
-                      <div className="mb-8">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <h2 className="text-lg font-semibold text-blue-900">
+                      <div className="mb-5 md:mb-8">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 md:p-6">
+                          <div className="flex items-center justify-between mb-3 md:mb-4 gap-2">
+                            <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+                              <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                              <h2 className="text-sm md:text-lg font-semibold text-blue-900 truncate">
                                 Applicant Profile (Autofilled)
                               </h2>
                             </div>
@@ -497,16 +497,16 @@ export default function ApplicationForm({
                               href="/profile"
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:text-blue-800 underline"
+                              className="text-xs md:text-sm text-blue-600 hover:text-blue-800 underline whitespace-nowrap flex-shrink-0"
                             >
                               Edit Profile →
                             </a>
                           </div>
-                          <p className="text-sm text-blue-700 mb-6">
+                          <p className="text-xs md:text-sm text-blue-700 mb-4 md:mb-6">
                             {appRow?.status === "submitted"
                               ? "This information was automatically filled from your profile at the time of submission and is now locked."
                               : isNotLoggedIn
-                              ? "These sections will be automatically filled from your profile once you sign in. Sign in to see your profile data or edit your profile."
+                              ? "These sections will be automatically filled from your profile once you sign in."
                               : "This information was automatically filled from your profile and will be updated as you make changes."}
                           </p>
 
@@ -519,8 +519,8 @@ export default function ApplicationForm({
                               }
                             />
                           ) : (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                              <p className="text-sm text-yellow-800">
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 md:p-4">
+                              <p className="text-xs md:text-sm text-yellow-800">
                                 🔍 Debug: Profile autofill is enabled but no
                                 profile data loaded yet. Check console for
                                 debugging info.
@@ -543,40 +543,40 @@ export default function ApplicationForm({
                   const hasOtherSections = programUsesProfile(program);
 
                   return items.length === 0 ? (
-                    <div className="p-6">
+                    <div className="p-4 md:p-6">
                       {hasOtherSections && (
                         <>
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                            <h2 className="text-lg font-semibold text-gray-900">
+                          <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
+                            <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-gray-400 rounded-full flex-shrink-0"></div>
+                            <h2 className="text-sm md:text-lg font-semibold text-gray-900">
                               Organization Application Questions
                             </h2>
                           </div>
-                          <p className="text-sm text-gray-600 mb-4">
+                          <p className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">
                             Custom questions created by this organization.
                           </p>
                         </>
                       )}
-                      <div className="text-sm text-slate-500">
+                      <div className="text-xs md:text-sm text-slate-500">
                         This application doesn't include custom questions.
                       </div>
                     </div>
                   ) : (
-                    <div className="p-6">
+                    <div className="p-4 md:p-6">
                       {hasOtherSections && (
                         <>
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                            <h2 className="text-lg font-semibold text-gray-900">
+                          <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
+                            <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-gray-400 rounded-full flex-shrink-0"></div>
+                            <h2 className="text-sm md:text-lg font-semibold text-gray-900">
                               Organization Application Questions
                             </h2>
                           </div>
-                          <p className="text-sm text-gray-600 mb-6">
+                          <p className="text-xs md:text-sm text-gray-600 mb-4 md:mb-6">
                             Custom questions created by this organization.
                           </p>
                         </>
                       )}
-                      <div className="space-y-6">
+                      <div className="space-y-4 md:space-y-6">
                         {items.map((item, idx) => {
                           const key = item.key || `q_${idx}`;
                           const val = answers?.[key] ?? "";
@@ -586,14 +586,14 @@ export default function ApplicationForm({
                               return (
                                 <div
                                   key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                  className="bg-white border border-gray-200 rounded-lg p-3 md:p-6"
                                 >
-                                  <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
+                                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                     {item.label}
                                     {item.required && " *"}
                                   </label>
                                   <input
-                                    className={`w-full rounded-md border border-gray-300 px-3 md:px-4 py-2 md:py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                    className={`w-full rounded-md border border-gray-300 px-3 py-2 md:px-4 md:py-3 text-sm md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                       !isFormEditable
                                         ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
                                         : ""
@@ -617,7 +617,7 @@ export default function ApplicationForm({
                               return (
                                 <div
                                   key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                  className="bg-white border border-gray-200 rounded-lg p-3 md:p-6"
                                 >
                                   <WordLimitedTextarea
                                     label={item.label}
@@ -634,7 +634,7 @@ export default function ApplicationForm({
                               return (
                                 <div
                                   key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                  className="bg-white border border-gray-200 rounded-lg p-3 md:p-6"
                                 >
                                   <div className="flex items-center gap-2 md:gap-3">
                                     <input
@@ -644,7 +644,7 @@ export default function ApplicationForm({
                                         update(key, e.target.checked)
                                       }
                                       disabled={!isFormEditable}
-                                      className={`h-4 w-4 md:h-5 md:w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 ${
+                                      className={`h-4 w-4 md:h-5 md:w-5 text-blue-600 focus:ring-2 focus:ring-blue-500 flex-shrink-0 ${
                                         !isFormEditable ? "opacity-50" : ""
                                       }`}
                                       style={{
@@ -653,7 +653,7 @@ export default function ApplicationForm({
                                           : "not-allowed",
                                       }}
                                     />
-                                    <label className="text-sm font-medium text-gray-700">
+                                    <label className="text-xs md:text-sm font-medium text-gray-700">
                                       {item.label}
                                       {item.required && " *"}
                                     </label>
@@ -664,15 +664,15 @@ export default function ApplicationForm({
                               return (
                                 <div
                                   key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                  className="bg-white border border-gray-200 rounded-lg p-3 md:p-6"
                                 >
-                                  <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
+                                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                     {item.label}
                                     {item.required && " *"}
                                   </label>
                                   <input
                                     type="date"
-                                    className={`w-full rounded-md border border-gray-300 px-3 md:px-4 py-2 md:py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                    className={`w-full rounded-md border border-gray-300 px-3 py-2 md:px-4 md:py-3 text-sm md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                       !isFormEditable
                                         ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
                                         : ""
@@ -695,14 +695,14 @@ export default function ApplicationForm({
                               return (
                                 <div
                                   key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                  className="bg-white border border-gray-200 rounded-lg p-3 md:p-6"
                                 >
-                                  <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
+                                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                     {item.label}
                                     {item.required && " *"}
                                   </label>
                                   <select
-                                    className={`w-full rounded-md border border-gray-300 px-3 md:px-4 py-2 md:py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                    className={`w-full rounded-md border border-gray-300 px-3 py-2 md:px-4 md:py-3 text-sm md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                       !isFormEditable
                                         ? "opacity-70 bg-gray-100 border-gray-300 text-gray-500"
                                         : ""
@@ -764,9 +764,9 @@ export default function ApplicationForm({
                               return (
                                 <div
                                   key={key}
-                                  className="bg-white border border-gray-200 rounded-lg p-4 md:p-6"
+                                  className="bg-white border border-gray-200 rounded-lg p-3 md:p-6"
                                 >
-                                  <label className="block text-sm font-medium text-gray-700 mb-2 md:mb-3">
+                                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                     {item.label}
                                     {item.required && " *"}
                                   </label>
@@ -798,7 +798,7 @@ export default function ApplicationForm({
                 <div className="flex justify-end pt-4 border-t">
                   <button
                     onClick={handleSubmit}
-                    className="rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
+                    className="rounded-md bg-blue-600 px-5 py-2.5 md:px-6 md:py-3 text-sm md:text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
                     disabled={submitting || !canEdit}
                     title={
                       !canEdit ? "Cannot submit - deadline has passed" : ""

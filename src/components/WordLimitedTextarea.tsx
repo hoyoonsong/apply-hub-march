@@ -62,13 +62,13 @@ export default function WordLimitedTextarea({
   return (
     <div className="space-y-2">
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-xs md:text-sm font-medium text-gray-700">
           {label}
           {required && " *"}
         </label>
       )}
       <textarea
-        className={`w-full rounded-md border px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+        className={`w-full rounded-md border px-3 py-2 md:px-4 md:py-3 text-sm md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
           isOverLimit
             ? "border-red-300 bg-red-50"
             : isAtLimit

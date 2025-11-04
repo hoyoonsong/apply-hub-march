@@ -45,7 +45,7 @@ export default function ProfileCard({
             className="w-full text-left flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
               <span className="text-sm font-medium text-gray-700">
                 Personal Information
               </span>
@@ -144,7 +144,7 @@ export default function ProfileCard({
             className="w-full text-left flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
               <span className="text-sm font-medium text-gray-700">
                 Family & Emergency Contact
               </span>
@@ -250,7 +250,7 @@ export default function ProfileCard({
             className="w-full text-left flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
               <span className="text-sm font-medium text-gray-700">
                 Writing & Essays
               </span>
@@ -295,7 +295,7 @@ export default function ProfileCard({
             className="w-full text-left flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
               <span className="text-sm font-medium text-gray-700">
                 Experience & Portfolio
               </span>
