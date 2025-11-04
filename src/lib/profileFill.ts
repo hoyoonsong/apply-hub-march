@@ -131,20 +131,19 @@ export function validateProfileSections(
     };
   }
 
-  // Personal Information validation
+  // Personal Information validation - require all fields
   if (requiredSections.personal) {
     const personalFields = [
       { key: "full_name", label: "Full Name" },
       { key: "date_of_birth", label: "Date of Birth" },
       { key: "phone_number", label: "Phone Number" },
+      { key: "email", label: "Email" },
+      { key: "address_line1", label: "Address Line 1" },
+      { key: "address_city", label: "City" },
+      { key: "address_state", label: "State" },
+      { key: "address_postal_code", label: "Postal Code" },
+      { key: "address_country", label: "Country" },
     ];
-
-    const hasAddress =
-      profile.address_line1 ||
-      profile.address_city ||
-      profile.address_state ||
-      profile.address_postal_code ||
-      profile.address_country;
 
     const missingPersonal = personalFields.filter(
       (field) => !profile[field.key as keyof ProfileSnapshot]
@@ -156,27 +155,47 @@ export function validateProfileSections(
           .join(", ")}`
       );
     }
-
-    if (!hasAddress) {
-      missingSections.push("Personal Information: Address");
-    }
   }
 
-  // Family/Emergency Contact validation
+  // Family/Emergency Contact validation - require all fields
   if (requiredSections.family) {
-    const hasParentGuardian =
-      profile.parent_guardian_name ||
-      profile.parent_guardian_email ||
-      profile.parent_guardian_phone;
-    const hasEmergencyContact =
-      profile.emergency_contact_name ||
-      profile.emergency_contact_email ||
-      profile.emergency_contact_phone;
+    const familyFields = [
+      { key: "parent_guardian_name", label: "Parent/Guardian Name" },
+      { key: "parent_guardian_email", label: "Parent/Guardian Email" },
+      { key: "parent_guardian_phone", label: "Parent/Guardian Phone" },
+      { key: "emergency_contact_name", label: "Emergency Contact Name" },
+      { key: "emergency_contact_email", label: "Emergency Contact Email" },
+      { key: "emergency_contact_phone", label: "Emergency Contact Phone" },
+    ];
 
-    if (!hasParentGuardian && !hasEmergencyContact) {
-      missingSections.push(
-        "Family/Emergency Contact: At least one contact method required"
+    // Check if emergency contact is parent (if so, emergency contact fields not required)
+    const isEmergencyContactParent = profile.emergency_contact_is_parent === true;
+    
+    if (isEmergencyContactParent) {
+      // Only require parent/guardian fields
+      const missingParentGuardian = familyFields
+        .filter((f) => f.key.startsWith("parent_guardian"))
+        .filter((field) => !profile[field.key as keyof ProfileSnapshot]);
+      
+      if (missingParentGuardian.length > 0) {
+        missingSections.push(
+          `Family/Emergency Contact: ${missingParentGuardian
+            .map((f) => f.label)
+            .join(", ")}`
+        );
+      }
+    } else {
+      // Require all fields
+      const missingFamily = familyFields.filter(
+        (field) => !profile[field.key as keyof ProfileSnapshot]
       );
+      if (missingFamily.length > 0) {
+        missingSections.push(
+          `Family/Emergency Contact: ${missingFamily
+            .map((f) => f.label)
+            .join(", ")}`
+        );
+      }
     }
   }
 
@@ -190,10 +209,26 @@ export function validateProfileSections(
     }
   }
 
-  // Experience/Portfolio validation
+  // Experience/Portfolio validation - require all fields
   if (requiredSections.experience) {
+    const missingExperience: string[] = [];
+    
     if (!profile.resume_file) {
-      missingSections.push("Experience & Portfolio: Resume");
+      missingExperience.push("Resume");
+    }
+    
+    // Note: profile_files is an array, so we check if it exists and has items
+    // However, portfolio files might be optional even in experience section
+    // Let's keep it simple and just require resume for now
+    // If you want to require portfolio files too, we can add:
+    // if (!profile.profile_files || profile.profile_files.length === 0) {
+    //   missingExperience.push("Portfolio Files");
+    // }
+    
+    if (missingExperience.length > 0) {
+      missingSections.push(
+        `Experience & Portfolio: ${missingExperience.join(", ")}`
+      );
     }
   }
 
