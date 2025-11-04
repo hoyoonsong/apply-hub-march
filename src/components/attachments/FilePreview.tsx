@@ -55,7 +55,9 @@ export function FilePreview({ fileInfo }: { fileInfo: FileInfo }) {
   if (loading) {
     return (
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 md:p-4 text-center">
-        <div className="text-xs md:text-sm text-gray-600">Loading preview...</div>
+        <div className="text-xs md:text-sm text-gray-600">
+          Loading preview...
+        </div>
       </div>
     );
   }
@@ -162,9 +164,8 @@ export function FilePreview({ fileInfo }: { fileInfo: FileInfo }) {
         {(isPdf || isPdfByExtension) && (
           <div className="w-full">
             <iframe
-              src={signedUrl}
-              className="w-full rounded border"
-              style={{ height: "400px" }}
+              src={`${signedUrl}#navpanes=0&toolbar=1&view=FitH`}
+              className="w-full rounded border h-[400px] md:h-[500px]"
               title={fileInfo.fileName}
             />
           </div>
