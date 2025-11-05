@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
 import AutoLinkText from "../../components/AutoLinkText";
+import { useUnreadNotifications } from "../../hooks/useUnreadNotifications";
 
 type ResultsRow = {
   application_id: string;
@@ -57,6 +58,7 @@ export default function MySubmissionsPage() {
   );
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { hasUnread } = useUnreadNotifications();
 
   const refreshResults = async () => {
     const { data, error } = await supabase.rpc("get_published_results_v1");
@@ -101,6 +103,29 @@ export default function MySubmissionsPage() {
     refreshResults();
     refreshApplications();
 
+    // Mark notifications as read when user views the Results tab
+    // Uses a single UPDATE query for all unread notifications (efficient)
+    const markAsRead = async () => {
+      if (user?.id && activeTab === "results") {
+        // Single UPDATE query marks all unread notifications at once
+        // This is more efficient than updating individually
+        const { error } = await supabase
+          .from("notifications")
+          .update({ read_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+          .is("read_at", null);
+        
+        if (error) {
+          console.error("Error marking notifications as read:", error);
+        }
+        // The realtime subscription in useUnreadNotifications will pick up the UPDATE
+        // and immediately refresh the hasUnread state
+      }
+    };
+
+    // Mark as read when switching to Results tab
+    markAsRead();
+
     const channel = supabase
       .channel("notif")
       .on(
@@ -114,10 +139,10 @@ export default function MySubmissionsPage() {
         () => refreshResults()
       )
       .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id]);
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }, [user?.id, activeTab]); // Re-run when tab changes
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -187,13 +212,16 @@ export default function MySubmissionsPage() {
           </button>
           <button
             onClick={() => setActiveTab("results")}
-            className={`py-3 md:py-4 px-1 border-b-2 font-medium text-xs md:text-sm transition-colors duration-200 ${
+            className={`relative py-3 md:py-4 px-1 border-b-2 font-medium text-xs md:text-sm transition-colors duration-200 ${
               activeTab === "results"
                 ? "border-blue-500 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
             Results
+            {hasUnread && (
+              <span className="absolute -top-0.5 -right-1 h-3.5 w-3.5 bg-red-500 rounded-full border-2 border-white shadow-md animate-pulse"></span>
+            )}
           </button>
         </nav>
       </div>

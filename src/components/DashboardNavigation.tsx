@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import ReviewerNavLink from "./ReviewerNavLink";
+import { useUnreadNotifications } from "../hooks/useUnreadNotifications";
 
 export default function DashboardNavigation() {
+  const { hasUnread } = useUnreadNotifications();
+
   return (
     <div className="bg-gray-50 border-b border-gray-200 px-4 md:px-6 py-3 md:py-3">
       <div className="flex flex-wrap items-center gap-3 md:gap-3 text-xs md:text-sm">
@@ -26,9 +29,12 @@ export default function DashboardNavigation() {
 
         <Link
           to="/my-submissions"
-          className="rounded-md border border-gray-300 px-3 md:px-3 py-2 md:py-1.5 hover:bg-white hover:border-gray-400 text-gray-700 transition-all duration-200 hover:shadow-sm text-xs md:text-sm"
+          className="relative rounded-md border border-gray-300 px-3 md:px-3 py-2 md:py-1.5 hover:bg-white hover:border-gray-400 text-gray-700 transition-all duration-200 hover:shadow-sm text-xs md:text-sm"
         >
           My Submissions
+          {hasUnread && (
+            <span className="absolute -top-0.5 -right-1 h-3.5 w-3.5 bg-red-500 rounded-full border-2 border-white shadow-md animate-pulse"></span>
+          )}
         </Link>
 
         <ReviewerNavLink />
