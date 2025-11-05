@@ -8,7 +8,7 @@ import type { AppItem } from "../../types/application";
 import OptionsInput from "../../components/OptionsInput";
 import ApplicationPreview from "../../components/ApplicationPreview";
 import ProgramReviewerFormCard from "../../components/ProgramReviewerFormCard";
-import { adminUpdateProgramBasics } from "../../services/admin";
+import { orgUpdateProgramDraft } from "../../lib/programs";
 import {
   DndContext,
   closestCenter,
@@ -774,20 +774,17 @@ export default function OrgProgramBuilder() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
-      <div className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-start justify-between">
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-2xl font-semibold text-gray-900">
                 {program?.name || "Loading..."} - Edit Application
               </h1>
-              <p className="text-gray-600 mb-4">
+              <p className="text-sm text-gray-500 mt-1">
                 {program?.description || "Program description"}
+                {org?.name && ` · Organization: ${org.name}`}
               </p>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span>Organization:</span>
-                <span className="font-medium">{org?.name || "Loading..."}</span>
-              </div>
             </div>
             <div className="flex items-center gap-4">
               <button
@@ -1353,22 +1350,25 @@ export default function OrgProgramBuilder() {
                     v ? new Date(v).toISOString() : null;
                   try {
                     setBasicsSaving(true);
-                    await adminUpdateProgramBasics(program.id, {
+                    // Use RPC function that bypasses RLS with SECURITY DEFINER
+                    const updatedProgram = await orgUpdateProgramDraft({
+                      program_id: program.id,
                       name: basicsName.trim(),
-                      description: basicsDescription.trim() || null,
+                      type: ((program as any).type || "application") as
+                        | "audition"
+                        | "scholarship"
+                        | "application"
+                        | "competition",
+                      description: basicsDescription.trim() || undefined,
                       open_at: toISO(basicsOpenAt),
                       close_at: toISO(basicsCloseAt),
+                      metadata: program.metadata || {},
                     });
-                    setProgram({
-                      ...program,
-                      name: basicsName.trim(),
-                      description: basicsDescription.trim(),
-                      open_at: toISO(basicsOpenAt),
-                      close_at: toISO(basicsCloseAt),
-                    } as any);
+                    setProgram(updatedProgram as any);
                     setShowDetailsModal(false);
                   } catch (e) {
                     console.error(e);
+                    alert("Failed to save changes: " + (e as Error).message);
                   } finally {
                     setBasicsSaving(false);
                   }

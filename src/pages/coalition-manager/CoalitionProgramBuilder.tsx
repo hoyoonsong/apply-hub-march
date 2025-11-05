@@ -604,22 +604,17 @@ export default function CoalitionProgramBuilder() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
-      <div className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-start justify-between">
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-2xl font-semibold text-gray-900">
                 {program?.name || "Loading..."} - Edit Application
               </h1>
-              <p className="text-gray-600 mb-4">
+              <p className="text-sm text-gray-500 mt-1">
                 {program?.description || "Program description"}
+                {coalition?.name && ` · Coalition: ${coalition.name}`}
               </p>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span>Coalition:</span>
-                <span className="font-medium">
-                  {coalition?.name || "Loading..."}
-                </span>
-              </div>
             </div>
             <div className="flex items-center gap-3">
               <Link

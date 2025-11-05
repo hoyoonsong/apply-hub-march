@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useCollaborativeReview } from "../../hooks/useCollaborativeReview";
 import AnswersViewer from "../../components/review/AnswersViewer";
 
@@ -36,20 +36,46 @@ export default function ReviewAppPage() {
     );
   }
 
+  // Determine display status: draft, commented, or finalized
+  const getDisplayStatus = () => {
+    if (review.status === "submitted") {
+      return "finalized";
+    }
+    if (review.comments && review.comments.trim().length > 0) {
+      return "commented";
+    }
+    return "draft";
+  };
+
+  const displayStatus = getDisplayStatus();
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="text-2xl font-semibold mb-1">Review Application</div>
-          <div className="text-sm text-gray-500">
-            Status:{" "}
-            <span className="font-medium">
-              {review.status ?? "not-started"}
-            </span>
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                {program?.name || "Review Application"}
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Status:{" "}
+                <span className="font-medium capitalize">{displayStatus}</span>
+              </p>
+            </div>
+            <Link
+              to="/review/all"
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              ← Back to All Reviews
+            </Link>
           </div>
         </div>
+      </div>
 
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Main Content - Side by Side */}
         <div className="flex gap-6">
           {/* Left Side - Applicant Responses */}

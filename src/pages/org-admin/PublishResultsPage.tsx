@@ -145,32 +145,19 @@ export default function PublishResultsPage() {
     <div className="max-w-7xl mx-auto p-3 md:p-6">
       <div className="mb-4 md:mb-8 flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">
+          <h1 className="text-2xl font-semibold text-gray-900">
             Publish Results - <span className="font-normal">{programName}</span>
           </h1>
 
-          <p className="mt-1 md:mt-2 text-sm md:text-base text-gray-600">
+          <p className="mt-1 text-sm text-gray-500">
             Manage and publish application results for your program
           </p>
         </div>
         <Link
           to={`/org/${orgSlug}/admin/publish-results`}
-          className="inline-flex items-center px-3 md:px-4 py-2 border border-gray-300 rounded-md shadow-sm text-xs md:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+          className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          <svg
-            className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            />
-          </svg>
-          Back to Gallery
+          ← Back to Gallery
         </Link>
       </div>
 

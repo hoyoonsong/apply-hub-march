@@ -108,13 +108,32 @@ export async function adminUpdateProgramBasics(
   if (typeof updates.close_at !== "undefined")
     payload.close_at = updates.close_at;
 
-  const { data, error } = await supabase
+  // Try the update (without select first to avoid RLS issues with select)
+  const { error: updateError } = await supabase
     .from("programs")
     .update(payload)
-    .eq("id", p_program_id)
-    .select()
-    .single();
+    .eq("id", p_program_id);
 
-  if (error) throw error;
-  return data;
+  if (updateError) throw updateError;
+  
+  // After update, fetch the program to return updated data
+  // Use maybeSingle to avoid errors if RLS blocks the select
+  const { data: programData, error: fetchError } = await supabase
+    .from("programs")
+    .select("*")
+    .eq("id", p_program_id)
+    .maybeSingle();
+  
+  if (fetchError) {
+    // If fetch fails due to RLS, return the payload merged with a minimal object
+    // This allows the UI to update even if we can't fetch the full program
+    console.warn("Could not fetch updated program (possibly RLS):", fetchError);
+    return { id: p_program_id, ...payload } as any;
+  }
+  
+  if (!programData) {
+    throw new Error("Program not found after update");
+  }
+  
+  return programData;
 }

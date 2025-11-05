@@ -98,26 +98,27 @@ export default function CapabilityHub() {
                 Access your assigned organizations and coalitions
               </p>
             </div>
-            <button
-              onClick={refreshCapabilities}
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              <svg
-                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {capabilities.reviewerPrograms.length > 0 && (
+              <Link
+                to="/review/all"
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-base flex items-center gap-2 shadow-md hover:shadow-lg"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Refresh
-            </button>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                All Reviews
+              </Link>
+            )}
           </div>
         </div>
 
@@ -125,21 +126,10 @@ export default function CapabilityHub() {
           {/* Admin Organizations */}
           {capabilities.adminOrgs.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4">
                 <h2 className="text-xl font-semibold text-gray-900">
                   Admin for Organizations
                 </h2>
-                <div className="flex gap-2">
-                  {capabilities.adminOrgs.map((org) => (
-                    <Link
-                      key={`reviews-${org.id}`}
-                      to={`/org/${org.slug}/admin/reviews`}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                    >
-                      {org.name} Reviews
-                    </Link>
-                  ))}
-                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {capabilities.adminOrgs.map((org) => (
@@ -182,16 +172,10 @@ export default function CapabilityHub() {
           {/* Reviewer Programs */}
           {capabilities.reviewerPrograms.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4">
                 <h2 className="text-xl font-semibold text-gray-900">
                   Reviewer for Programs
                 </h2>
-                <Link
-                  to="/review/all"
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                >
-                  All Reviews
-                </Link>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {capabilities.reviewerPrograms.map((program) => (

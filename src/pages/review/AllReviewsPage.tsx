@@ -293,11 +293,17 @@ export default function AllReviewsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">All Reviews</h1>
-              <p className="text-gray-600 mt-2">
+              <h1 className="text-2xl font-semibold text-gray-900">All Reviews</h1>
+              <p className="text-sm text-gray-500 mt-1">
                 Manage and review all applications across your assigned programs
               </p>
             </div>
+            <Link
+              to="/dashboard"
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              ← Back to Dashboard
+            </Link>
           </div>
         </div>
       </div>
