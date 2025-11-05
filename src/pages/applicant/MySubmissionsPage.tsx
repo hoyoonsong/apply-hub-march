@@ -131,6 +131,8 @@ export default function MySubmissionsPage() {
         return "bg-red-100 text-red-800";
       case "waitlisted":
         return "bg-orange-100 text-orange-800";
+      case "results_released":
+        return "bg-purple-100 text-purple-800";
       case "draft":
         return "bg-gray-100 text-gray-800";
       default:
@@ -226,42 +228,52 @@ export default function MySubmissionsPage() {
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
-                {applicationsRows.map((app) => (
-                  <div
-                    key={app.id}
-                    className="group border border-gray-200 rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow duration-200"
-                  >
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
-                      <div className="flex-1">
-                        <h3 className="text-base md:text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                          {app.programs.name}
-                        </h3>
-                        <p className="text-xs md:text-sm text-gray-600 mt-1">
-                          {app.programs.organizations.name}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Submitted: {new Date(app.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
-                        <span
-                          className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
-                            app.status
-                          )}`}
-                        >
-                          {app.status.charAt(0).toUpperCase() +
-                            app.status.slice(1)}
-                        </span>
-                        <Link
-                          to={`/programs/${app.program_id}/apply`}
-                          className="inline-flex items-center px-3 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
-                        >
-                          View Application
-                        </Link>
+                {applicationsRows.map((app) => {
+                  // Check if results are published for this application
+                  const hasResults = resultsRows.some(
+                    (r) => r.application_id === app.id
+                  );
+                  const displayStatus = hasResults ? "results_released" : app.status;
+                  
+                  return (
+                    <div
+                      key={app.id}
+                      className="group border border-gray-200 rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow duration-200"
+                    >
+                      <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
+                        <div className="flex-1">
+                          <h3 className="text-base md:text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {app.programs.name}
+                          </h3>
+                          <p className="text-xs md:text-sm text-gray-600 mt-1">
+                            {app.programs.organizations.name}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Submitted: {new Date(app.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
+                          <span
+                            className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
+                              displayStatus
+                            )}`}
+                          >
+                            {displayStatus === "results_released"
+                              ? "Results Released"
+                              : displayStatus.charAt(0).toUpperCase() +
+                                displayStatus.slice(1)}
+                          </span>
+                          <Link
+                            to={`/programs/${app.program_id}/apply`}
+                            className="inline-flex items-center px-3 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
+                          >
+                            View Application
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
