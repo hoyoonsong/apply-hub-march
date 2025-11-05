@@ -872,10 +872,12 @@ function SmartDashboard() {
   }, [location.pathname]);
 
   // Periodically refresh capabilities to handle demotion
+  // Using 60 seconds to balance responsiveness with bandwidth efficiency
+  // Demotions are rare (admin actions), so 60s is sufficient for detection
   useEffect(() => {
     const interval = setInterval(() => {
       refreshCapabilities();
-    }, 10000); // Check every 10 seconds for more responsive updates
+    }, 60000); // Check every 60 seconds - reduces requests by 83% while staying responsive
 
     return () => clearInterval(interval);
   }, []);
