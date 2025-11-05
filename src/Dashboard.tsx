@@ -198,7 +198,7 @@ function ProgramGrid({
             </div>
             {item.description && (
               <p className="text-gray-700 text-sm md:text-base mb-2 md:mb-4 line-clamp-2">
-                {item.description}
+                <AutoLinkText text={item.description} />
               </p>
             )}
 
@@ -722,7 +722,7 @@ function AllPrograms() {
 
               {program.description && (
                 <p className="text-gray-700 leading-relaxed mb-3 md:mb-4 text-xs md:text-sm">
-                  {program.description}
+                  <AutoLinkText text={program.description} />
                 </p>
               )}
 

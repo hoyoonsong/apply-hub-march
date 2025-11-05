@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import ProgramAssignmentManager from "../../components/ProgramAssignmentManager";
+import AutoLinkText from "../../components/AutoLinkText";
 
 interface Program {
   id: string;
@@ -255,7 +256,7 @@ export default function OrgManageReviewers() {
                                 {program.name}
                               </h3>
                               <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                                {program.description || "No description"}
+                                <AutoLinkText text={program.description || "No description"} />
                               </p>
                               <div className="flex items-center gap-3">
                                 <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">

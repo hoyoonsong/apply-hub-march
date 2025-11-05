@@ -5,6 +5,7 @@ import { Program } from "../lib/programs";
 import { FilePreview } from "./attachments/FilePreview";
 import { loadApplicationSchema } from "../lib/schemaLoader";
 import WordLimitedTextarea from "./WordLimitedTextarea";
+import AutoLinkText from "./AutoLinkText";
 
 interface Field {
   id: string;
@@ -563,7 +564,7 @@ export default function ApplicationPreview({
         return (
           <div className="bg-white border rounded-lg p-6 space-y-3">
             <label className="block text-sm font-medium text-gray-700">
-              {field.label}
+              <AutoLinkText text={field.label} />
               {field.required && " *"}
             </label>
             <input
@@ -591,7 +592,7 @@ export default function ApplicationPreview({
         return (
           <div className="bg-white border rounded-lg p-6 space-y-3">
             <label className="block text-sm font-medium text-gray-700">
-              {field.label}
+              <AutoLinkText text={field.label} />
               {field.required && " *"}
             </label>
             <input
@@ -606,7 +607,7 @@ export default function ApplicationPreview({
         return (
           <div className="bg-white border rounded-lg p-6 space-y-3">
             <label className="block text-sm font-medium text-gray-700">
-              {field.label}
+              <AutoLinkText text={field.label} />
               {field.required && " *"}
             </label>
             <select
@@ -634,7 +635,7 @@ export default function ApplicationPreview({
                 onChange={(e) => setVal(field.id, e.target.checked)}
               />
               <label className="text-sm font-medium text-gray-700">
-                {field.label}
+                <AutoLinkText text={field.label} />
                 {field.required && " *"}
               </label>
             </div>
@@ -644,7 +645,7 @@ export default function ApplicationPreview({
         return (
           <div className="bg-white border rounded-lg p-6 space-y-3">
             <label className="block text-sm font-medium text-gray-700">
-              {field.label}
+              <AutoLinkText text={field.label} />
               {field.required && " *"}
             </label>
             <SimpleFileUpload

@@ -5,6 +5,7 @@ import {
   getWordCountText,
   truncateToWordLimit,
 } from "../utils/wordCount";
+import AutoLinkText from "./AutoLinkText";
 
 interface WordLimitedTextareaProps {
   value: string;
@@ -63,7 +64,7 @@ export default function WordLimitedTextarea({
     <div className="space-y-2">
       {label && (
         <label className="block text-xs md:text-sm font-medium text-gray-700">
-          {label}
+          <AutoLinkText text={label} />
           {required && " *"}
         </label>
       )}

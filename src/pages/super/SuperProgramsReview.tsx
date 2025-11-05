@@ -12,6 +12,7 @@ import { supabase } from "../../lib/supabase";
 import { softDeleteProgram, restoreProgram } from "../../services/super";
 import ApplicationPreview from "../../components/ApplicationPreview";
 import { useAuth } from "../../auth/AuthProvider";
+import AutoLinkText from "../../components/AutoLinkText";
 
 export default function SuperProgramsReview() {
   const { user } = useAuth();
@@ -401,7 +402,7 @@ export default function SuperProgramsReview() {
                               {p.name}
                             </h3>
                             <p className="text-sm text-gray-500 line-through">
-                              {p.description}
+                              <AutoLinkText text={p.description} />
                             </p>
                             <div className="flex items-center space-x-4 mt-1">
                               <span className="text-xs text-gray-400">
@@ -533,7 +534,7 @@ export default function SuperProgramsReview() {
                             </button>
                             {p.description && (
                               <div className="text-xs text-gray-500 mt-1 truncate max-w-[180px]">
-                                {p.description}
+                                <AutoLinkText text={p.description} />
                               </div>
                             )}
                           </div>

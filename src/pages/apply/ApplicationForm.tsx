@@ -590,7 +590,7 @@ export default function ApplicationForm({
                                   className="bg-white border border-gray-200 rounded-lg p-3 md:p-6"
                                 >
                                   <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
-                                    {item.label}
+                                    <AutoLinkText text={item.label} />
                                     {item.required && " *"}
                                   </label>
                                   <input
@@ -655,7 +655,7 @@ export default function ApplicationForm({
                                       }}
                                     />
                                     <label className="text-xs md:text-sm font-medium text-gray-700">
-                                      {item.label}
+                                      <AutoLinkText text={item.label} />
                                       {item.required && " *"}
                                     </label>
                                   </div>
@@ -668,7 +668,7 @@ export default function ApplicationForm({
                                   className="bg-white border border-gray-200 rounded-lg p-3 md:p-6"
                                 >
                                   <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
-                                    {item.label}
+                                    <AutoLinkText text={item.label} />
                                     {item.required && " *"}
                                   </label>
                                   <input
@@ -699,7 +699,7 @@ export default function ApplicationForm({
                                   className="bg-white border border-gray-200 rounded-lg p-3 md:p-6"
                                 >
                                   <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
-                                    {item.label}
+                                    <AutoLinkText text={item.label} />
                                     {item.required && " *"}
                                   </label>
                                   <select
@@ -768,7 +768,7 @@ export default function ApplicationForm({
                                   className="bg-white border border-gray-200 rounded-lg p-3 md:p-6"
                                 >
                                   <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
-                                    {item.label}
+                                    <AutoLinkText text={item.label} />
                                     {item.required && " *"}
                                   </label>
                                   <SimpleFileUpload

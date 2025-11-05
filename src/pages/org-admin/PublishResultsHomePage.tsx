@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { getProgramPublicationCount } from "../../lib/publicationQueries";
+import AutoLinkText from "../../components/AutoLinkText";
 
 type Program = {
   id: string;
@@ -206,7 +207,7 @@ export default function PublishResultsHomePage() {
                       {program.name}
                     </h3>
                     <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                      {program.description || "No description available"}
+                      <AutoLinkText text={program.description || "No description available"} />
                     </p>
                   </div>
 

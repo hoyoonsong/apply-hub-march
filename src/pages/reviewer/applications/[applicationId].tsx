@@ -289,7 +289,7 @@ export default function ReviewerApplication() {
                       className="border-b pb-4 last:border-b-0"
                     >
                       <div className="text-sm font-medium text-gray-900 mb-2">
-                        {question.label}
+                        <AutoLinkText text={question.label} />
                         {question.required && (
                           <span className="text-red-500 ml-1">*</span>
                         )}
@@ -337,7 +337,7 @@ export default function ReviewerApplication() {
                   {app.schema.questions.map((question) => (
                     <div key={question.id}>
                       <label className="text-xs text-gray-600">
-                        {question.label}
+                        <AutoLinkText text={question.label} />
                       </label>
                       <textarea
                         className="mt-1 w-full rounded border px-2 py-1 text-sm"

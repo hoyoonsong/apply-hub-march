@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { getOrgBySlug, type Org } from "../../lib/orgs";
 import ProgramCard from "../../components/ProgramCard";
 import type { Program } from "../../types/programs";
+import AutoLinkText from "../../components/AutoLinkText";
 
 export default function OrgHome() {
   const { orgSlug } = useParams();
@@ -141,7 +142,9 @@ export default function OrgHome() {
                 <p className="mt-1 text-sm text-gray-500">/org/{org.slug}</p>
               )}
               {org.description && (
-                <p className="mt-2 text-gray-600">{org.description}</p>
+                <p className="mt-2 text-gray-600">
+                  <AutoLinkText text={org.description} />
+                </p>
               )}
             </div>
             <Link

@@ -8,6 +8,7 @@ import {
   softDeleteProgram,
   restoreProgram,
 } from "../../services/super";
+import AutoLinkText from "../../components/AutoLinkText";
 
 interface Program {
   id: string;
@@ -279,7 +280,7 @@ export default function Programs() {
                               </h3>
                               {org.description && (
                                 <p className="text-xs text-gray-500 mt-1">
-                                  {org.description}
+                                  <AutoLinkText text={org.description} />
                                 </p>
                               )}
                             </div>

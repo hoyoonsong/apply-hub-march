@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import ProgramCard from "../../components/ProgramCard";
 import type { Program } from "../../types/programs";
+import AutoLinkText from "../../components/AutoLinkText";
 
 type Coalition = {
   id: string;
@@ -170,7 +171,9 @@ export default function CoalitionHome() {
                 </p>
               )}
               {coalition.description && (
-                <p className="mt-2 text-gray-600">{coalition.description}</p>
+                <p className="mt-2 text-gray-600">
+                  <AutoLinkText text={coalition.description} />
+                </p>
               )}
             </div>
             <Link

@@ -207,7 +207,7 @@ export default function ProgramDetail() {
                             <code className="bg-gray-100 px-1 rounded text-xs">
                               {item.type}
                             </code>{" "}
-                            — {item.label}
+                            — <AutoLinkText text={item.label} />
                             {item.required && (
                               <span className="text-red-500 ml-1">*</span>
                             )}

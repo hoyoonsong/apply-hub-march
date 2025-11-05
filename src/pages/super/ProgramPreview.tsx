@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { loadApplicationSchemaById } from "../../lib/schemaLoader";
 import ApplicationPreview from "../../components/ApplicationPreview";
+import AutoLinkText from "../../components/AutoLinkText";
 
 type Program = {
   id: string;
@@ -114,7 +115,9 @@ export default function ProgramPreview() {
                 {program.name}
               </h1>
               {program.description && (
-                <p className="mt-1 text-gray-600">{program.description}</p>
+                <p className="mt-1 text-gray-600">
+                  <AutoLinkText text={program.description} />
+                </p>
               )}
               {org && (
                 <p className="mt-1 text-sm text-gray-500">

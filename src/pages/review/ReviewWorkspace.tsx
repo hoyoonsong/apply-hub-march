@@ -244,7 +244,7 @@ export default function ReviewWorkspacePage() {
                           {f.type}
                         </div>
                         <div className="text-sm font-medium">
-                          {f.label || f.id}
+                          <AutoLinkText text={f.label || f.id} />
                         </div>
                         <AnswerValue value={val} />
                       </div>

@@ -7,6 +7,7 @@ import {
   getReviewStatus,
   Program,
 } from "../../lib/programs";
+import AutoLinkText from "../../components/AutoLinkText";
 
 type ProgramWithDeleted = Program & {
   deleted_at?: string | null;
@@ -499,7 +500,7 @@ export default function OrgAdminPrograms() {
                               {p.name}
                             </h3>
                             <p className="text-sm text-gray-500 line-through">
-                              {p.description}
+                              <AutoLinkText text={p.description || ""} />
                             </p>
                             <div className="flex items-center space-x-4 mt-1">
                               <span className="text-xs text-gray-400">
