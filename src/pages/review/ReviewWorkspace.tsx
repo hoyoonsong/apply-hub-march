@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { upsertReview } from "../../lib/api";
 import { supabase } from "../../lib/supabase";
+import AutoLinkText from "../../components/AutoLinkText";
 
 type AppRow = {
   id: string;
@@ -329,7 +330,11 @@ export default function ReviewWorkspacePage() {
 function AnswerValue({ value }: { value: any }) {
   if (value == null) return <div className="text-sm text-gray-400">—</div>;
   if (typeof value === "string") {
-    return <div className="mt-1 whitespace-pre-wrap text-sm">{value}</div>;
+    return (
+      <div className="mt-1 text-sm">
+        <AutoLinkText text={value} preserveWhitespace={true} />
+      </div>
+    );
   }
   if (typeof value === "number" || typeof value === "boolean") {
     return <div className="mt-1 text-sm">{String(value)}</div>;

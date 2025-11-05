@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FilePreview } from "../attachments/FilePreview";
+import AutoLinkText from "../AutoLinkText";
 
 export default function ProfileCard({
   profile,
@@ -267,8 +268,8 @@ export default function ProfileCard({
                   <div className="text-xs font-medium text-gray-600">
                     Personal Statement
                   </div>
-                  <div className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
-                    {profile.personal_statement}
+                  <div className="text-sm text-gray-900 leading-relaxed">
+                    <AutoLinkText text={profile.personal_statement} preserveWhitespace={true} />
                   </div>
                 </div>
               ) : (

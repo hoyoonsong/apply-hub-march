@@ -9,6 +9,7 @@ import OptionsInput from "../../components/OptionsInput";
 import ApplicationPreview from "../../components/ApplicationPreview";
 import ProgramReviewerFormCard from "../../components/ProgramReviewerFormCard";
 import { orgUpdateProgramDraft } from "../../lib/programs";
+import AutoLinkText from "../../components/AutoLinkText";
 import {
   DndContext,
   closestCenter,
@@ -465,15 +466,25 @@ export default function OrgProgramBuilder() {
                 const row = Array.isArray(data) ? data[0] : data;
                 setProgram(row);
 
-                // Reload schema with updated program data
-                const schema = await loadApplicationSchema(row);
-                setSchema(schema);
-                const loadedFields = schema.fields || [];
-                const fieldsWithKeys = loadedFields.map((field, idx) => ({
-                  ...field,
-                  key: field.key || `field-${idx}-${Date.now()}`,
-                }));
-                setFields(fieldsWithKeys);
+                // Only update schema from realtime if we are confident it contains
+                // the user's latest pending changes. Otherwise keep local edits.
+                const meta = (row?.metadata ?? {}) as any;
+                if (
+                  (meta?.review_status === "pending_changes" ||
+                    meta?.review_status === "submitted") &&
+                  meta?.pending_schema &&
+                  Array.isArray(meta.pending_schema.fields)
+                ) {
+                  setSchema(meta.pending_schema);
+                  const loadedFields = meta.pending_schema.fields || [];
+                  const fieldsWithKeys = loadedFields.map(
+                    (field: any, idx: number) => ({
+                      ...field,
+                      key: field.key || `field-${idx}-${Date.now()}`,
+                    })
+                  );
+                  setFields(fieldsWithKeys);
+                }
               }
             } catch (e) {
               console.error(
@@ -580,6 +591,16 @@ export default function OrgProgramBuilder() {
 
         console.log("Successfully saved pending changes");
 
+        // Optimistically update local state to the just-saved schema
+        setSchema(updatedSchema);
+        const optimisticFields = (updatedSchema.fields || []).map(
+          (field: any, idx: number) => ({
+            ...field,
+            key: field.key || `field-${idx}-${Date.now()}`,
+          })
+        );
+        setFields(optimisticFields);
+
         // Force refresh the program data to update the UI
         const { data: refreshedData, error: refreshError } = await supabase.rpc(
           "org_get_program_v1",
@@ -593,16 +614,6 @@ export default function OrgProgramBuilder() {
             ? refreshedData[0]
             : refreshedData;
           setProgram(row);
-
-          // Reload schema with updated program data
-          const schema = await loadApplicationSchema(row);
-          setSchema(schema);
-          const loadedFields = schema.fields || [];
-          const fieldsWithKeys = loadedFields.map((field, idx) => ({
-            ...field,
-            key: field.key || `field-${idx}-${Date.now()}`,
-          }));
-          setFields(fieldsWithKeys);
         }
 
         setMsg(
@@ -615,6 +626,7 @@ export default function OrgProgramBuilder() {
         await setBuilderSchema(programId, updatedSchema);
         setSchema(updatedSchema);
 
+        const meta = (program?.metadata ?? {}) as any;
         // Also update the program metadata with form flags AND schema
         const { error: metaError } = await supabase
           .from("programs")
@@ -721,7 +733,7 @@ export default function OrgProgramBuilder() {
           "Program submitted for super admin approval. It will be published once approved."
         );
       } else {
-        // Normal publish flow - publish directly
+        // Normal publish flow - publish directly (org admins can publish without approval)
         const { error } = await supabase
           .from("programs")
           .update({
@@ -754,6 +766,7 @@ export default function OrgProgramBuilder() {
         }
       }, 1500);
     } catch (e: any) {
+      console.error("Publish error:", e);
       setMsg(e.message || "Publish failed.");
     } finally {
       setSaving(false);
@@ -782,8 +795,17 @@ export default function OrgProgramBuilder() {
                 {program?.name || "Loading..."} - Edit Application
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                {program?.description || "Program description"}
-                {org?.name && ` · Organization: ${org.name}`}
+                {program?.description ? (
+                  <>
+                    <AutoLinkText text={program.description} />
+                    {org?.name && ` · Organization: ${org.name}`}
+                  </>
+                ) : (
+                  <>
+                    Program description
+                    {org?.name && ` · Organization: ${org.name}`}
+                  </>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -835,9 +857,10 @@ export default function OrgProgramBuilder() {
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
               <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md">
                 <div className="font-semibold">Changes requested. </div>
-                <div className="text-sm whitespace-pre-wrap">
-                  {note} <br /> <br /> This form has been unpublished. Publish
-                  again when you're ready.
+                <div className="text-sm">
+                  <AutoLinkText text={note} preserveWhitespace={true} />
+                  <br /> <br /> This form has been unpublished. Publish again
+                  when you're ready.
                 </div>
               </div>
             </div>

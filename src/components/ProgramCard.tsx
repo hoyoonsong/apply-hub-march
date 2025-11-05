@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { startOrGetApplication } from "../lib/rpc";
 import { isBeforeOpenDate, isPastDeadline } from "../lib/deadlineUtils";
 import type { Program } from "../types/programs";
+import AutoLinkText from "./AutoLinkText";
 
 function formatDate(s?: string | null) {
   if (!s) return null;
@@ -60,7 +61,7 @@ export default function ProgramCard({ program }: { program: Program }) {
           </span>
         </div>
         {program.description && (
-          <p
+          <div
             className="mt-2 text-sm text-gray-600 overflow-hidden"
             style={{
               display: "-webkit-box",
@@ -68,8 +69,8 @@ export default function ProgramCard({ program }: { program: Program }) {
               WebkitBoxOrient: "vertical",
             }}
           >
-            {program.description}
-          </p>
+            <AutoLinkText text={program.description} />
+          </div>
         )}
         <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
           <div>

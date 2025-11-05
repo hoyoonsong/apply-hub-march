@@ -72,12 +72,9 @@ export async function loadApplicationSchema(
   let schema = null;
 
   // 1. Check for pending changes first (for super admin review)
-  const hasPendingChanges =
-    meta.review_status === "pending_changes" ||
-    meta.review_status === "submitted";
+  // Prefer pending_schema whenever it exists (draft changes), regardless of status.
   const pendingSchema = meta.pending_schema;
-
-  if (hasPendingChanges && pendingSchema) {
+  if (pendingSchema && Array.isArray(pendingSchema.fields)) {
     console.log("🔍 SchemaLoader - Using pending schema:", pendingSchema);
     return { fields: pendingSchema.fields || [] };
   }

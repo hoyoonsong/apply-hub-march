@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
+import AutoLinkText from "../../components/AutoLinkText";
 
 type ResultsRow = {
   application_id: string;
@@ -350,8 +351,8 @@ export default function MySubmissionsPage() {
                               <div className="text-sm font-medium text-gray-800 mb-2">
                                 Reviewer Comments:
                               </div>
-                              <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                                {p.comments}
+                              <div className="text-gray-700 leading-relaxed">
+                                <AutoLinkText text={p.comments} preserveWhitespace={true} />
                               </div>
                             </div>
                           )}
@@ -363,7 +364,7 @@ export default function MySubmissionsPage() {
                               Additional Message
                             </div>
                             <div className="text-amber-700">
-                              {v.customMessage}
+                              <AutoLinkText text={v.customMessage} preserveWhitespace={true} />
                             </div>
                           </div>
                         )}

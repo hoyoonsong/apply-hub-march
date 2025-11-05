@@ -30,6 +30,7 @@ import { supabase } from "../../lib/supabase";
 import { isUUID } from "../../lib/id";
 import { useAuth } from "../../auth/AuthProvider";
 import LoginModal from "../../components/LoginModal";
+import AutoLinkText from "../../components/AutoLinkText";
 
 type AppRow = {
   id: string;
@@ -365,9 +366,9 @@ export default function ApplicationForm({
                 {programDetails?.name || appRow?.program_name || "Application"}
               </h1>
               {programDetails?.description && (
-                <p className="mt-1 text-sm md:text-base text-gray-600">
-                  {programDetails.description}
-                </p>
+                <div className="mt-1 text-sm md:text-base text-gray-600">
+                  <AutoLinkText text={programDetails.description} />
+                </div>
               )}
               {organization && (
                 <p className="mt-1 text-xs md:text-sm text-gray-500">

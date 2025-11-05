@@ -9,6 +9,7 @@ import type { AppItem } from "../../types/application";
 import OptionsInput from "../../components/OptionsInput";
 import ApplicationPreview from "../../components/ApplicationPreview";
 import ProgramReviewerFormCard from "../../components/ProgramReviewerFormCard";
+import AutoLinkText from "../../components/AutoLinkText";
 import {
   DndContext,
   closestCenter,
@@ -612,8 +613,17 @@ export default function CoalitionProgramBuilder() {
                 {program?.name || "Loading..."} - Edit Application
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                {program?.description || "Program description"}
-                {coalition?.name && ` · Coalition: ${coalition.name}`}
+                {program?.description ? (
+                  <>
+                    <AutoLinkText text={program.description} />
+                    {coalition?.name && ` · Coalition: ${coalition.name}`}
+                  </>
+                ) : (
+                  <>
+                    Program description
+                    {coalition?.name && ` · Coalition: ${coalition.name}`}
+                  </>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -642,7 +652,9 @@ export default function CoalitionProgramBuilder() {
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
               <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md">
                 <div className="font-semibold">Changes requested</div>
-                <div className="text-sm whitespace-pre-wrap">{note}</div>
+                <div className="text-sm">
+                  <AutoLinkText text={note} preserveWhitespace={true} />
+                </div>
               </div>
             </div>
           );

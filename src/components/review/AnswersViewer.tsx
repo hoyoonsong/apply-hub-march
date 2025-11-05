@@ -1,6 +1,7 @@
 import React from "react";
 import ProfileCard from "../profile/ProfileCard";
 import { FilePreview } from "../attachments/FilePreview";
+import AutoLinkText from "../AutoLinkText";
 
 type RawField = {
   id?: string;
@@ -261,7 +262,9 @@ export default function AnswersViewer({
                   {field.label}
                 </div>
                 {!isFileField || !fileInfo ? (
-                  <div className="text-base text-gray-900">{display}</div>
+                  <div className="text-base text-gray-900">
+                    <AutoLinkText text={display} preserveWhitespace={true} />
+                  </div>
                 ) : null}
                 {isFileField && fileInfo && (
                   <div className="mt-2">

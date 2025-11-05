@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { startOrGetApplication } from "../../lib/rpc";
 import { loadApplicationSchemaById } from "../../lib/schemaLoader";
 import { supabase } from "../../lib/supabase";
+import AutoLinkText from "../../components/AutoLinkText";
 
 type ProgramPublic = {
   id: string;
@@ -122,9 +123,12 @@ export default function ProgramDetail() {
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white border rounded-lg p-4 sm:p-6">
               <h2 className="text-lg font-semibold text-gray-900">About</h2>
-              <p className="mt-3 text-gray-700 whitespace-pre-line">
-                {program?.description || "No description provided."}
-              </p>
+              <div className="mt-3 text-gray-700">
+                <AutoLinkText
+                  text={program?.description || "No description provided."}
+                  preserveWhitespace={true}
+                />
+              </div>
             </div>
 
             <div className="bg-white border rounded-lg p-4 sm:p-6">

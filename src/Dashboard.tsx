@@ -7,6 +7,7 @@ import { loadCapabilities } from "./lib/capabilities";
 import { supabase } from "./lib/supabase";
 // import { startOrGetApplication } from "./lib/rpc";
 import { useFeaturedSections } from "./hooks/useFeaturedSections.ts";
+import AutoLinkText from "./components/AutoLinkText";
 
 // HeroCarousel component for individual carousels
 function HeroCarousel({
@@ -90,9 +91,9 @@ function HeroCarousel({
                   </div>
                 ) : (
                   item.description && (
-                    <p className="text-xs md:text-xl mb-2 md:mb-6 opacity-90 max-w-2xl mx-auto">
-                      {item.description}
-                    </p>
+                    <div className="text-xs md:text-xl mb-2 md:mb-6 opacity-90 max-w-2xl mx-auto">
+                      <AutoLinkText text={item.description} />
+                    </div>
                   )
                 )}
 

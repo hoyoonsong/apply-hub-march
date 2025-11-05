@@ -5,6 +5,7 @@ import {
   upsertReview,
   getProgramReviewForm,
 } from "../../../lib/api";
+import AutoLinkText from "../../../components/AutoLinkText";
 
 type ApplicationData = {
   application: {
@@ -222,7 +223,9 @@ export default function ReviewerApplication() {
       case "DATE":
         return new Date(value).toLocaleString();
       default:
-        return String(value);
+        // For text fields, use AutoLinkText to detect URLs
+        const textValue = String(value);
+        return <AutoLinkText text={textValue} preserveWhitespace={true} />;
     }
   };
 
