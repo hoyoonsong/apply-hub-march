@@ -42,3 +42,4 @@ BEGIN
     GRANT EXECUTE ON FUNCTION app_builder_get_v1(UUID) TO anon;
   END IF;
 END $$;
+

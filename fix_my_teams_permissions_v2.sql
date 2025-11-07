@@ -142,3 +142,4 @@ END $$;
 -- 2. RLS is enabled: SELECT tablename, rowsecurity FROM pg_tables WHERE tablename IN ('admins', 'programs', 'reviewers');
 -- 3. Function exists: SELECT proname FROM pg_proc WHERE proname = 'is_org_admin_safe';
 
+

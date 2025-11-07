@@ -177,3 +177,4 @@ USING (
 -- 2. Try: SELECT * FROM admins WHERE scope_type = 'org' LIMIT 1;
 --    Should work if you're an org admin
 
+
