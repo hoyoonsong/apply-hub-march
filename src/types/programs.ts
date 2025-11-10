@@ -5,6 +5,7 @@ export type Program = {
   type: "audition" | "scholarship" | "application" | "competition" | string; // keep open to avoid build breaks
   description: string | null;
   published: boolean;
+  is_private?: boolean; // If true, program won't appear in public listings
   open_at: string | null;
   close_at: string | null;
   metadata: any | null;

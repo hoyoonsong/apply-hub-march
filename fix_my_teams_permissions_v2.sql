@@ -143,3 +143,4 @@ END $$;
 -- 3. Function exists: SELECT proname FROM pg_proc WHERE proname = 'is_org_admin_safe';
 
 
+

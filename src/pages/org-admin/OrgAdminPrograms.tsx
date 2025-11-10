@@ -7,6 +7,7 @@ import {
   getReviewStatus,
   Program,
 } from "../../lib/programs";
+import { supabase } from "../../lib/supabase";
 import AutoLinkText from "../../components/AutoLinkText";
 
 type ProgramWithDeleted = Program & {
@@ -24,6 +25,7 @@ type CreateState = {
   description: string;
   open_at: string; // datetime-local value
   close_at: string; // datetime-local value
+  is_private: boolean;
 };
 
 export default function OrgAdminPrograms() {
@@ -51,6 +53,7 @@ export default function OrgAdminPrograms() {
     description: "",
     open_at: "",
     close_at: "",
+    is_private: false,
   });
 
   // Small helper: convert datetime-local to ISO or undefined
@@ -121,6 +124,31 @@ export default function OrgAdminPrograms() {
         const rows = await adminListPrograms(org.id, true); // Always get all programs including deleted
         if (!mounted) return;
 
+        // Auto-migrate: Check each program and migrate is_private from metadata to column if needed
+        const migrationPromises = rows
+          .filter((p: any) => {
+            const metadataIsPrivate = !!(p.metadata as any)?.is_private;
+            const columnIsPrivate = !!(p as any).is_private;
+            return metadataIsPrivate && !columnIsPrivate;
+          })
+          .map((p: any) =>
+            supabase
+              .from("programs")
+              .update({ is_private: true })
+              .eq("id", p.id)
+              .then(({ error }) => {
+                if (error) {
+                  console.warn(`Failed to migrate is_private for program ${p.id}:`, error);
+                } else {
+                  // Update the row in memory so UI reflects the change immediately
+                  (p as any).is_private = true;
+                }
+              })
+          );
+
+        // Wait for migrations to complete (non-blocking - don't fail if migration fails)
+        await Promise.allSettled(migrationPromises);
+
         // Separate active and deleted programs
         const activePrograms = rows.filter(
           (p: ProgramWithDeleted) => !p.deleted_at
@@ -174,6 +202,14 @@ export default function OrgAdminPrograms() {
         close_at: toISOorNull(form.close_at),
       });
 
+      // Update is_private after creation (since RPC might not support it)
+      if (form.is_private) {
+        await supabase
+          .from("programs")
+          .update({ is_private: true })
+          .eq("id", newProgram.id);
+      }
+
       // Reset form
       setForm({
         name: "",
@@ -181,6 +217,7 @@ export default function OrgAdminPrograms() {
         description: "",
         open_at: "",
         close_at: "",
+        is_private: false,
       });
 
       // Redirect to the application editor immediately
@@ -380,6 +417,26 @@ export default function OrgAdminPrograms() {
                   placeholder="Brief description…"
                 />
               </div>
+              <div className="md:col-span-12">
+                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-indigo-600"
+                    checked={form.is_private}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, is_private: e.target.checked }))
+                    }
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-semibold text-gray-800">
+                      Private Program
+                    </span>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      Private programs won't appear on the homepage or in public listings. They can only be accessed via direct link.
+                    </p>
+                  </div>
+                </label>
+              </div>
             </div>
             <div className="mt-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -529,16 +586,26 @@ export default function OrgAdminPrograms() {
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                   p.published
-                                    ? p.published_scope === "coalition"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : "bg-green-100 text-green-800"
+                                    ? (() => {
+                                        const columnValue = (p as any).is_private;
+                                        const isPrivate = columnValue === true || 
+                                                        (columnValue === null || columnValue === undefined) && (p.metadata as any)?.is_private === true;
+                                        return isPrivate;
+                                      })()
+                                      ? "bg-purple-100 text-purple-800"
+                                      : "bg-blue-100 text-blue-800"
                                     : "bg-gray-100 text-gray-800"
                                 }`}
                               >
                                 {p.published
-                                  ? p.published_scope === "coalition"
-                                    ? "Coalition"
-                                    : "Org"
+                                  ? (() => {
+                                      const columnValue = (p as any).is_private;
+                                      const isPrivate = columnValue === true || 
+                                                      (columnValue === null || columnValue === undefined) && (p.metadata as any)?.is_private === true;
+                                      return isPrivate;
+                                    })()
+                                    ? "Private"
+                                    : "Public"
                                   : "Not published"}
                               </span>
                             </div>
@@ -742,21 +809,30 @@ export default function OrgAdminPrograms() {
                           })()}
                         </td>
                         <td className="px-6 py-5 text-center">
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
-                              p.published
-                                ? p.published_scope === "coalition"
-                                  ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                                  : p.published_scope === "org"
-                                  ? "bg-blue-100 text-blue-800 border border-blue-200"
-                                  : "bg-green-100 text-green-800 border border-green-200"
-                                : "bg-gray-100 text-gray-800 border border-gray-200"
-                            }`}
-                          >
-                            {p.published
-                              ? p.published_scope ?? "published"
-                              : "draft"}
-                          </span>
+                          {(() => {
+                            // Column takes precedence - if column exists (even if false), use it
+                            // Only check metadata if column is explicitly null/undefined (not false)
+                            const columnValue = (p as any).is_private;
+                            const isPrivate = columnValue === true || 
+                                            (columnValue === null || columnValue === undefined) && (p.metadata as any)?.is_private === true;
+                            return (
+                              <span
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
+                                  p.published
+                                    ? isPrivate
+                                      ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                      : "bg-blue-100 text-blue-800 border border-blue-200"
+                                    : "bg-gray-100 text-gray-800 border border-gray-200"
+                                }`}
+                              >
+                                {p.published
+                                  ? isPrivate
+                                    ? "Private"
+                                    : "Public"
+                                  : "Draft"}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-6 py-5 text-sm text-gray-600 text-center font-medium">
                           {p.open_at

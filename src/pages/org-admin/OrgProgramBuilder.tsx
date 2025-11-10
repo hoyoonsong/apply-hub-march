@@ -222,11 +222,13 @@ export default function OrgProgramBuilder() {
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [basicsName, setBasicsName] = useState<string>("");
+  const [basicsType, setBasicsType] = useState<"audition" | "scholarship" | "application" | "competition">("application");
   const [basicsOpenAt, setBasicsOpenAt] = useState<string>("");
   const [basicsCloseAt, setBasicsCloseAt] = useState<string>("");
   const [basicsDescription, setBasicsDescription] = useState<string>("");
   const [basicsSaving, setBasicsSaving] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false); // State for modal
+  const [isPrivate, setIsPrivate] = useState<boolean>(false);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -345,6 +347,7 @@ export default function OrgProgramBuilder() {
         if (mounted) {
           setProgram(row);
           setBasicsName(row.name || "");
+          setBasicsType((row.type as "audition" | "scholarship" | "application" | "competition") || "application");
           // Fetch open/close directly from programs to ensure availability
           try {
             const { data: timing } = await supabase
@@ -375,6 +378,27 @@ export default function OrgProgramBuilder() {
             setBasicsDescription(row.description || "");
           }
           setBasicsDescription(row.description || "");
+
+          // Load private setting from column (fallback to metadata for migration)
+          const metadataIsPrivate = !!(row.metadata as any)?.is_private;
+          const columnIsPrivate = !!row.is_private;
+          const shouldBePrivate = columnIsPrivate || metadataIsPrivate;
+          setIsPrivate(shouldBePrivate);
+
+          // Auto-migrate: If metadata has is_private but column doesn't match, update column
+          if (metadataIsPrivate && !columnIsPrivate) {
+            supabase
+              .from("programs")
+              .update({ is_private: true })
+              .eq("id", row.id)
+              .then(({ error }) => {
+                if (error) {
+                  console.warn("Failed to migrate is_private from metadata:", error);
+                } else {
+                  console.log("Auto-migrated is_private from metadata to column for program:", row.id);
+                }
+              });
+          }
 
           const appMeta = row.metadata?.application || {};
           const formMeta = row.metadata?.form || {};
@@ -810,7 +834,39 @@ export default function OrgProgramBuilder() {
             </div>
             <div className="flex items-center gap-4">
               <button
-                onClick={() => setShowDetailsModal(true)}
+                onClick={async () => {
+                  // Sync all state with current program when opening modal
+                  // Refresh program data to ensure we have the latest values
+                  if (program) {
+                    try {
+                      const { data: freshProgram, error } = await supabase
+                        .from("programs")
+                        .select("is_private, metadata, type, name, description, open_at, close_at")
+                        .eq("id", program.id)
+                        .single();
+                      
+                      if (!error && freshProgram) {
+                        const columnValue = freshProgram.is_private;
+                        const metadataValue = (freshProgram.metadata as any)?.is_private;
+                        // Column takes precedence, fallback to metadata
+                        setIsPrivate(columnValue === true || (columnValue !== false && metadataValue === true));
+                        // Sync type
+                        setBasicsType((freshProgram.type as "audition" | "scholarship" | "application" | "competition") || "application");
+                        // Update program state with fresh data
+                        setProgram({ ...program, is_private: columnValue, metadata: freshProgram.metadata, type: freshProgram.type } as any);
+                      } else {
+                        // Fallback to current program state
+                        setIsPrivate(!!(program.is_private ?? (program.metadata as any)?.is_private));
+                        setBasicsType((program.type as "audition" | "scholarship" | "application" | "competition") || "application");
+                      }
+                    } catch (err) {
+                      // Fallback to current program state on error
+                      setIsPrivate(!!(program.is_private ?? (program.metadata as any)?.is_private));
+                      setBasicsType((program.type as "audition" | "scholarship" | "application" | "competition") || "application");
+                    }
+                  }
+                  setShowDetailsModal(true);
+                }}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
               >
                 <svg
@@ -1304,57 +1360,147 @@ export default function OrgProgramBuilder() {
             </div>
 
             <div className="p-6">
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Title
-                  </label>
-                  <input
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                    value={basicsName}
-                    onChange={(e) => setBasicsName(e.target.value)}
-                    placeholder="Program title"
-                  />
+              <div className="space-y-4">
+                {/* Title and Type on same row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Title
+                    </label>
+                    <input
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      value={basicsName}
+                      onChange={(e) => setBasicsName(e.target.value)}
+                      placeholder="Program title"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Type
+                    </label>
+                    <select
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      value={basicsType}
+                      onChange={(e) =>
+                        setBasicsType(
+                          e.target.value as
+                            | "audition"
+                            | "scholarship"
+                            | "application"
+                            | "competition"
+                        )
+                      }
+                    >
+                      <option value="application">Application</option>
+                      <option value="audition">Audition</option>
+                      <option value="scholarship">Scholarship</option>
+                      <option value="competition">Competition</option>
+                    </select>
+                  </div>
                 </div>
 
+                {/* Opens and Closes on same row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Opens
                     </label>
                     <input
                       type="datetime-local"
                       step="60"
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                       value={basicsOpenAt}
                       onChange={(e) => setBasicsOpenAt(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Closes
                     </label>
                     <input
                       type="datetime-local"
                       step="60"
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                       value={basicsCloseAt}
                       onChange={(e) => setBasicsCloseAt(e.target.value)}
                     />
                   </div>
                 </div>
 
+                {/* Description - more compact */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Description
                   </label>
                   <textarea
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
-                    rows={4}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
+                    rows={3}
                     value={basicsDescription}
                     onChange={(e) => setBasicsDescription(e.target.value)}
                     placeholder="Program description"
                   />
+                </div>
+
+                {/* Private Program - more compact */}
+                <div className="pt-2">
+                  <label className="flex items-start gap-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 text-indigo-600 mt-0.5"
+                      checked={isPrivate}
+                      onChange={async (e) => {
+                        const newValue = e.target.checked;
+                        setIsPrivate(newValue);
+                        
+                        // Auto-save is_private immediately when toggled
+                        if (program) {
+                          try {
+                            // Update both column and clean up metadata
+                            const updates: any = { is_private: newValue };
+                            
+                            // If setting to public (false), remove is_private from metadata if it exists
+                            if (!newValue && (program.metadata as any)?.is_private) {
+                              const newMetadata = { ...(program.metadata || {}) };
+                              delete newMetadata.is_private;
+                              updates.metadata = newMetadata;
+                            }
+
+                            const { error: updateError } = await supabase
+                              .from("programs")
+                              .update(updates)
+                              .eq("id", program.id);
+
+                            if (updateError) {
+                              console.error("Failed to update is_private:", updateError);
+                              // Revert on error
+                              setIsPrivate(!newValue);
+                              alert("Failed to update private setting. Please try again.");
+                            } else {
+                              // Update program state to reflect change
+                              const updatedProgram = { 
+                                ...program, 
+                                is_private: newValue,
+                                ...(updates.metadata ? { metadata: updates.metadata } : {})
+                              };
+                              setProgram(updatedProgram as any);
+                            }
+                          } catch (err) {
+                            console.error("Error updating is_private:", err);
+                            setIsPrivate(!newValue);
+                            alert("Failed to update private setting. Please try again.");
+                          }
+                        }
+                      }}
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-700">
+                        Private Program
+                      </span>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Won't appear on homepage or public listings. Only accessible via direct link.
+                      </p>
+                    </div>
+                  </label>
                 </div>
               </div>
             </div>
@@ -1373,21 +1519,37 @@ export default function OrgProgramBuilder() {
                     v ? new Date(v).toISOString() : null;
                   try {
                     setBasicsSaving(true);
-                    // Use RPC function that bypasses RLS with SECURITY DEFINER
-                    const updatedProgram = await orgUpdateProgramDraft({
+                    // Update program details and is_private column directly
+                    const { data: updatedProgram, error: updateError } = await supabase
+                      .from("programs")
+                      .update({
+                        name: basicsName.trim(),
+                        type: basicsType,
+                        description: basicsDescription.trim() || null,
+                        open_at: toISO(basicsOpenAt),
+                        close_at: toISO(basicsCloseAt),
+                        is_private: isPrivate,
+                      })
+                      .eq("id", program.id)
+                      .select()
+                      .single();
+
+                    if (updateError) throw updateError;
+                    if (!updatedProgram) throw new Error("Failed to update program");
+
+                    // Also update via RPC to ensure metadata is synced
+                    await orgUpdateProgramDraft({
                       program_id: program.id,
                       name: basicsName.trim(),
-                      type: ((program as any).type || "application") as
-                        | "audition"
-                        | "scholarship"
-                        | "application"
-                        | "competition",
+                      type: basicsType,
                       description: basicsDescription.trim() || undefined,
                       open_at: toISO(basicsOpenAt),
                       close_at: toISO(basicsCloseAt),
                       metadata: program.metadata || {},
                     });
+
                     setProgram(updatedProgram as any);
+                    setIsPrivate(isPrivate); // Ensure state is synced
                     setShowDetailsModal(false);
                   } catch (e) {
                     console.error(e);

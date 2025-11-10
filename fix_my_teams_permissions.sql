@@ -109,3 +109,4 @@ GRANT EXECUTE ON FUNCTION org_list_program_assignments(UUID) TO authenticated;
 -- SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('admins', 'programs');
 
 
+

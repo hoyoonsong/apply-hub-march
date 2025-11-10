@@ -550,8 +550,24 @@ function AllPrograms() {
           return;
         }
 
+        // Filter out private programs (only show public programs)
+        // Check both column and metadata (column takes precedence)
+        const publicPrograms = data.filter((program: any) => {
+          const columnValue = program.is_private;
+          // If column is explicitly false, it's public
+          if (columnValue === false) return true;
+          // If column is explicitly true, it's private
+          if (columnValue === true) return false;
+          // If column is null/undefined, check metadata as fallback
+          if (columnValue === null || columnValue === undefined) {
+            return !(program.metadata as any)?.is_private;
+          }
+          // Default to public if we can't determine
+          return true;
+        });
+
         // Transform database data to match the expected format
-        const transformedPrograms = data.map((program, index) => {
+        const transformedPrograms = publicPrograms.map((program, index) => {
           const org = program.organizations;
           const coalitionMemberships = org?.coalition_memberships || [];
 

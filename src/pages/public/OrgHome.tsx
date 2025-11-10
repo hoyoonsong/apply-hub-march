@@ -58,12 +58,29 @@ export default function OrgHome() {
 
         // Filter programs by organization and published status
         // Also filter out deleted programs (deleted_at should be null)
-        const orgPrograms = (pData || []).filter(
-          (program: Program) =>
-            program.organization_id === foundOrg.id &&
-            program.published &&
-            !program.deleted_at
-        );
+        // And filter out private programs (only show public programs)
+        // Check both column and metadata (column takes precedence)
+        const orgPrograms = (pData || []).filter((program: Program) => {
+          if (
+            program.organization_id !== foundOrg.id ||
+            !program.published ||
+            program.deleted_at
+          ) {
+            return false;
+          }
+          
+          const columnValue = (program as any).is_private;
+          // If column is explicitly false, it's public
+          if (columnValue === false) return true;
+          // If column is explicitly true, it's private
+          if (columnValue === true) return false;
+          // If column is null/undefined, check metadata as fallback
+          if (columnValue === null || columnValue === undefined) {
+            return !(program.metadata as any)?.is_private;
+          }
+          // Default to public if we can't determine
+          return true;
+        });
 
         setAllPrograms(orgPrograms);
         setFilteredPrograms(orgPrograms);

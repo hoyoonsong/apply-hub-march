@@ -21,6 +21,7 @@ export type Program = {
   close_at: string | null;
   metadata: any | null;
   published: boolean;
+  is_private?: boolean; // If true, program won't appear in public listings
   published_scope: "org" | "coalition" | null;
   published_by: string | null;
   published_at: string | null;

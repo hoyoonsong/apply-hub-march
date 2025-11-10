@@ -22,6 +22,7 @@ export async function adminListPrograms(orgId: string, includeDeleted = false) {
       close_at,
       metadata,
       published,
+      is_private,
       published_scope,
       published_by,
       published_at,
