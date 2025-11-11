@@ -22,34 +22,29 @@ function NewLaunchPage() {
           />
         </div>
 
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-6 sm:py-12 md:py-16">
-          <div className="flex items-center justify-between">
-            {/* Spacer for logo */}
-            <div className="w-16 sm:w-28 md:w-40"></div>
-
-            {/* Right side - Login button or Sign out */}
-            <div className="flex items-start pt-4 md:items-center md:pt-0">
-              {user ? (
-                <div className="flex items-center gap-2 md:gap-4">
-                  <div className="text-right">
-                    <p className="hidden md:block text-xs text-gray-500">
-                      Welcome back,
-                    </p>
-                    <p className="hidden md:block text-sm font-semibold text-gray-800">
-                      {user.email}
-                    </p>
-                  </div>
-                  <SignOutButton />
+        <div className="py-6 sm:py-12 md:py-16">
+          {/* Right side - Login button or Sign out */}
+          <div className="flex justify-end items-start pt-4 md:items-center md:pt-0 pl-3 sm:pl-6 md:pl-8 pr-10 sm:pr-16 md:pr-24">
+            {user ? (
+              <div className="flex items-center gap-2 md:gap-4">
+                <div className="text-right">
+                  <p className="hidden md:block text-xs text-gray-500">
+                    Welcome back,
+                  </p>
+                  <p className="hidden md:block text-sm font-semibold text-gray-800">
+                    {user.email}
+                  </p>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setOpen(true)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-3 md:py-2 md:px-6 rounded-md md:rounded-lg transition-colors shadow-md md:shadow-lg text-xs md:text-base"
-                >
-                  Sign up / Log in
-                </button>
-              )}
-            </div>
+                <SignOutButton />
+              </div>
+            ) : (
+              <button
+                onClick={() => setOpen(true)}
+                className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-3 md:py-2 md:px-6 rounded-md md:rounded-lg transition-colors shadow-md md:shadow-lg text-xs md:text-base"
+              >
+                Sign up / Log in
+              </button>
+            )}
           </div>
         </div>
       </nav>
@@ -58,7 +53,7 @@ function NewLaunchPage() {
       <section className="h-screen flex flex-col overflow-hidden -mt-48">
         {/* Hero Section */}
         <div className="bg-white flex items-center justify-center flex-1 min-h-0 overflow-y-auto">
-          <div className="text-center text-gray-900 max-w-6xl mx-auto px-6 w-full">
+          <div className="text-center text-gray-900 max-w-6xl mx-auto px-6 w-full mt-16 md:mt-24">
             <h1 className="text-3xl md:text-6xl font-bold mb-6">
               Welcome to <span className="text-blue-600">Omnipply</span>
             </h1>
@@ -147,7 +142,8 @@ function NewLaunchPage() {
       </section>
 
       {/* Section 2: Our Partners */}
-      <section className="bg-white py-12 md:py-16">
+
+      <section className="bg-white py-12 md:py-16 mt-20 md:mt-24">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <h2 className="text-2xl md:text-4xl font-bold text-center text-gray-900 mb-8 md:mb-12">
             Our Partners
@@ -166,12 +162,12 @@ function NewLaunchPage() {
             {/* Join Us Content */}
             <div className="text-center md:text-left flex-1 max-w-md">
               <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
-                Organizations, Join Us
+                Organizations, Join Us!
               </h3>
               <p className="text-base md:text-lg text-gray-600 mb-6 leading-relaxed">
                 Join leading organizations like Boise Gems Drum and Bugle Corps
-                in streamlining your application process. Review applications,
-                publish results, and advertise—all on one platform.
+                in streamlining your application process, lowering barriers, and
+                increasing outreach!
               </p>
               <button
                 onClick={() => (user ? navigate("/dashboard") : setOpen(true))}
@@ -185,7 +181,7 @@ function NewLaunchPage() {
       </section>
 
       {/* Footer - Hidden */}
-      <footer className="hidden">
+      <footer className="bg-gray-900 text-white py-12 mt-24 md:mt-32">
         <div className="max-w-6xl mx-auto px-6 text-center">
           <p className="text-gray-400">
             © 2025 Omnipply. Simplifying applications. Amplifying opportunities.
