@@ -33,7 +33,14 @@ export function useApplicationAutosave(
     }
   });
 
-  // Persist locally on every change
+  // Track save status for UI feedback
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const lastPushed = useRef<string>("");
+  const lastActivityTime = useRef<number>(Date.now());
+  const pendingSave = useRef<Answers | null>(null);
+  const isOnline = useRef<boolean>(navigator.onLine);
+
+  // Persist locally on every change (instant, no DB load)
   useEffect(() => {
     const payload = JSON.stringify({
       answers,
@@ -42,34 +49,104 @@ export function useApplicationAutosave(
     localStorage.setItem(storageKey, payload);
   }, [answers, storageKey]);
 
-  // Track last pushed payload to avoid redundant RPCs
-  const lastPushed = useRef<string>("");
-
-  const pushToServer = useMemo(() => {
-    const debounced = (data: Answers) => {
-      const json = JSON.stringify(data);
-      if (json === lastPushed.current) return;
-      saveApplication(applicationId, data)
-        .then(() => {
-          lastPushed.current = json;
-        })
-        .catch((e) => {
-          console.warn("Autosave failed", e);
-        });
+  // Track online/offline status
+  useEffect(() => {
+    const handleOnline = () => {
+      isOnline.current = true;
+      // Flush pending save when coming back online
+      if (pendingSave.current) {
+        const data = pendingSave.current;
+        pendingSave.current = null;
+        saveApplication(applicationId, data)
+          .then(() => {
+            lastPushed.current = JSON.stringify(data);
+            setSaveStatus("saved");
+            setTimeout(() => setSaveStatus("idle"), 2000);
+          })
+          .catch((e) => {
+            console.warn("Autosave failed after reconnect", e);
+            setSaveStatus("error");
+            pendingSave.current = data; // Keep in queue for retry
+          });
+      }
+    };
+    const handleOffline = () => {
+      isOnline.current = false;
     };
 
-    let timeoutId: NodeJS.Timeout;
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [applicationId]);
+
+  const pushToServer = useMemo(() => {
+    const performSave = async (data: Answers) => {
+      const json = JSON.stringify(data);
+      
+      // Skip if unchanged
+      if (json === lastPushed.current) {
+        setSaveStatus("saved");
+        return;
+      }
+
+      // Skip if offline - queue for later
+      if (!isOnline.current) {
+        pendingSave.current = data;
+        setSaveStatus("error");
+        return;
+      }
+
+      setSaveStatus("saving");
+      try {
+        await saveApplication(applicationId, data);
+        lastPushed.current = json;
+        setSaveStatus("saved");
+        pendingSave.current = null;
+        // Reset to idle after 2 seconds
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      } catch (e) {
+        console.warn("Autosave failed", e);
+        setSaveStatus("error");
+        pendingSave.current = data; // Queue for retry
+      }
+    };
+
+    let fastTimeoutId: NodeJS.Timeout | null = null;
+    let slowTimeoutId: NodeJS.Timeout | null = null;
+
     return {
       call: (data: Answers) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => debounced(data), 30000); // Increased from 10s to 30s
+        const now = Date.now();
+        const timeSinceLastActivity = now - lastActivityTime.current;
+        lastActivityTime.current = now;
+
+        // Clear any pending timeouts
+        if (fastTimeoutId) clearTimeout(fastTimeoutId);
+        if (slowTimeoutId) clearTimeout(slowTimeoutId);
+
+        // Activity-based debouncing:
+        // - If user is actively typing (changes within 5s), save after 3s of inactivity
+        // - If user is idle (no changes for 5s+), save after 15s of inactivity
+        // This reduces DB load while keeping recent changes safe
+        if (timeSinceLastActivity < 5000) {
+          // Active typing: save after 3s of inactivity
+          fastTimeoutId = setTimeout(() => performSave(data), 3000);
+        } else {
+          // Idle: save after 15s (longer delay when not actively working)
+          slowTimeoutId = setTimeout(() => performSave(data), 15000);
+        }
       },
       flush: () => {
-        clearTimeout(timeoutId);
-        debounced(answers);
+        if (fastTimeoutId) clearTimeout(fastTimeoutId);
+        if (slowTimeoutId) clearTimeout(slowTimeoutId);
+        performSave(answers);
       },
       cancel: () => {
-        clearTimeout(timeoutId);
+        if (fastTimeoutId) clearTimeout(fastTimeoutId);
+        if (slowTimeoutId) clearTimeout(slowTimeoutId);
       },
     };
   }, [applicationId, answers]);
@@ -79,6 +156,7 @@ export function useApplicationAutosave(
     return () => pushToServer.cancel();
   }, [answers, pushToServer]);
 
+  // Flush on visibility change and beforeunload
   useEffect(() => {
     const flush = () => pushToServer.flush();
     document.addEventListener("visibilitychange", flush, { passive: true });
@@ -89,5 +167,5 @@ export function useApplicationAutosave(
     };
   }, [pushToServer]);
 
-  return { answers, setAnswers };
+  return { answers, setAnswers, saveStatus };
 }

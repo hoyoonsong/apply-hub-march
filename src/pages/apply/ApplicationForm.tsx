@@ -211,7 +211,7 @@ export default function ApplicationForm({
     }
   };
 
-  const { answers, setAnswers } = useApplicationAutosave(
+  const { answers, setAnswers, saveStatus } = useApplicationAutosave(
     applicationId || "",
     appRow?.answers ?? {},
     appRow?.updated_at ?? undefined
@@ -796,7 +796,33 @@ export default function ApplicationForm({
               appRow &&
               (appRow.status === "draft" ||
                 (appRow.status === "submitted" && isEditing)) && (
-                <div className="flex justify-end pt-4 border-t">
+                <div className="flex items-center justify-between pt-4 border-t">
+                  {/* Autosave status indicator */}
+                  {appRow.status === "draft" && (
+                    <div className="text-sm text-gray-500 flex items-center gap-2">
+                      {saveStatus === "saving" && (
+                        <>
+                          <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                          <span>Saving...</span>
+                        </>
+                      )}
+                      {saveStatus === "saved" && (
+                        <>
+                          <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                          <span>Saved</span>
+                        </>
+                      )}
+                      {saveStatus === "error" && (
+                        <>
+                          <span className="inline-block w-2 h-2 bg-red-500 rounded-full"></span>
+                          <span>Save failed - will retry</span>
+                        </>
+                      )}
+                      {saveStatus === "idle" && (
+                        <span className="text-gray-400">All changes saved</span>
+                      )}
+                    </div>
+                  )}
                   <button
                     onClick={handleSubmit}
                     className="rounded-md bg-blue-600 px-5 py-2.5 md:px-6 md:py-3 text-sm md:text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
