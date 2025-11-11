@@ -5,6 +5,7 @@ import { getOrgBySlug, type Org } from "../../lib/orgs";
 import ProgramCard from "../../components/ProgramCard";
 import type { Program } from "../../types/programs";
 import AutoLinkText from "../../components/AutoLinkText";
+import { isPastDeadline } from "../../lib/deadlineUtils";
 
 export default function OrgHome() {
   const { orgSlug } = useParams();
@@ -59,6 +60,8 @@ export default function OrgHome() {
         // Filter programs by organization and published status
         // Also filter out deleted programs (deleted_at should be null)
         // And filter out private programs (only show public programs)
+        // Filter out programs where deadline has passed (remove completely)
+        // Keep programs that haven't opened yet (they'll be greyed out by ProgramCard)
         // Check both column and metadata (column takes precedence)
         const orgPrograms = (pData || []).filter((program: Program) => {
           if (
@@ -66,6 +69,11 @@ export default function OrgHome() {
             !program.published ||
             program.deleted_at
           ) {
+            return false;
+          }
+          
+          // Remove programs where deadline has passed
+          if (isPastDeadline(program.close_at)) {
             return false;
           }
           

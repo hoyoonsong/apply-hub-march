@@ -78,7 +78,7 @@ function NewLaunchPage() {
             Welcome to <span className="text-gray-900">Omnipply</span>
           </h1>
           <p className="text-sm md:text-2xl lg:text-3xl mb-6 md:mb-16 max-w-4xl mx-auto leading-relaxed text-gray-600 font-light">
-            Making forms easier for both applicants and organizations.
+            Easy to apply, easy to review. Less tedious, less barriers.
           </p>
 
           {/* CTA Buttons */}

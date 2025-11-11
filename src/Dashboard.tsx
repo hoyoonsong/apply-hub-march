@@ -5,6 +5,7 @@ import DashboardNavigation from "./components/DashboardNavigation.tsx";
 import CapabilityHub from "./components/CapabilityHub.tsx";
 import { loadCapabilities } from "./lib/capabilities";
 import { supabase } from "./lib/supabase";
+import { isBeforeOpenDate, isPastDeadline } from "./lib/deadlineUtils";
 // import { startOrGetApplication } from "./lib/rpc";
 import { useFeaturedSections } from "./hooks/useFeaturedSections.ts";
 import AutoLinkText from "./components/AutoLinkText";
@@ -566,51 +567,69 @@ function AllPrograms() {
           return true;
         });
 
+        // Remove programs where the application deadline has passed
+        const openOrUpcomingPrograms = publicPrograms.filter(
+          (p: any) => !isPastDeadline(p.close_at)
+        );
+
         // Transform database data to match the expected format
-        const transformedPrograms = publicPrograms.map((program, index) => {
-          const org = program.organizations;
-          const coalitionMemberships = org?.coalition_memberships || [];
+        const transformedPrograms = openOrUpcomingPrograms.map(
+          (program, index) => {
+            const org = program.organizations;
+            const coalitionMemberships = org?.coalition_memberships || [];
+            const opensSoon = isBeforeOpenDate(program.open_at);
 
-          let coalitionDisplay;
-          if (coalitionMemberships.length === 0) {
-            coalitionDisplay = "Independent";
-          } else if (coalitionMemberships.length === 1) {
-            coalitionDisplay =
-              coalitionMemberships[0]?.coalitions?.name || "Unknown Coalition";
-          } else {
-            const coalitionNames = coalitionMemberships
-              .map((membership: any) => membership?.coalitions?.name)
-              .filter((name: any) => name)
-              .slice(0, 2);
-
-            if (coalitionNames.length === 2) {
-              coalitionDisplay = `${coalitionNames[0]}, ${coalitionNames[1]}`;
+            let coalitionDisplay;
+            if (coalitionMemberships.length === 0) {
+              coalitionDisplay = "Independent";
+            } else if (coalitionMemberships.length === 1) {
+              coalitionDisplay =
+                coalitionMemberships[0]?.coalitions?.name ||
+                "Unknown Coalition";
             } else {
-              coalitionDisplay = `${coalitionNames[0]} +${
-                coalitionMemberships.length - 1
-              }`;
-            }
-          }
+              const coalitionNames = coalitionMemberships
+                .map((membership: any) => membership?.coalitions?.name)
+                .filter((name: any) => name)
+                .slice(0, 2);
 
-          return {
-            id: program.id,
-            name: program.name,
-            slug: program.slug,
-            type: program.type,
-            organization: org?.name || "Unknown Organization",
-            organizationSlug: org?.slug,
-            class: coalitionDisplay,
-            status: program.published ? "Open" : "Closed",
-            statusColor: program.published ? "text-green-600" : "text-red-600",
-            gradient: getGradientForIndex(index),
-            tagColor: getTagColorForIndex(index),
-            buttonColor: "bg-blue-600 hover:bg-blue-700",
-            description:
-              program.description || "A great program on our platform.",
-            openAt: program.open_at,
-            closeAt: program.close_at,
-          };
-        });
+              if (coalitionNames.length === 2) {
+                coalitionDisplay = `${coalitionNames[0]}, ${coalitionNames[1]}`;
+              } else {
+                coalitionDisplay = `${coalitionNames[0]} +${
+                  coalitionMemberships.length - 1
+                }`;
+              }
+            }
+
+            return {
+              id: program.id,
+              name: program.name,
+              slug: program.slug,
+              type: program.type,
+              organization: org?.name || "Unknown Organization",
+              organizationSlug: org?.slug,
+              class: coalitionDisplay,
+              status: opensSoon
+                ? "Coming Soon"
+                : program.published
+                ? "Open"
+                : "Closed",
+              statusColor: opensSoon
+                ? "text-orange-600"
+                : program.published
+                ? "text-green-600"
+                : "text-red-600",
+              gradient: getGradientForIndex(index),
+              tagColor: getTagColorForIndex(index),
+              buttonColor: "bg-blue-600 hover:bg-blue-700",
+              description:
+                program.description || "A great program on our platform.",
+              openAt: program.open_at,
+              closeAt: program.close_at,
+              opensSoon,
+            };
+          }
+        );
 
         setPrograms(transformedPrograms);
         setFilteredPrograms(transformedPrograms);
@@ -715,7 +734,11 @@ function AllPrograms() {
         {filteredPrograms.map((program) => (
           <div
             key={program.id}
-            className="bg-white rounded-xl md:rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden flex flex-col"
+            className={`bg-white rounded-xl md:rounded-2xl shadow-xl transition-all duration-300 transform border border-gray-100 overflow-hidden flex flex-col ${
+              program.status === "Coming Soon"
+                ? "opacity-40 cursor-not-allowed"
+                : "hover:shadow-2xl hover:-translate-y-2"
+            }`}
           >
             <div
               className={`h-32 md:h-48 bg-gradient-to-br ${program.gradient} flex items-center justify-center`}
@@ -773,13 +796,23 @@ function AllPrograms() {
 
               <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0 mt-auto">
                 <span
-                  className={`${program.statusColor} font-semibold text-xs md:text-sm`}
+                  className={`${
+                    program.status === "Coming Soon" ||
+                    program.status === "Open"
+                      ? `${program.statusColor} font-bold text-sm md:text-base`
+                      : `${program.statusColor} font-semibold text-xs md:text-sm`
+                  }`}
                 >
                   {program.status}
                 </span>
                 <button
-                  className={`${program.buttonColor} text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors`}
+                  className={`${
+                    program.opensSoon
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : `${program.buttonColor} text-white`
+                  } px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors`}
                   onClick={async () => {
+                    if (program.opensSoon) return; // Disable navigation for programs that haven't opened
                     try {
                       navigate(`/programs/${program.id}/apply`);
                     } catch (error) {
@@ -787,6 +820,7 @@ function AllPrograms() {
                       alert("Could not start application. Please try again.");
                     }
                   }}
+                  disabled={program.opensSoon}
                 >
                   Learn More
                 </button>
