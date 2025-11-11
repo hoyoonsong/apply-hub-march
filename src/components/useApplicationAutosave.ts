@@ -35,7 +35,8 @@ export function useApplicationAutosave(
 
   // Track save status for UI feedback
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const lastPushed = useRef<string>("");
+  // Initialize lastPushed with initial answers to prevent false "Saving..." on first load
+  const lastPushed = useRef<string>(JSON.stringify(initialServerAnswers || {}));
   const lastActivityTime = useRef<number>(Date.now());
   const pendingSave = useRef<Answers | null>(null);
   const isOnline = useRef<boolean>(navigator.onLine);
@@ -89,6 +90,7 @@ export function useApplicationAutosave(
       // Skip if unchanged
       if (json === lastPushed.current) {
         setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
         return;
       }
 
@@ -99,6 +101,8 @@ export function useApplicationAutosave(
         return;
       }
 
+      // Status should already be "saving" from when call() was invoked
+      // But set it here just in case
       setSaveStatus("saving");
       try {
         await saveApplication(applicationId, data);
@@ -119,6 +123,7 @@ export function useApplicationAutosave(
 
     return {
       call: (data: Answers) => {
+        const json = JSON.stringify(data);
         const now = Date.now();
         const timeSinceLastActivity = now - lastActivityTime.current;
         lastActivityTime.current = now;
@@ -142,6 +147,11 @@ export function useApplicationAutosave(
       flush: () => {
         if (fastTimeoutId) clearTimeout(fastTimeoutId);
         if (slowTimeoutId) clearTimeout(slowTimeoutId);
+        // Set saving status before flushing
+        const json = JSON.stringify(answers);
+        if (json !== lastPushed.current) {
+          setSaveStatus("saving");
+        }
         performSave(answers);
       },
       cancel: () => {
@@ -150,6 +160,16 @@ export function useApplicationAutosave(
       },
     };
   }, [applicationId, answers]);
+
+  // When answers change, immediately show "Saving..." if there are unsaved changes
+  useEffect(() => {
+    const currentJson = JSON.stringify(answers);
+    // Show "Saving..." immediately when there are unsaved changes
+    // (unless we're already saving or there's an error that needs to be shown)
+    if (currentJson !== lastPushed.current && saveStatus !== "saving" && saveStatus !== "error") {
+      setSaveStatus("saving");
+    }
+  }, [answers, saveStatus]);
 
   useEffect(() => {
     pushToServer.call(answers);
