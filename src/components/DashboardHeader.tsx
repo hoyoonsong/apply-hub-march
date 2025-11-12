@@ -19,22 +19,19 @@ export default function DashboardHeader({
   return (
     <nav className="bg-white shadow-sm relative">
       {/* Logo positioned absolutely at top-left corner with responsive sizing */}
-      <div className="absolute top-2 left-2 sm:top-2 sm:left-4 z-10">
+      <div className="absolute top-1 left-1 sm:top-2 sm:left-4 z-10">
         <Link to="/" className="flex items-center">
           <img
             src="/Omnipply.png"
             alt="Omnipply Logo"
-            className="h-24 w-auto sm:h-32 md:h-40"
+            className="h-16 w-auto sm:h-32 md:h-40"
           />
         </Link>
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-6 sm:py-12 md:py-16">
-        {/* Main header row - logo, tabs (desktop), user info */}
+      <div className="py-4 sm:py-12 md:py-16">
+        {/* Main header row - tabs (desktop), user info */}
         <div className="flex items-center justify-between">
-          {/* Responsive spacer for logo */}
-          <div className="w-16 sm:w-28 md:w-40"></div>
-
           {/* Center - Tabs with responsive positioning (hidden on mobile) */}
           {showTabs && tabs.length > 0 && (
             <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 gap-4 lg:gap-5">
@@ -55,14 +52,14 @@ export default function DashboardHeader({
           )}
 
           {/* Right side - User info */}
-          <div className="flex items-start pt-4 md:items-center md:pt-0">
+          <div className="flex justify-end items-start pt-2 sm:pt-4 md:items-center md:pt-0 pl-2 sm:pl-6 md:pl-8 pr-3 sm:pr-16 md:pr-24 w-full">
             <UserInfo />
           </div>
         </div>
 
         {/* Mobile tabs row - shown only on mobile */}
         {showTabs && tabs.length > 0 && (
-          <div className="md:hidden flex justify-center mt-12 gap-1">
+          <div className="md:hidden flex justify-center mt-8 sm:mt-12 gap-1 px-4">
             {tabs.map((tab) => (
               <button
                 key={tab.name}

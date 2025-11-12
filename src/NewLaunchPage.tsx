@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LoginModal from "./components/LoginModal";
+import OrganizationSignupModal from "./components/OrganizationSignupModal";
 import { useAuth } from "./auth/AuthProvider";
 import SignOutButton from "./components/SignOutButton";
 
 function NewLaunchPage() {
   const [open, setOpen] = useState(false);
+  const [orgSignupOpen, setOrgSignupOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -68,7 +70,7 @@ function NewLaunchPage() {
                 {user ? "Go to Dashboard" : "Applicants start here"}
               </button>
               <button
-                onClick={() => (user ? navigate("/dashboard") : setOpen(true))}
+                onClick={() => setOrgSignupOpen(true)}
                 className="w-full sm:w-auto bg-transparent hover:bg-gray-100 text-gray-600 hover:text-gray-700 font-semibold py-3 sm:py-4 px-8 sm:px-10 rounded-xl text-base sm:text-lg md:text-xl border border-gray-300 transition-all duration-300 transform hover:scale-105"
               >
                 Organizations join here
@@ -170,7 +172,7 @@ function NewLaunchPage() {
                 increasing outreach!
               </p>
               <button
-                onClick={() => (user ? navigate("/dashboard") : setOpen(true))}
+                onClick={() => setOrgSignupOpen(true)}
                 className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 sm:py-3 px-6 sm:px-8 rounded-xl text-sm sm:text-base md:text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
               >
                 Get Started as an Organization
@@ -189,6 +191,10 @@ function NewLaunchPage() {
         </div>
       </footer>
       {!user && <LoginModal open={open} onClose={() => setOpen(false)} />}
+      <OrganizationSignupModal
+        open={orgSignupOpen}
+        onClose={() => setOrgSignupOpen(false)}
+      />
     </div>
   );
 }

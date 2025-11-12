@@ -190,7 +190,7 @@ export default function SuperHome() {
 
           {/* Omnipply Forms Card */}
           <Link
-            to="/org/omnipply/admin/programs"
+            to="/super/forms"
             className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
           >
             <div className="flex items-center">

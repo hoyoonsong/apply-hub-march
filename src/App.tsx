@@ -18,6 +18,7 @@ import SuperProgramsReview from "./pages/super/SuperProgramsReview";
 import ReviewerHome from "./pages/reviewer/ReviewerHome";
 import Assignments from "./pages/super/Assignments";
 import FeaturedManager from "./pages/super/FeaturedManager";
+import Forms from "./pages/super/Forms";
 import OrgHome from "./pages/public/OrgHome";
 import CoalitionHome from "./pages/public/CoalitionHome";
 import ProgramDetail from "./pages/public/ProgramDetail";
@@ -124,6 +125,14 @@ export default function App() {
               element={
                 <ProtectedSuperRoute>
                   <FeaturedManager />
+                </ProtectedSuperRoute>
+              }
+            />
+            <Route
+              path="/super/forms"
+              element={
+                <ProtectedSuperRoute>
+                  <Forms />
                 </ProtectedSuperRoute>
               }
             />
