@@ -138,7 +138,10 @@ export default function OrgAdminPrograms() {
               .eq("id", p.id)
               .then(({ error }) => {
                 if (error) {
-                  console.warn(`Failed to migrate is_private for program ${p.id}:`, error);
+                  console.warn(
+                    `Failed to migrate is_private for program ${p.id}:`,
+                    error
+                  );
                 } else {
                   // Update the row in memory so UI reflects the change immediately
                   (p as any).is_private = true;
@@ -432,7 +435,8 @@ export default function OrgAdminPrograms() {
                       Private Program
                     </span>
                     <p className="text-xs text-gray-600 mt-0.5">
-                      Private programs won't appear on the homepage or in public listings. They can only be accessed via direct link.
+                      Private programs won't appear on the homepage or in public
+                      listings. They can only be accessed via direct link.
                     </p>
                   </div>
                 </label>
@@ -587,9 +591,14 @@ export default function OrgAdminPrograms() {
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                   p.published
                                     ? (() => {
-                                        const columnValue = (p as any).is_private;
-                                        const isPrivate = columnValue === true || 
-                                                        (columnValue === null || columnValue === undefined) && (p.metadata as any)?.is_private === true;
+                                        const columnValue = (p as any)
+                                          .is_private;
+                                        const isPrivate =
+                                          columnValue === true ||
+                                          ((columnValue === null ||
+                                            columnValue === undefined) &&
+                                            (p.metadata as any)?.is_private ===
+                                              true);
                                         return isPrivate;
                                       })()
                                       ? "bg-purple-100 text-purple-800"
@@ -600,8 +609,12 @@ export default function OrgAdminPrograms() {
                                 {p.published
                                   ? (() => {
                                       const columnValue = (p as any).is_private;
-                                      const isPrivate = columnValue === true || 
-                                                      (columnValue === null || columnValue === undefined) && (p.metadata as any)?.is_private === true;
+                                      const isPrivate =
+                                        columnValue === true ||
+                                        ((columnValue === null ||
+                                          columnValue === undefined) &&
+                                          (p.metadata as any)?.is_private ===
+                                            true);
                                       return isPrivate;
                                     })()
                                     ? "Private"
@@ -769,9 +782,9 @@ export default function OrgAdminPrograms() {
                       >
                         <td className="px-6 py-5 text-sm text-gray-900 text-center">
                           <Link
-                            to={`/org/${orgSlug}/admin/programs/${p.id}/builder`}
+                            to={`/review/${p.id}`}
                             className="text-indigo-600 hover:text-indigo-800 font-semibold hover:underline transition-colors duration-150"
-                            title="Open application editor"
+                            title="Open reviewer page"
                           >
                             {p.name}
                           </Link>
@@ -813,8 +826,11 @@ export default function OrgAdminPrograms() {
                             // Column takes precedence - if column exists (even if false), use it
                             // Only check metadata if column is explicitly null/undefined (not false)
                             const columnValue = (p as any).is_private;
-                            const isPrivate = columnValue === true || 
-                                            (columnValue === null || columnValue === undefined) && (p.metadata as any)?.is_private === true;
+                            const isPrivate =
+                              columnValue === true ||
+                              ((columnValue === null ||
+                                columnValue === undefined) &&
+                                (p.metadata as any)?.is_private === true);
                             return (
                               <span
                                 className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
