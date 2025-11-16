@@ -25,17 +25,88 @@ export function useFeaturedSections() {
           sections.map(async (s) => {
             const items = await fetchFeaturedItemsBySection(s.id);
 
-            // Enrich items with detailed data based on target type
-            const enrichedItems = await Promise.all(
-              (items || []).map(async (item: any) => {
+            // Batch enrich items by type to avoid N+1 queries
+            const enrichedItems = await (async () => {
+              if (!items || items.length === 0) return [];
+
+              // Group items by target_type
+              const orgItems = items.filter((i: any) => i.target_type === "org");
+              const programItems = items.filter(
+                (i: any) => i.target_type === "program"
+              );
+              const coalitionItems = items.filter(
+                (i: any) => i.target_type === "coalition"
+              );
+
+              // Batch fetch all orgs, programs, and coalitions in parallel
+              const [orgsResult, programsResult, coalitionsResult] =
+                await Promise.all([
+                  orgItems.length > 0
+                    ? supabase
+                        .from("organizations")
+                        .select("id, name, slug, description")
+                        .in(
+                          "id",
+                          orgItems.map((i: any) => i.target_id)
+                        )
+                    : Promise.resolve({ data: [] }),
+                  programItems.length > 0
+                    ? supabase
+                        .from("programs")
+                        .select(
+                          `
+                          *,
+                          organizations(
+                            id,
+                            name,
+                            slug,
+                            coalition_memberships(
+                              coalition_id,
+                              coalitions(
+                                name,
+                                slug
+                              )
+                            )
+                          )
+                        `
+                        )
+                        .in(
+                          "id",
+                          programItems.map((i: any) => i.target_id)
+                        )
+                    : Promise.resolve({ data: [] }),
+                  coalitionItems.length > 0
+                    ? supabase
+                        .from("coalitions")
+                        .select("id, name, slug, description")
+                        .in(
+                          "id",
+                          coalitionItems.map((i: any) => i.target_id)
+                        )
+                    : Promise.resolve({ data: [] }),
+                ]);
+
+              // Build maps from results
+              const orgDataMap = new Map();
+              (orgsResult.data || []).forEach((org: any) => {
+                orgDataMap.set(org.id, org);
+              });
+
+              const programDataMap = new Map();
+              (programsResult.data || []).forEach((prog: any) => {
+                programDataMap.set(prog.id, prog);
+              });
+
+              const coalitionDataMap = new Map();
+              (coalitionsResult.data || []).forEach((coal: any) => {
+                coalitionDataMap.set(coal.id, coal);
+              });
+
+              // Map items back with enriched data
+              return items.map((item: any) => {
                 try {
                   if (item.target_type === "org") {
-                    const { data: orgData } = await supabase
-                      .from("organizations")
-                      .select("name, slug, description")
-                      .eq("id", item.target_id)
-                      .single();
-
+                    const orgData = orgDataMap.get(item.target_id);
                     return {
                       ...item,
                       title: item.title || orgData?.name,
@@ -43,29 +114,7 @@ export function useFeaturedSections() {
                       org_slug: orgData?.slug,
                     };
                   } else if (item.target_type === "program") {
-                    // Use the SAME query as AllPrograms tab - this is what works!
-                    const { data: programData } = await supabase
-                      .from("programs")
-                      .select(
-                        `
-                        *,
-                        organizations(
-                          id,
-                          name,
-                          slug,
-                          coalition_memberships(
-                            coalition_id,
-                            coalitions(
-                              name,
-                              slug
-                            )
-                          )
-                        )
-                      `
-                      )
-                      .eq("id", item.target_id)
-                      .single();
-
+                    const programData = programDataMap.get(item.target_id);
                     if (!programData) {
                       console.error(
                         "No program data found for ID:",
@@ -114,12 +163,7 @@ export function useFeaturedSections() {
                       coalitionDisplay: coalitionDisplay,
                     };
                   } else if (item.target_type === "coalition") {
-                    const { data: coalitionData } = await supabase
-                      .from("coalitions")
-                      .select("name, slug, description")
-                      .eq("id", item.target_id)
-                      .single();
-
+                    const coalitionData = coalitionDataMap.get(item.target_id);
                     return {
                       ...item,
                       title: item.title || coalitionData?.name,
@@ -132,14 +176,14 @@ export function useFeaturedSections() {
                   return item;
                 } catch (err) {
                   console.error(
-                    "Failed to fetch detailed data for item:",
+                    "Failed to enrich item:",
                     item.id,
                     err
                   );
                   return item;
                 }
-              })
-            );
+              });
+            })();
 
             return {
               section: s,

@@ -26,24 +26,33 @@ export default function AllReviewsPage() {
     const uniqueProgramIds = [...new Set(reviews.map((r) => r.program_id))];
     const configs: Record<string, any> = {};
 
-    for (const programId of uniqueProgramIds) {
+    // Load all form configs in parallel instead of sequentially
+    const configPromises = uniqueProgramIds.map(async (programId) => {
       try {
         const formConfig = await getProgramReviewForm(programId);
-        configs[programId] = formConfig;
+        return { programId, formConfig };
       } catch (error) {
         console.error(
           `Failed to load form config for program ${programId}:`,
           error
         );
         // Use default config if loading fails
-        configs[programId] = {
-          show_score: true,
-          show_comments: true,
-          show_decision: false,
-          decision_options: ["accept", "waitlist", "reject"],
+        return {
+          programId,
+          formConfig: {
+            show_score: true,
+            show_comments: true,
+            show_decision: false,
+            decision_options: ["accept", "waitlist", "reject"],
+          },
         };
       }
-    }
+    });
+
+    const results = await Promise.all(configPromises);
+    results.forEach(({ programId, formConfig }) => {
+      configs[programId] = formConfig;
+    });
 
     setProgramFormConfigs(configs);
   }
@@ -53,50 +62,71 @@ export default function AllReviewsPage() {
     setError(null);
 
     try {
-      // Get existing reviews (commented and finalized)
-      const { data: reviewsData, error: reviewsError } = await supabase.rpc(
-        "reviews_list_v1",
-        {
+      // Parallelize reviews and applications queries
+      const [reviewsResult, appsResult] = await Promise.allSettled([
+        supabase.rpc("reviews_list_v1", {
           p_mine_only: mineOnly,
           p_status: null, // Get all statuses
           p_program_id: null,
           p_org_id: null,
           p_limit: 1000,
           p_offset: 0,
-        }
-      );
+        }),
+        supabase
+          .from("applications")
+          .select(
+            `
+            id,
+            program_id,
+            user_id,
+            status,
+            created_at,
+            updated_at,
+            programs!inner(name, organization_id, organizations(name))
+          `
+          )
+          .eq("status", "submitted"),
+      ]);
 
+      // Handle reviews result
+      if (reviewsResult.status === "rejected") {
+        console.error("Error fetching reviews:", reviewsResult.reason);
+        setError("Failed to load reviews");
+        setAllRows([]);
+        setLoading(false);
+        return;
+      }
+
+      const reviewsError = reviewsResult.value.error;
       if (reviewsError) {
         console.error("Error fetching reviews:", reviewsError);
         setError(reviewsError.message);
         setAllRows([]);
+        setLoading(false);
         return;
       }
 
-      const existingReviews = (reviewsData ?? []) as ReviewsListRow[];
+      const existingReviews = (reviewsResult.value.data ?? []) as ReviewsListRow[];
 
-      // Get all submitted applications directly from the applications table
-      const { data: submittedApps, error: appsError } = await supabase
-        .from("applications")
-        .select(
-          `
-          id,
-          program_id,
-          user_id,
-          status,
-          created_at,
-          updated_at,
-          programs!inner(name, organization_id, organizations(name))
-        `
-        )
-        .eq("status", "submitted");
+      // Handle applications result
+      if (appsResult.status === "rejected") {
+        console.error("Error fetching applications:", appsResult.reason);
+        setError("Failed to load applications");
+        setAllRows([]);
+        setLoading(false);
+        return;
+      }
 
+      const appsError = appsResult.value.error;
       if (appsError) {
         console.error("Error fetching submitted applications:", appsError);
         setError(appsError.message);
         setAllRows([]);
+        setLoading(false);
         return;
       }
+
+      const submittedApps = appsResult.value.data;
 
       console.log("Submitted applications:", submittedApps?.length || 0);
       console.log("Existing reviews:", existingReviews.length);
@@ -165,31 +195,38 @@ export default function AllReviewsPage() {
 
   useEffect(() => {
     fetchList();
-  }, [mineOnly, status, fetchList]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mineOnly, status]); // Removed fetchList from deps to prevent circular re-renders
 
   // Realtime refresh whenever any review changes or program metadata changes
   useEffect(() => {
+    let debounceTimer: NodeJS.Timeout;
+    const debouncedFetch = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchList();
+      }, 500); // Debounce to prevent rapid-fire calls from multiple events
+    };
+
     const ch = supabase
       .channel("reviews:all")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "application_reviews" },
-        () => {
-          fetchList();
-        }
+        debouncedFetch
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "programs" },
-        () => {
-          fetchList(); // Refresh when program metadata changes (including form config)
-        }
+        debouncedFetch // Refresh when program metadata changes (including form config)
       )
       .subscribe();
     return () => {
+      clearTimeout(debounceTimer);
       supabase.removeChannel(ch);
     };
-  }, [supabase, fetchList]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only set up once, fetchList is stable
 
   // Color mapping for decision options
   const getDecisionColor = (decision: string) => {

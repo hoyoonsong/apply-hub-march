@@ -49,18 +49,27 @@ export default function ProgramDetail() {
       setLoading(true);
       setError(null);
       try {
-        // Load program details and schema
-        const { data: programData, error: programError } = await supabase
-          .from("programs_public")
-          .select("id, name, type, description, open_at, close_at, published")
-          .eq("id", programId)
-          .single();
+        // Parallelize program details and schema loading
+        const [programResult, schemaResult] = await Promise.allSettled([
+          supabase
+            .from("programs_public")
+            .select("id, name, type, description, open_at, close_at, published")
+            .eq("id", programId)
+            .single(),
+          loadApplicationSchemaById(programId),
+        ]);
 
-        if (programError || !programData) {
+        if (
+          programResult.status === "rejected" ||
+          programResult.value.error ||
+          !programResult.value.data
+        ) {
           // If program not found, redirect to unauthorized
           navigate("/unauthorized");
           return;
         }
+
+        const programData = programResult.value.data;
 
         // Check if program is published
         if (!programData.published) {
@@ -69,16 +78,16 @@ export default function ProgramDetail() {
         }
         setProgram(programData);
 
-        // Load schema using centralized loader
-        const schema = await loadApplicationSchemaById(programId);
-        console.log("🔍 ProgramDetail - Loaded schema:", schema);
+        if (schemaResult.status === "fulfilled") {
+          console.log("🔍 ProgramDetail - Loaded schema:", schemaResult.value);
+        }
       } catch (e: any) {
         setError(e.message);
       } finally {
         setLoading(false);
       }
     })();
-  }, [programId]);
+  }, [programId, navigate]);
 
   const handleStart = async () => {
     if (!programId) return;

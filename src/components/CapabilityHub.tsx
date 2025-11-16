@@ -2,9 +2,18 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { loadCapabilities, type Capabilities } from "../lib/capabilities";
 
-export default function CapabilityHub() {
-  const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
-  const [loading, setLoading] = useState(true);
+type CapabilityHubProps = {
+  // Optional: if capabilities are passed as props, use them instead of fetching
+  initialCapabilities?: Capabilities | null;
+};
+
+export default function CapabilityHub({
+  initialCapabilities,
+}: CapabilityHubProps = {} as CapabilityHubProps) {
+  const [capabilities, setCapabilities] = useState<Capabilities | null>(
+    initialCapabilities ?? null
+  );
+  const [loading, setLoading] = useState(initialCapabilities === undefined);
 
   const refreshCapabilities = async () => {
     setLoading(true);
@@ -18,9 +27,12 @@ export default function CapabilityHub() {
     }
   };
 
+  // Only fetch if capabilities weren't passed as props
   useEffect(() => {
-    refreshCapabilities();
-  }, []);
+    if (initialCapabilities === undefined) {
+      refreshCapabilities();
+    }
+  }, [initialCapabilities]);
 
   if (loading) {
     return (

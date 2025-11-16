@@ -50,21 +50,27 @@ export default function PublishResultsHomePage() {
           return;
         }
 
-        // For each program, get finalized and published counts
+        // For each program, get finalized and published counts in parallel
         const programsWithCounts = await Promise.all(
           (data || []).map(async (program) => {
-            // Get finalized reviews count
-            const { data: finalizedData } = await supabase.rpc(
-              "get_finalized_publish_queue_v1",
-              { p_program_id: program.id }
-            );
-            const finalized_count = (finalizedData as any[])?.length || 0;
+            // Parallelize both count queries for each program
+            const [finalizedResult, publishedResult] = await Promise.allSettled([
+              supabase.rpc("get_finalized_publish_queue_v1", {
+                p_program_id: program.id,
+              }),
+              getProgramPublicationCount(supabase, program.id),
+            ]);
 
-            // Get published count using the safe helper
-            const published_count = await getProgramPublicationCount(
-              supabase,
-              program.id
-            );
+            const finalized_count =
+              finalizedResult.status === "fulfilled" &&
+              finalizedResult.value.data
+                ? (finalizedResult.value.data as any[])?.length || 0
+                : 0;
+
+            const published_count =
+              publishedResult.status === "fulfilled"
+                ? publishedResult.value
+                : 0;
 
             return {
               ...program,

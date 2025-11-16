@@ -162,7 +162,7 @@ export default function ApplicationForm({
     setProgramDeadline(progData?.close_at || null);
     setProgramOpenDate(progData?.open_at || null);
 
-    // Load full program details and organization
+    // Load full program details first, then parallelize dependent queries
     try {
       const { data: programData, error: programError } = await supabase
         .from("programs")
@@ -175,35 +175,48 @@ export default function ApplicationForm({
       if (!programError && programData) {
         setProgramDetails(programData);
 
-        // Load profile snapshot if program uses profile autofill (only if logged in and we have an app)
-        // Check user from hook context, not parameter
-        const currentUser = user;
-        if (currentUser && app) {
-          const program = {
-            id: programData.id,
-            name: programData.name,
-            metadata: programData.metadata,
-          };
+        // Load profile snapshot and organization in parallel (after we have programData)
+        const profilePromise = (async () => {
+          const currentUser = user;
+          if (currentUser && app) {
+            const program = {
+              id: programData.id,
+              name: programData.name,
+              metadata: programData.metadata,
+            };
 
-          if (programUsesProfile(program)) {
-            if (app.status === "submitted" && app.answers?.profile) {
-              setProfileSnap(app.answers.profile);
-            } else {
-              const profile = await fetchProfileSnapshot();
-              setProfileSnap(profile);
+            if (programUsesProfile(program)) {
+              if (app.status === "submitted" && app.answers?.profile) {
+                return app.answers.profile;
+              } else {
+                return await fetchProfileSnapshot();
+              }
             }
           }
-        }
+          return null;
+        })();
 
-        // Load organization details
-        const { data: orgData, error: orgError } = await supabase
+        const orgPromise = supabase
           .from("organizations")
           .select("id, name")
           .eq("id", programData.organization_id)
           .single();
 
-        if (!orgError && orgData) {
-          setOrganization(orgData);
+        const [profileData, orgDataResult] = await Promise.allSettled([
+          profilePromise,
+          orgPromise,
+        ]);
+
+        if (profileData.status === "fulfilled" && profileData.value) {
+          setProfileSnap(profileData.value);
+        }
+
+        if (
+          orgDataResult.status === "fulfilled" &&
+          !orgDataResult.value.error &&
+          orgDataResult.value.data
+        ) {
+          setOrganization(orgDataResult.value.data);
         }
       }
     } catch (e) {

@@ -31,17 +31,19 @@ export default function ReviewerIndex() {
           return;
         }
         const allProgs = progs || [];
-        // Filter out deleted programs
+        // Filter out deleted programs - optimized: get non-deleted in one query
         if (allProgs.length > 0) {
           const programIds = allProgs.map((p: ReviewerProgram) => p.program_id);
-          const { data: deletedCheck } = await supabase
+          const { data: nonDeletedPrograms } = await supabase
             .from("programs")
             .select("id")
             .in("id", programIds)
-            .not("deleted_at", "is", null);
-          const deletedIds = new Set((deletedCheck || []).map((p: any) => p.id));
-          const filtered = allProgs.filter(
-            (p: ReviewerProgram) => !deletedIds.has(p.program_id)
+            .is("deleted_at", null);
+          const nonDeletedIds = new Set(
+            (nonDeletedPrograms || []).map((p: any) => p.id)
+          );
+          const filtered = allProgs.filter((p: ReviewerProgram) =>
+            nonDeletedIds.has(p.program_id)
           );
           setPrograms(filtered);
         } else {

@@ -322,10 +322,11 @@ export function useCollaborativeReview(appId: string) {
   const loadRef = useRef(load);
   loadRef.current = load;
 
-  // Load on mount
+  // Load on mount and when appId changes
   useEffect(() => {
     load();
-  }, [load]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appId]); // Only depend on appId, not load function
 
   // Realtime subscription for collaborative editing
   useEffect(() => {

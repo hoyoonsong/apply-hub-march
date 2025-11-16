@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 
+// Cache for user role to avoid repeated queries
+let userRoleCache: {
+  role: string | null;
+  userId: string | null;
+  timestamp: number;
+} = { role: null, userId: null, timestamp: 0 };
+const ROLE_CACHE_TTL = 30000; // 30 seconds cache (role rarely changes)
+
 // Fallback function to check user role from profiles table
 export async function getUserRole(): Promise<string | null> {
   try {
@@ -8,6 +16,15 @@ export async function getUserRole(): Promise<string | null> {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return null;
+
+    // Check cache first
+    const now = Date.now();
+    if (
+      userRoleCache.userId === user.id &&
+      now - userRoleCache.timestamp < ROLE_CACHE_TTL
+    ) {
+      return userRoleCache.role;
+    }
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -18,10 +35,14 @@ export async function getUserRole(): Promise<string | null> {
     // If user is deleted, return null to deny access
     if (profile?.deleted_at) {
       console.log("User is soft deleted, denying access");
+      userRoleCache = { role: null, userId: user.id, timestamp: now };
       return null;
     }
 
-    return profile?.role || null;
+    const role = profile?.role || null;
+    // Update cache
+    userRoleCache = { role, userId: user.id, timestamp: now };
+    return role;
   } catch (error) {
     console.error("Failed to get user role:", error);
     return null;
@@ -66,16 +87,21 @@ export async function fetchReviewerPrograms(): Promise<ProgramMini[]> {
     return [];
   }
   const allProgs = data ?? [];
-  // Filter out deleted programs
+  // Filter out deleted programs - optimized: get non-deleted in one query
   if (allProgs.length > 0) {
     const programIds = allProgs.map((p: any) => p.program_id || p.id);
-    const { data: deletedCheck } = await supabase
+    // Get only non-deleted program IDs in a single query
+    const { data: nonDeletedPrograms } = await supabase
       .from("programs")
       .select("id")
       .in("id", programIds)
-      .not("deleted_at", "is", null);
-    const deletedIds = new Set((deletedCheck || []).map((p: any) => p.id));
-    return allProgs.filter((p: any) => !deletedIds.has(p.program_id || p.id));
+      .is("deleted_at", null);
+    const nonDeletedIds = new Set(
+      (nonDeletedPrograms || []).map((p: any) => p.id)
+    );
+    return allProgs.filter((p: any) =>
+      nonDeletedIds.has(p.program_id || p.id)
+    );
   }
   return allProgs;
 }
@@ -138,64 +164,87 @@ export function useCapabilities() {
   };
 }
 
+// Simple cache to prevent duplicate simultaneous calls
+let capabilitiesCache: {
+  promise: Promise<Capabilities> | null;
+  timestamp: number;
+} = { promise: null, timestamp: 0 };
+const CACHE_TTL = 5000; // 5 seconds cache
+
 export async function loadCapabilities(): Promise<Capabilities> {
-  let adminOrgs: OrgMini[] = [];
-  let reviewerPrograms: ProgramMini[] = [];
-  let coalitions: CoalitionMini[] = [];
-  let userRole: string | null = null;
-  let rpcsWorking = true;
-
-  try {
-    const [adminResult, reviewerProgramsResult, coalitionResult, roleResult] =
-      await Promise.all([
-        fetchAdminOrgs(),
-        fetchReviewerPrograms(),
-        fetchCoalitions(),
-        getUserRole(),
-      ]);
-
-    adminOrgs = adminResult;
-    reviewerPrograms = reviewerProgramsResult;
-    coalitions = coalitionResult;
-    userRole = roleResult;
-  } catch (error) {
-    console.error("Error loading capabilities:", error);
-    rpcsWorking = false;
+  const now = Date.now();
+  
+  // If there's a recent cached promise, reuse it
+  if (
+    capabilitiesCache.promise &&
+    now - capabilitiesCache.timestamp < CACHE_TTL
+  ) {
+    return capabilitiesCache.promise;
   }
 
-  console.log("loadCapabilities - final result:", {
-    adminOrgs,
-    reviewerPrograms,
-    coalitions,
-    userRole,
-    rpcsWorking,
-  });
+  // Create new promise and cache it
+  const promise = (async () => {
+    let adminOrgs: OrgMini[] = [];
+    let reviewerPrograms: ProgramMini[] = [];
+    let coalitions: CoalitionMini[] = [];
+    let userRole: string | null = null;
+    let rpcsWorking = true;
 
-  // Only use fallback data if RPCs are actually not working (error occurred)
-  // Don't use fallback when RPCs work but return empty arrays (which is correct when no assignments)
-  if (!rpcsWorking && userRole) {
-    console.log("RPCs not working, using role-based fallback for testing");
+    try {
+      const [adminResult, reviewerProgramsResult, coalitionResult, roleResult] =
+        await Promise.all([
+          fetchAdminOrgs(),
+          fetchReviewerPrograms(),
+          fetchCoalitions(),
+          getUserRole(),
+        ]);
 
-    if (userRole === "admin" || userRole === "superadmin") {
-      // For testing: if user is admin, give them access to Demo Corps
-      adminOrgs.push({
-        id: "demo-corps-id",
-        name: "Demo Corps",
-        slug: "demo-corps",
-      });
+      adminOrgs = adminResult;
+      reviewerPrograms = reviewerProgramsResult;
+      coalitions = coalitionResult;
+      userRole = roleResult;
+    } catch (error) {
+      console.error("Error loading capabilities:", error);
+      rpcsWorking = false;
     }
 
-    if (userRole === "coalition_manager" || userRole === "superadmin") {
-      // For testing: if user is coalition manager, give them access to a test coalition
-      coalitions.push({
-        id: "test-coalition-id",
-        name: "Test Coalition",
-        slug: "test-coalition",
-      });
-    }
-  }
+    console.log("loadCapabilities - final result:", {
+      adminOrgs,
+      reviewerPrograms,
+      coalitions,
+      userRole,
+      rpcsWorking,
+    });
 
-  return { adminOrgs, reviewerPrograms, coalitions, userRole };
+    // Only use fallback data if RPCs are actually not working (error occurred)
+    // Don't use fallback when RPCs work but return empty arrays (which is correct when no assignments)
+    if (!rpcsWorking && userRole) {
+      console.log("RPCs not working, using role-based fallback for testing");
+
+      if (userRole === "admin" || userRole === "superadmin") {
+        // For testing: if user is admin, give them access to Demo Corps
+        adminOrgs.push({
+          id: "demo-corps-id",
+          name: "Demo Corps",
+          slug: "demo-corps",
+        });
+      }
+
+      if (userRole === "coalition_manager" || userRole === "superadmin") {
+        // For testing: if user is coalition manager, give them access to a test coalition
+        coalitions.push({
+          id: "test-coalition-id",
+          name: "Test Coalition",
+          slug: "test-coalition",
+        });
+      }
+    }
+
+    return { adminOrgs, reviewerPrograms, coalitions, userRole };
+  })();
+
+  capabilitiesCache = { promise, timestamp: now };
+  return promise;
 }
 
 // Helper to check if user has any capabilities

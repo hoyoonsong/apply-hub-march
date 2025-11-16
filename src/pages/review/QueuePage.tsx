@@ -19,26 +19,32 @@ export default function ReviewQueuePage() {
     setErr(null);
 
     try {
-      // Get program name
-      const { data: programData, error: programError } = await supabase
-        .from("programs")
-        .select("name")
-        .eq("id", programId)
-        .single();
+      // Parallelize program name and form config queries
+      const [programResult, formConfigResult] = await Promise.allSettled([
+        supabase
+          .from("programs")
+          .select("name")
+          .eq("id", programId)
+          .single(),
+        getProgramReviewForm(programId).catch(() => null),
+      ]);
 
-      if (!programError && programData?.name) {
-        setProgramName(programData.name);
+      // Handle program name result
+      if (
+        programResult.status === "fulfilled" &&
+        !programResult.value.error &&
+        programResult.value.data?.name
+      ) {
+        setProgramName(programResult.value.data.name);
       }
 
-      // Load form configuration for this program
-      try {
-        const formConfig = await getProgramReviewForm(programId);
-        setProgramFormConfig(formConfig);
-      } catch (error) {
-        console.error(
-          `Failed to load form config for program ${programId}:`,
-          error
-        );
+      // Handle form config result
+      if (
+        formConfigResult.status === "fulfilled" &&
+        formConfigResult.value
+      ) {
+        setProgramFormConfig(formConfigResult.value);
+      } else {
         // Use default config if loading fails
         setProgramFormConfig({
           show_score: true,
@@ -48,51 +54,72 @@ export default function ReviewQueuePage() {
         });
       }
 
-      // Get existing reviews for this program
-      const { data: reviewsData, error: reviewsError } = await supabase.rpc(
-        "reviews_list_v1",
-        {
+      // Parallelize reviews and applications queries
+      const [reviewsResult, appsResult] = await Promise.allSettled([
+        supabase.rpc("reviews_list_v1", {
           p_mine_only: false,
           p_status: null,
           p_program_id: programId,
           p_org_id: null,
           p_limit: 1000,
           p_offset: 0,
-        }
-      );
+        }),
+        supabase
+          .from("applications")
+          .select(
+            `
+            id,
+            program_id,
+            user_id,
+            status,
+            created_at,
+            updated_at,
+            programs!inner(name, organization_id, organizations(name))
+          `
+          )
+          .eq("status", "submitted")
+          .eq("program_id", programId),
+      ]);
 
+      // Handle reviews result
+      if (reviewsResult.status === "rejected") {
+        console.error("Error fetching reviews:", reviewsResult.reason);
+        setErr("Failed to load reviews");
+        setAllRows([]);
+        setLoading(false);
+        return;
+      }
+
+      const reviewsError = reviewsResult.value.error;
       if (reviewsError) {
         console.error("Error fetching reviews:", reviewsError);
         setErr(reviewsError.message);
         setAllRows([]);
+        setLoading(false);
         return;
       }
 
-      const existingReviews = (reviewsData ?? []) as ReviewsListRow[];
+      const existingReviews = (reviewsResult.value.data ?? []) as ReviewsListRow[];
 
-      // Get all submitted applications for this program
-      const { data: submittedApps, error: appsError } = await supabase
-        .from("applications")
-        .select(
-          `
-          id,
-          program_id,
-          user_id,
-          status,
-          created_at,
-          updated_at,
-          programs!inner(name, organization_id, organizations(name))
-        `
-        )
-        .eq("status", "submitted")
-        .eq("program_id", programId);
+      // Handle applications result
+      if (appsResult.status === "rejected") {
+        console.error("Error fetching applications:", appsResult.reason);
+        setErr("Failed to load applications");
+        setAllRows([]);
+        setLoading(false);
+        return;
+      }
 
+      const appsError = appsResult.value.error;
       if (appsError) {
         console.error("Error fetching submitted applications:", appsError);
         setErr(appsError.message);
         setAllRows([]);
+        setLoading(false);
         return;
       }
+
+      const submittedApps = appsResult.value.data;
 
       // Create a map of existing reviews by application_id
       const reviewsMap = new Map<string, ReviewsListRow>();

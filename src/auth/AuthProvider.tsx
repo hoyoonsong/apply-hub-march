@@ -25,11 +25,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Check for deleted users periodically
+  // Check for deleted users periodically (reduced frequency to minimize requests)
+  // Only check when user changes, not on every render
   useEffect(() => {
     if (!user) return;
 
+    let isMounted = true;
+
     const checkUserStatus = async () => {
+      if (!isMounted) return;
       try {
         const { data: profile } = await supabase
           .from("profiles")
@@ -37,23 +41,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq("id", user.id)
           .single();
 
-        if (profile?.deleted_at) {
+        if (isMounted && profile?.deleted_at) {
           console.log("User is soft deleted, signing out");
           await supabase.auth.signOut();
         }
       } catch (error) {
-        console.error("Error checking user status:", error);
+        if (isMounted) {
+          console.error("Error checking user status:", error);
+        }
       }
     };
 
-    // Check immediately
+    // Check immediately on mount
     checkUserStatus();
 
-    // Check every 30 seconds
-    const interval = setInterval(checkUserStatus, 30000);
+    // Check every 5 minutes instead of 2 minutes (further reduces requests)
+    // User deletion is very rare, so less frequent checks are acceptable
+    const interval = setInterval(checkUserStatus, 300000);
 
-    return () => clearInterval(interval);
-  }, [user]);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user?.id]); // Only re-run when user ID changes, not on every user object change
 
   return <Ctx.Provider value={{ loading, user }}>{children}</Ctx.Provider>;
 }

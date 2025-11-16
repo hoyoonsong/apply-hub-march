@@ -80,8 +80,22 @@ export async function upsertReview(params: {
   return data;
 }
 
+// Cache for program review forms to avoid repeated calls
+const reviewFormCache: Map<
+  string,
+  { data: any; timestamp: number }
+> = new Map();
+const REVIEW_FORM_CACHE_TTL = 60000; // 1 minute cache
+
 // Reviewer form configuration RPCs
 export async function getProgramReviewForm(programId: string) {
+  // Check cache first
+  const cached = reviewFormCache.get(programId);
+  const now = Date.now();
+  if (cached && now - cached.timestamp < REVIEW_FORM_CACHE_TTL) {
+    return cached.data;
+  }
+
   console.log("Calling get_program_review_form with programId:", programId);
   const { data, error } = await supabase.rpc("get_program_review_form", {
     p_program_id: programId,
@@ -89,6 +103,9 @@ export async function getProgramReviewForm(programId: string) {
   console.log("get_program_review_form result:", { data, error });
   console.log("Form config data details:", JSON.stringify(data, null, 2));
   if (error) throw error;
+  
+  // Cache the result
+  reviewFormCache.set(programId, { data, timestamp: now });
   return data;
 }
 
@@ -100,5 +117,9 @@ export async function setProgramReviewForm(programId: string, form: any) {
   });
   console.log("setProgramReviewForm result:", { data, error });
   if (error) throw error;
+  
+  // Invalidate cache when form is updated
+  reviewFormCache.delete(programId);
+  
   return data;
 }

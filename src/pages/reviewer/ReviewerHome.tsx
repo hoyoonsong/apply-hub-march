@@ -28,16 +28,20 @@ export default function ReviewerHome() {
       if (!o.error) setOrgs(o.data ?? []);
       if (!p.error) {
         const progs = p.data ?? [];
-        // Filter out deleted programs
+        // Filter out deleted programs - optimized: get non-deleted in one query
         if (progs.length > 0) {
           const programIds = progs.map((pr: Prog) => pr.program_id);
-          const { data: deletedCheck } = await supabase
+          const { data: nonDeletedPrograms } = await supabase
             .from("programs")
             .select("id")
             .in("id", programIds)
-            .not("deleted_at", "is", null);
-          const deletedIds = new Set((deletedCheck || []).map((p: any) => p.id));
-          const filtered = progs.filter((pr: Prog) => !deletedIds.has(pr.program_id));
+            .is("deleted_at", null);
+          const nonDeletedIds = new Set(
+            (nonDeletedPrograms || []).map((p: any) => p.id)
+          );
+          const filtered = progs.filter((pr: Prog) =>
+            nonDeletedIds.has(pr.program_id)
+          );
           setPrograms(filtered);
         } else {
           setPrograms(progs);

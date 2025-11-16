@@ -99,32 +99,45 @@ export default function MySubmissionsPage() {
     }
   };
 
+  // Load data on mount and when user changes
   useEffect(() => {
-    refreshResults();
-    refreshApplications();
+    if (!user?.id) return;
+    
+    // Parallelize both refresh calls
+    Promise.all([refreshResults(), refreshApplications()]);
+  }, [user?.id]); // Only re-run when user changes, not on tab change
 
-    // Mark notifications as read when user views the Results tab
-    // Uses a single UPDATE query for all unread notifications (efficient)
+  // Mark notifications as read when switching to Results tab (separate effect)
+  useEffect(() => {
+    if (!user?.id || activeTab !== "results") return;
+
+    // Single UPDATE query marks all unread notifications at once
     const markAsRead = async () => {
-      if (user?.id && activeTab === "results") {
-        // Single UPDATE query marks all unread notifications at once
-        // This is more efficient than updating individually
-        const { error } = await supabase
-          .from("notifications")
-          .update({ read_at: new Date().toISOString() })
-          .eq("user_id", user.id)
-          .is("read_at", null);
-        
-        if (error) {
-          console.error("Error marking notifications as read:", error);
-        }
-        // The realtime subscription in useUnreadNotifications will pick up the UPDATE
-        // and immediately refresh the hasUnread state
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .is("read_at", null);
+      
+      if (error) {
+        console.error("Error marking notifications as read:", error);
       }
     };
 
-    // Mark as read when switching to Results tab
     markAsRead();
+  }, [user?.id, activeTab]); // Only when switching to results tab
+
+  // Realtime subscription for new results (set up once)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let debounceTimer: NodeJS.Timeout;
+    const debouncedRefresh = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        refreshResults();
+      }, 500); // Debounce to prevent rapid-fire calls
+    };
 
     const channel = supabase
       .channel("notif")
@@ -136,13 +149,15 @@ export default function MySubmissionsPage() {
           table: "notifications",
           filter: "type=eq.results_published",
         },
-        () => refreshResults()
+        debouncedRefresh
       )
       .subscribe();
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }, [user?.id, activeTab]); // Re-run when tab changes
+      
+    return () => {
+      clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]); // Only set up once per user
 
   const getStatusColor = (status: string) => {
     switch (status) {

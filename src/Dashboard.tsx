@@ -927,9 +927,9 @@ function SmartDashboard() {
     refreshCapabilities().finally(() => setLoading(false));
   }, []);
 
-  // Refresh capabilities when navigating to dashboard
+  // Only refresh when navigating TO dashboard from another page (not on initial mount)
   useEffect(() => {
-    if (location.pathname === "/dashboard") {
+    if (location.pathname === "/dashboard" && capabilities !== null) {
       refreshCapabilities();
     }
   }, [location.pathname]);
@@ -989,7 +989,8 @@ function SmartDashboard() {
   );
 
   if (hasActualAssignments) {
-    return <CapabilityHub />;
+    // Pass capabilities as props to avoid duplicate fetch
+    return <CapabilityHub initialCapabilities={capabilities} />;
   }
 
   // Otherwise, show the regular dashboard for applicants

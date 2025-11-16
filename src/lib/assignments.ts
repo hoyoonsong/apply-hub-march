@@ -89,15 +89,33 @@ export async function updateUserRoleV2(
   if (error) throw error;
 }
 
+// Cache for effective roles to avoid repeated calls
+const effectiveRolesCache: Map<
+  string,
+  { data: any; timestamp: number }
+> = new Map();
+const EFFECTIVE_ROLES_CACHE_TTL = 30000; // 30 seconds cache
+
 export async function getEffectiveRoles(userId: string) {
+  // Check cache first
+  const cached = effectiveRolesCache.get(userId);
+  const now = Date.now();
+  if (cached && now - cached.timestamp < EFFECTIVE_ROLES_CACHE_TTL) {
+    return cached.data;
+  }
+
   const { data, error } = await supabase.rpc("super_user_effective_roles_v1", {
     p_user_id: userId,
   });
   if (error) throw error;
-  return (data ?? {}) as {
+  const result = (data ?? {}) as {
     superadmin_from_profile: boolean;
     has_admin: boolean;
     has_reviewer: boolean;
     has_co_manager: boolean;
   };
+  
+  // Cache the result
+  effectiveRolesCache.set(userId, { data: result, timestamp: now });
+  return result;
 }

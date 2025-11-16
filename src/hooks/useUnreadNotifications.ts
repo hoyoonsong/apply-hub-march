@@ -96,9 +96,9 @@ export function useUnreadNotifications() {
           const wasMarkedAsRead = !payload.old?.read_at && payload.new?.read_at;
           
           if (wasMarkedAsRead) {
-            // When a notification is marked as read, immediately re-check
-            // This provides instant feedback when user views results
-            checkUnread();
+            // When a notification is marked as read, update state directly without query
+            // This avoids an extra database call
+            setHasUnread(false);
           } else {
             // For other updates, check if we need to update the dot
             // If a notification became unread (unlikely but handle it)
@@ -106,7 +106,7 @@ export function useUnreadNotifications() {
             if (becameUnread) {
               setHasUnread(true);
             } else {
-              // Debounced check for other updates
+              // Debounced check for other updates (only if needed)
               debouncedCheck();
             }
           }
