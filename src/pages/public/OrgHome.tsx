@@ -166,11 +166,6 @@ export default function OrgHome() {
               {org.slug && (
                 <p className="mt-1 text-sm text-gray-500">/org/{org.slug}</p>
               )}
-              {org.description && (
-                <p className="mt-2 text-gray-600">
-                  <AutoLinkText text={org.description} />
-                </p>
-              )}
             </div>
             <Link
               to="/dashboard"
@@ -183,6 +178,16 @@ export default function OrgHome() {
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
+        {/* About Section */}
+        {org.description && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">About</h2>
+            <div className="prose prose-sm max-w-none text-gray-700">
+              <AutoLinkText text={org.description} />
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
           <h2 className="text-lg font-semibold text-gray-900">
             Published Programs

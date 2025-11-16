@@ -10,6 +10,17 @@ import { isBeforeOpenDate, isPastDeadline } from "./lib/deadlineUtils";
 import { useFeaturedSections } from "./hooks/useFeaturedSections.ts";
 import AutoLinkText from "./components/AutoLinkText";
 
+// Utility function to truncate text to approximately 200 characters
+function truncateText(text: string, maxLength: number = 200): string {
+  if (!text || text.length <= maxLength) return text;
+  // Find the last space before maxLength to avoid cutting words
+  const truncated = text.substring(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(" ");
+  return lastSpace > 0
+    ? truncated.substring(0, lastSpace) + "..."
+    : truncated + "...";
+}
+
 // HeroCarousel component for individual carousels
 function HeroCarousel({
   items,
@@ -93,7 +104,9 @@ function HeroCarousel({
                 ) : (
                   item.description && (
                     <div className="text-xs md:text-xl mb-2 md:mb-6 opacity-90 max-w-2xl mx-auto">
-                      <AutoLinkText text={item.description} />
+                      <AutoLinkText
+                        text={truncateText(item.description, 200)}
+                      />
                     </div>
                   )
                 )}
