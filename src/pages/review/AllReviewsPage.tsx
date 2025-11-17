@@ -335,12 +335,22 @@ export default function AllReviewsPage() {
                 Manage and review all applications across your assigned programs
               </p>
             </div>
-            <Link
-              to="/dashboard"
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              ← Back to Dashboard
-            </Link>
+            <div className="flex items-center gap-3">
+              {reviewerPrograms.length > 0 && (
+                <Link
+                  to={`/org/${reviewerPrograms[0].organization_slug}/admin/publish-results`}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  Publish Results
+                </Link>
+              )}
+              <Link
+                to="/dashboard"
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                ← Back to Dashboard
+              </Link>
+            </div>
           </div>
         </div>
       </div>

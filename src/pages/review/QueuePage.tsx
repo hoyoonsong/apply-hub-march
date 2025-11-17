@@ -8,6 +8,7 @@ export default function ReviewQueuePage() {
   const { programId } = useParams<{ programId: string }>();
   const [allRows, setAllRows] = useState<ReviewsListRow[]>([]);
   const [programName, setProgramName] = useState<string>("Program");
+  const [orgSlug, setOrgSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [programFormConfig, setProgramFormConfig] = useState<any>(null);
@@ -19,23 +20,29 @@ export default function ReviewQueuePage() {
     setErr(null);
 
     try {
-      // Parallelize program name and form config queries
+      // Parallelize program name, org slug, and form config queries
       const [programResult, formConfigResult] = await Promise.allSettled([
         supabase
           .from("programs")
-          .select("name")
+          .select("name, organization_id, organizations(slug)")
           .eq("id", programId)
           .single(),
         getProgramReviewForm(programId).catch(() => null),
       ]);
 
-      // Handle program name result
+      // Handle program name and org slug result
       if (
         programResult.status === "fulfilled" &&
         !programResult.value.error &&
-        programResult.value.data?.name
+        programResult.value.data
       ) {
-        setProgramName(programResult.value.data.name);
+        if (programResult.value.data.name) {
+          setProgramName(programResult.value.data.name);
+        }
+        const org = (programResult.value.data as any).organizations;
+        if (org?.slug) {
+          setOrgSlug(org.slug);
+        }
       }
 
       // Handle form config result
@@ -234,9 +241,19 @@ export default function ReviewQueuePage() {
 
   return (
     <div className="mx-auto max-w-6xl p-6">
-      <h1 className="text-2xl font-semibold mb-4">
-        Review Queue - {programName}
-      </h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">
+          Review Queue - {programName}
+        </h1>
+        {orgSlug && programId && (
+          <Link
+            to={`/org/${orgSlug}/admin/programs/${programId}/publish`}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+          >
+            Publish Results
+          </Link>
+        )}
+      </div>
 
       <div className="bg-white rounded-lg border overflow-hidden">
         {allRows.length === 0 ? (
