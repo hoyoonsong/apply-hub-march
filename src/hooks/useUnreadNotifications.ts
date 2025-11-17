@@ -63,6 +63,14 @@ export function useUnreadNotifications() {
       }, 500); // Wait 500ms before checking
     };
 
+    const immediateCheck = () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+        checkTimeoutRef.current = null;
+      }
+      checkUnread();
+    };
+
     // Subscribe to new notifications (realtime - no database queries)
     // Use a unique channel name per user to prevent conflicts
     const channel = supabase
@@ -96,9 +104,8 @@ export function useUnreadNotifications() {
           const wasMarkedAsRead = !payload.old?.read_at && payload.new?.read_at;
           
           if (wasMarkedAsRead) {
-            // When a notification is marked as read, update state directly without query
-            // This avoids an extra database call
-            setHasUnread(false);
+            // Re-check actual unread count to ensure accuracy (handles batch updates)
+            immediateCheck();
           } else {
             // For other updates, check if we need to update the dot
             // If a notification became unread (unlikely but handle it)
