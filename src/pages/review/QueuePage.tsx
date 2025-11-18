@@ -37,7 +37,7 @@ export default function ReviewQueuePage() {
         programResult.value.data
       ) {
         if (programResult.value.data.name) {
-          setProgramName(programResult.value.data.name);
+        setProgramName(programResult.value.data.name);
         }
         const org = (programResult.value.data as any).organizations;
         if (org?.slug) {
@@ -243,8 +243,8 @@ export default function ReviewQueuePage() {
     <div className="mx-auto max-w-6xl p-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold">
-          Review Queue - {programName}
-        </h1>
+        Review Queue - {programName}
+      </h1>
         {orgSlug && programId && (
           <Link
             to={`/org/${orgSlug}/admin/programs/${programId}/publish`}

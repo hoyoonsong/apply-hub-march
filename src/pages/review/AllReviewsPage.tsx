@@ -344,12 +344,12 @@ export default function AllReviewsPage() {
                   Publish Results
                 </Link>
               )}
-              <Link
-                to="/dashboard"
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                ← Back to Dashboard
-              </Link>
+            <Link
+              to="/dashboard"
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              ← Back to Dashboard
+            </Link>
             </div>
           </div>
         </div>
