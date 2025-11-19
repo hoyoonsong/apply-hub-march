@@ -16,6 +16,7 @@ export default function OrganizationSignupModal({
   const { user } = useAuth();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [website, setWebsite] = useState("");
@@ -33,17 +34,45 @@ export default function OrganizationSignupModal({
       return;
     }
 
-    // Calendly scheduling is optional - no validation needed
+    if (!description.trim()) {
+      setError("Organization description is required");
+      return;
+    }
 
-    // Basic email validation
-    if (contactEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim())) {
+    if (!contactName.trim()) {
+      setError("Contact name is required");
+      return;
+    }
+
+    if (!contactEmail.trim()) {
+      setError("Contact email is required");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim())) {
       setError("Please enter a valid email address");
       return;
     }
 
-    // Basic URL validation
-    if (website.trim() && !/^https?:\/\/.+/.test(website.trim())) {
-      setError("Please enter a valid website URL (starting with http:// or https://)");
+    if (!contactPhone.trim()) {
+      setError("Contact phone number is required");
+      return;
+    }
+
+    if (!website.trim()) {
+      setError("Website is required");
+      return;
+    }
+
+    if (!/^https?:\/\/.+/.test(website.trim())) {
+      setError(
+        "Please enter a valid website URL (starting with http:// or https://)"
+      );
+      return;
+    }
+
+    if (!meetingTime.trim()) {
+      setError("Please let us know what time we're meeting.");
       return;
     }
 
@@ -56,6 +85,7 @@ export default function OrganizationSignupModal({
         {
           name: name.trim(),
           description: description.trim() || null,
+          contact_name: contactName.trim() || null,
           contact_email: contactEmail.trim() || null,
           contact_phone: contactPhone.trim() || null,
           website: website.trim() || null,
@@ -67,13 +97,12 @@ export default function OrganizationSignupModal({
       setSuccess(true);
       setName("");
       setDescription("");
+      setContactName("");
       setContactEmail("");
       setContactPhone("");
       setWebsite("");
-      setCalendlySlotSelected(false);
-      setCalendlyEventUri(null);
       setMeetingTime("");
-      
+
       // Call onSuccess callback if provided
       if (onSuccess) {
         setTimeout(() => {
@@ -100,6 +129,7 @@ export default function OrganizationSignupModal({
     if (!submitting) {
       setName("");
       setDescription("");
+      setContactName("");
       setContactEmail("");
       setContactPhone("");
       setWebsite("");
@@ -112,10 +142,7 @@ export default function OrganizationSignupModal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={handleClose}
-      />
+      <div className="absolute inset-0 bg-black/40" onClick={handleClose} />
       <div className="relative w-full max-w-4xl rounded-2xl bg-white p-6 shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
         <button
           onClick={handleClose}
@@ -134,8 +161,8 @@ export default function OrganizationSignupModal({
             <div className="rounded-lg bg-green-50 p-4 text-green-800">
               <p className="font-semibold">Thank you for your interest!</p>
               <p className="mt-1 text-sm">
-                Your organization signup request has been submitted. We'll review
-                it and get back to you soon.
+                Your organization signup request has been submitted. We'll
+                review it and get back to you soon.
               </p>
             </div>
           </div>
@@ -165,12 +192,13 @@ export default function OrganizationSignupModal({
                 htmlFor="org-description"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Organization Description
+                Organization Description <span className="text-red-500">*</span>
               </label>
               <textarea
                 id="org-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                required
                 disabled={submitting}
                 rows={4}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed resize-none"
@@ -180,16 +208,36 @@ export default function OrganizationSignupModal({
 
             <div>
               <label
+                htmlFor="contact-name"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Contact Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="contact-name"
+                type="text"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                required
+                disabled={submitting}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                placeholder="John Doe"
+              />
+            </div>
+
+            <div>
+              <label
                 htmlFor="contact-email"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Contact Email
+                Contact Email <span className="text-red-500">*</span>
               </label>
               <input
                 id="contact-email"
                 type="email"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
+                required
                 disabled={submitting}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="contact@example.com"
@@ -201,13 +249,14 @@ export default function OrganizationSignupModal({
                 htmlFor="contact-phone"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Contact Phone Number
+                Contact Phone Number <span className="text-red-500">*</span>
               </label>
               <input
                 id="contact-phone"
                 type="tel"
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
+                required
                 disabled={submitting}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="(555) 123-4567"
@@ -219,13 +268,14 @@ export default function OrganizationSignupModal({
                 htmlFor="website"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Website
+                Website <span className="text-red-500">*</span>
               </label>
               <input
                 id="website"
                 type="url"
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
+                required
                 disabled={submitting}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="https://www.example.com"
@@ -245,7 +295,7 @@ export default function OrganizationSignupModal({
               >
                 Click here to schedule a meeting
               </a>
-              
+
               <div className="mt-4">
                 <label
                   htmlFor="meeting-time"
@@ -258,6 +308,7 @@ export default function OrganizationSignupModal({
                   type="text"
                   value={meetingTime}
                   onChange={(e) => setMeetingTime(e.target.value)}
+                  required
                   disabled={submitting}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="e.g., Wednesday, November 12, 2025 at 2:00 PM"
@@ -294,4 +345,3 @@ export default function OrganizationSignupModal({
     </div>
   );
 }
-
