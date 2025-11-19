@@ -495,7 +495,7 @@ function AllOrgs() {
                 </span>
               </div>
               <p className="text-gray-700 leading-relaxed mb-4 md:mb-6 text-xs md:text-sm">
-                {corps.description}
+                {truncateText(corps.description, 150)}
               </p>
 
               {/* Spacer to push footer to bottom */}
