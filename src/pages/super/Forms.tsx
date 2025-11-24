@@ -189,6 +189,57 @@ export default function Forms() {
               )}
             </div>
           )}
+          {submission.form_type === "advertise" && (
+            <div className="space-y-1 text-sm text-gray-600">
+              <p>
+                <span className="font-medium">Target:</span>{" "}
+                {submission.form_data.target_type === "program"
+                  ? "Specific program"
+                  : "Organization"}
+              </p>
+              <p>
+                <span className="font-medium">Organization:</span>{" "}
+                {submission.form_data.organization_name || "Unknown"}
+              </p>
+              {submission.form_data.organization_slug && (
+                <p>
+                  <span className="font-medium">Slug:</span>{" "}
+                  {submission.form_data.organization_slug}
+                </p>
+              )}
+              {submission.form_data.target_type === "program" &&
+                submission.form_data.program_name && (
+                  <p>
+                    <span className="font-medium">Program:</span>{" "}
+                    {submission.form_data.program_name}
+                  </p>
+                )}
+              <p>
+                <span className="font-medium">Show from:</span>{" "}
+                {submission.form_data.show_from
+                  ? new Date(submission.form_data.show_from).toLocaleString()
+                  : "—"}
+              </p>
+              <p>
+                <span className="font-medium">Hide after:</span>{" "}
+                {submission.form_data.hide_after
+                  ? new Date(submission.form_data.hide_after).toLocaleString()
+                  : "—"}
+              </p>
+              {submission.form_data.duration_preset && (
+                <p>
+                  <span className="font-medium">Duration preset:</span>{" "}
+                  {submission.form_data.duration_preset}
+                </p>
+              )}
+              {submission.form_data.notes && (
+                <p>
+                  <span className="font-medium">Notes:</span>{" "}
+                  {submission.form_data.notes}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="mt-2 text-xs text-gray-500">
             Submitted: {new Date(submission.created_at).toLocaleString()}

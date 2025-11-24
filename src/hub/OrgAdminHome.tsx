@@ -1,33 +1,37 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import HubTile from "../components/HubTile";
 import { assignOrgAdminAsReviewer } from "../lib/orgAdminReviewers";
 import { supabase } from "../lib/supabase";
+import { getOrgBySlug } from "../lib/orgs";
+import AdvertiseFormModal from "../components/AdvertiseFormModal";
 
 export default function OrgAdminHome() {
   const { orgSlug } = useParams<{ orgSlug: string }>();
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [orgName, setOrgName] = useState<string | null>(null);
+  const [showAdvertiseModal, setShowAdvertiseModal] = useState(false);
 
   // Auto-sync org admin reviewers when component mounts
   useEffect(() => {
+    let mounted = true;
     const syncReviewers = async () => {
       try {
+        // Get organization ID from slug
+        const org = orgSlug ? await getOrgBySlug(orgSlug) : null;
+        if (org && mounted) {
+          setOrgId(org.id);
+          setOrgName(org.name);
+        }
+
         // Get the current user
         const {
           data: { user },
         } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user || !org) return;
 
-        // Get organization ID from slug
-        const { data: org } = await supabase
-          .from("organizations")
-          .select("id")
-          .eq("slug", orgSlug)
-          .single();
-
-        if (org) {
-          // Assign current user as reviewer for all programs in this org
-          await assignOrgAdminAsReviewer(org.id, user.id);
-        }
+        // Assign current user as reviewer for all programs in this org
+        await assignOrgAdminAsReviewer(org.id, user.id);
       } catch (error) {
         console.error("Failed to sync org admin reviewers:", error);
         // Don't show error to user, just log it
@@ -35,6 +39,9 @@ export default function OrgAdminHome() {
     };
 
     syncReviewers();
+    return () => {
+      mounted = false;
+    };
   }, [orgSlug]);
 
   return (
@@ -100,8 +107,30 @@ export default function OrgAdminHome() {
             title="Organization Settings"
             subtitle="Name, slug, description"
           />
+          <button
+            type="button"
+            onClick={() => {
+              if (!orgId) return;
+              setShowAdvertiseModal(true);
+            }}
+            className="w-full text-left rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50 p-5 shadow-sm hover:shadow-md hover:border-sky-300 transition"
+          >
+            <div className="text-lg font-semibold text-gray-900">
+              Advertise your org
+            </div>
+            <p className="text-sm text-gray-600 mt-1">
+              Request a featured placement and tell us how long to run it.
+            </p>
+          </button>
         </div>
       </div>
+      <AdvertiseFormModal
+        open={showAdvertiseModal}
+        onClose={() => setShowAdvertiseModal(false)}
+        orgId={orgId}
+        orgName={orgName}
+        orgSlug={orgSlug}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
 } from "../../lib/programs";
 import { supabase } from "../../lib/supabase";
 import AutoLinkText from "../../components/AutoLinkText";
+import AdvertiseFormModal from "../../components/AdvertiseFormModal";
 
 type ProgramWithDeleted = Program & {
   deleted_at?: string | null;
@@ -48,6 +49,7 @@ export default function OrgAdminPrograms() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [showAdvertiseModal, setShowAdvertiseModal] = useState(false);
 
   // Edit Details Modal state
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -343,6 +345,13 @@ export default function OrgAdminPrograms() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <p className="text-gray-500">Loading…</p>
         </div>
+        <AdvertiseFormModal
+          open={showAdvertiseModal}
+          onClose={() => setShowAdvertiseModal(false)}
+          orgId={orgId}
+          orgName={orgName}
+          orgSlug={orgSlug}
+        />
       </div>
     );
   }
@@ -779,6 +788,27 @@ export default function OrgAdminPrograms() {
                       Clear
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvertiseModal(true)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!orgId}
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v12m6-6H6"
+                      />
+                    </svg>
+                    Advertise
+                  </button>
                 </div>
               </div>
             </div>
@@ -1364,6 +1394,13 @@ export default function OrgAdminPrograms() {
           </div>
         </div>
       )}
+      <AdvertiseFormModal
+        open={showAdvertiseModal}
+        onClose={() => setShowAdvertiseModal(false)}
+        orgId={orgId}
+        orgName={orgName}
+        orgSlug={orgSlug}
+      />
     </div>
   );
 }
