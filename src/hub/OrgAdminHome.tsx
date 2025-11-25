@@ -30,8 +30,8 @@ export default function OrgAdminHome() {
         } = await supabase.auth.getUser();
         if (!user || !org) return;
 
-        // Assign current user as reviewer for all programs in this org
-        await assignOrgAdminAsReviewer(org.id, user.id);
+          // Assign current user as reviewer for all programs in this org
+          await assignOrgAdminAsReviewer(org.id, user.id);
       } catch (error) {
         console.error("Failed to sync org admin reviewers:", error);
         // Don't show error to user, just log it

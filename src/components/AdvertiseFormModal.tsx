@@ -3,12 +3,13 @@ import { submitForm } from "../services/forms";
 import { useAuth } from "../auth/AuthProvider";
 import { supabase } from "../lib/supabase";
 
-type DurationPreset = "7d" | "14d" | "30d" | "custom";
+type DurationPreset = "7d" | "14d" | "30d" | "until_deadline" | "custom";
 
 type ProgramOption = {
   id: string;
   name: string;
   deleted_at?: string | null;
+  close_at?: string | null;
 };
 
 interface AdvertiseFormModalProps {
@@ -23,32 +24,36 @@ const presetLabels: Record<DurationPreset, string> = {
   "7d": "7 days",
   "14d": "14 days",
   "30d": "30 days",
+  until_deadline: "Until deadline",
   custom: "Custom",
 };
 
 const presetToDays = (preset: DurationPreset) => {
-  if (preset === "custom") return null;
+  if (preset === "custom" || preset === "until_deadline") return null;
   return Number(preset.replace("d", ""));
 };
 
-const formatDateTimeLocal = (date: Date) => {
+const formatDateLocal = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  return `${year}-${month}-${day}`;
 };
 
 const addDaysToDateInput = (input: string, days: number) => {
   if (!input) return "";
   const base = new Date(input);
   base.setDate(base.getDate() + days);
-  return formatDateTimeLocal(base);
+  return formatDateLocal(base);
 };
 
-const toIsoString = (input: string) =>
-  input ? new Date(input).toISOString() : null;
+const toIsoString = (input: string) => {
+  if (!input) return null;
+  // For date-only inputs (YYYY-MM-DD), convert to ISO string at midnight UTC
+  // This ensures the date doesn't shift due to timezone conversion
+  // Input format: "YYYY-MM-DD"
+  return `${input}T00:00:00.000Z`;
+};
 
 // Pricing structure - longer commitments get better per-day rates
 const ORG_PRICING = {
@@ -73,13 +78,13 @@ const calculatePrice = (
 ): number => {
   const pricing = type === "org" ? ORG_PRICING : PROGRAM_PRICING;
 
-  if (durationPreset === "custom") {
+  if (durationPreset === "custom" || durationPreset === "until_deadline") {
     if (!showFrom || !hideAfter) return 0;
     const start = new Date(showFrom);
     const end = new Date(hideAfter);
-    const days = Math.ceil(
-      (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    // Add 1 to make it inclusive (both start and end dates count)
+    const days =
+      Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     return pricing.daily * days;
   }
 
@@ -93,6 +98,53 @@ const calculatePrice = (
     default:
       return 0;
   }
+};
+
+// Calculate price for a specific program when "until_deadline" is selected
+const calculateProgramPriceUntilDeadline = (
+  showFrom: string,
+  programDeadline: string | null | undefined
+): number => {
+  if (!showFrom || !programDeadline) return 0;
+
+  // Extract date components to avoid timezone issues
+  // showFrom is in YYYY-MM-DD format (e.g., "2025-11-24")
+  const startDateStr = showFrom.includes("T")
+    ? showFrom.split("T")[0]
+    : showFrom;
+
+  // programDeadline might be ISO string - we need to get the LOCAL date, not UTC date
+  // Create a date object from the deadline, then extract the local date components
+  const deadlineDate = new Date(programDeadline);
+
+  // Get the local date components (not UTC) to match the user's calendar date
+  const endYear = deadlineDate.getFullYear();
+  const endMonth = deadlineDate.getMonth() + 1; // getMonth() returns 0-11
+  const endDay = deadlineDate.getDate();
+
+  // Parse start date components
+  const [startYear, startMonth, startDay] = startDateStr.split("-").map(Number);
+
+  // Compare as calendar dates (year, month, day) - not timestamps
+  // This ensures same-day deadlines are calculated as 1 day
+  if (startYear === endYear && startMonth === endMonth && startDay === endDay) {
+    // Same calendar day = 1 day
+    return PROGRAM_PRICING.daily * 1;
+  }
+
+  // Different days - calculate the difference
+  const startDate = new Date(startYear, startMonth - 1, startDay);
+  const endDate = new Date(endYear, endMonth - 1, endDay);
+
+  // Calculate days difference (inclusive of both start and end dates)
+  const days =
+    Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1;
+
+  // Ensure minimum of 1 day
+  const finalDays = Math.max(1, days);
+  return PROGRAM_PRICING.daily * finalDays;
 };
 
 export default function AdvertiseFormModal({
@@ -126,9 +178,8 @@ export default function AdvertiseFormModal({
 
   useEffect(() => {
     if (!open) return;
-    const start = new Date();
-    start.setMinutes(start.getMinutes() + 5);
-    const formatted = formatDateTimeLocal(start);
+    const today = new Date();
+    const formatted = formatDateLocal(today);
     setShowFrom(formatted);
     setDurationPreset("7d");
     setHideAfter(addDaysToDateInput(formatted, 7));
@@ -142,14 +193,82 @@ export default function AdvertiseFormModal({
     setProgramLoadError(null);
   }, [open]);
 
+  // Uncheck organization when until_deadline is selected (orgs don't have deadlines)
+  useEffect(() => {
+    if (durationPreset === "until_deadline" && selectedOrg) {
+      setSelectedOrg(false);
+    }
+  }, [durationPreset]);
+
+  // Deselect programs without deadlines or with past deadlines when until_deadline is selected
+  // This runs when durationPreset changes to "until_deadline" or when programs are loaded
+  useEffect(() => {
+    if (durationPreset === "until_deadline" && programs.length > 0) {
+      setSelectedProgramIds((prevIds) => {
+        if (prevIds.size === 0) return prevIds;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const validProgramIds = new Set<string>();
+
+        programs.forEach((p) => {
+          if (prevIds.has(p.id) && p.close_at) {
+            const deadline = new Date(p.close_at);
+            deadline.setHours(0, 0, 0, 0);
+            if (deadline >= today) {
+              validProgramIds.add(p.id);
+            }
+          }
+        });
+
+        // Only return new set if there are changes
+        if (
+          validProgramIds.size === prevIds.size &&
+          Array.from(prevIds).every((id) => validProgramIds.has(id))
+        ) {
+          return prevIds; // No changes
+        }
+        return validProgramIds;
+      });
+    }
+  }, [durationPreset, programs]);
+
   // Auto-calculate hideAfter when preset changes (unless custom)
   useEffect(() => {
     if (!open || durationPreset === "custom") return;
+
+    if (durationPreset === "until_deadline") {
+      // Find earliest future deadline among selected programs
+      if (selectedProgramIds.size > 0 && showFrom) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const selectedProgramsData = programs.filter((p) =>
+          selectedProgramIds.has(p.id)
+        );
+        const deadlines = selectedProgramsData
+          .map((p) => {
+            if (!p.close_at) return null;
+            const deadline = new Date(p.close_at);
+            deadline.setHours(0, 0, 0, 0);
+            return deadline >= today ? deadline : null;
+          })
+          .filter((date): date is Date => date !== null);
+
+        if (deadlines.length > 0) {
+          const earliestDeadline = new Date(
+            Math.min(...deadlines.map((d) => d.getTime()))
+          );
+          setHideAfter(formatDateLocal(earliestDeadline));
+        }
+      }
+      return;
+    }
+
     const days = presetToDays(durationPreset);
     if (days && showFrom) {
       setHideAfter(addDaysToDateInput(showFrom, days));
     }
-  }, [showFrom, durationPreset, open]);
+  }, [showFrom, durationPreset, open, selectedProgramIds, programs]);
 
   // Load programs when "programs" option is selected
   useEffect(() => {
@@ -161,7 +280,7 @@ export default function AdvertiseFormModal({
         setProgramLoadError(null);
         const { data, error } = await supabase
           .from("programs")
-          .select("id,name,deleted_at,is_private")
+          .select("id,name,deleted_at,is_private,close_at")
           .eq("organization_id", orgId)
           .is("deleted_at", null)
           .or("is_private.is.null,is_private.eq.false")
@@ -201,12 +320,48 @@ export default function AdvertiseFormModal({
   );
 
   const filteredPrograms = useMemo(() => {
-    if (!programSearch.trim()) return programs;
-    const term = programSearch.toLowerCase();
-    return programs.filter((program) =>
-      program.name.toLowerCase().includes(term)
+    let filtered = programs;
+
+    // When "until_deadline" is selected, only show programs with future deadlines
+    if (durationPreset === "until_deadline") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset to start of day for comparison
+      filtered = filtered.filter((p) => {
+        if (!p.close_at) return false;
+        const deadline = new Date(p.close_at);
+        deadline.setHours(0, 0, 0, 0);
+        return deadline >= today; // Only future or today's deadlines
+      });
+    }
+
+    // Apply search filter
+    if (programSearch.trim()) {
+      const term = programSearch.toLowerCase();
+      filtered = filtered.filter((program) =>
+        program.name.toLowerCase().includes(term)
+      );
+    }
+
+    return filtered;
+  }, [programs, programSearch, durationPreset]);
+
+  // Check if selected programs have future deadlines (for until_deadline validation)
+  const selectedProgramsHaveDeadlines = useMemo(() => {
+    if (durationPreset !== "until_deadline" || selectedProgramIds.size === 0) {
+      return true; // Not applicable or no programs selected
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedProgramsData = programs.filter((p) =>
+      selectedProgramIds.has(p.id)
     );
-  }, [programs, programSearch]);
+    return selectedProgramsData.some((p) => {
+      if (!p.close_at) return false;
+      const deadline = new Date(p.close_at);
+      deadline.setHours(0, 0, 0, 0);
+      return deadline >= today; // Only future or today's deadlines
+    });
+  }, [durationPreset, selectedProgramIds, programs]);
 
   const toggleProgram = (programId: string) => {
     setSelectedProgramIds((prev) => {
@@ -234,13 +389,60 @@ export default function AdvertiseFormModal({
       setError("Please select at least one program to feature.");
       return;
     }
+
+    // Validate until_deadline requires programs with future deadlines
+    if (durationPreset === "until_deadline") {
+      if (selectedProgramIds.size === 0) {
+        setError("Please select at least one program with a future deadline.");
+        return;
+      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selectedProgramsData = programs.filter((p) =>
+        selectedProgramIds.has(p.id)
+      );
+      const hasFutureDeadlines = selectedProgramsData.some((p) => {
+        if (!p.close_at) return false;
+        const deadline = new Date(p.close_at);
+        deadline.setHours(0, 0, 0, 0);
+        return deadline >= today;
+      });
+      if (!hasFutureDeadlines) {
+        setError(
+          "Selected programs must have future deadlines for 'Until deadline' option."
+        );
+        return;
+      }
+    }
+
     if (!showFrom) {
       setError("Please choose when the campaign should start.");
       return;
     }
     // Calculate hideAfter if using preset
     let finalHideAfter = hideAfter;
-    if (durationPreset !== "custom") {
+    if (durationPreset === "until_deadline") {
+      // Calculate from earliest future deadline
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selectedProgramsData = programs.filter((p) =>
+        selectedProgramIds.has(p.id)
+      );
+      const deadlines = selectedProgramsData
+        .map((p) => {
+          if (!p.close_at) return null;
+          const deadline = new Date(p.close_at);
+          deadline.setHours(0, 0, 0, 0);
+          return deadline >= today ? deadline : null;
+        })
+        .filter((date): date is Date => date !== null);
+      if (deadlines.length > 0 && showFrom) {
+        const earliestDeadline = new Date(
+          Math.min(...deadlines.map((d) => d.getTime()))
+        );
+        finalHideAfter = formatDateLocal(earliestDeadline);
+      }
+    } else if (durationPreset !== "custom") {
       const days = presetToDays(durationPreset);
       if (days && showFrom) {
         finalHideAfter = addDaysToDateInput(showFrom, days);
@@ -293,6 +495,12 @@ export default function AdvertiseFormModal({
         selectedProgramIds.forEach((programId) => {
           const program = programs.find((p) => p.id === programId);
           if (program) {
+            // For "until_deadline", use the program's own deadline
+            let programHideAfter = finalHideAfter;
+            if (durationPreset === "until_deadline" && program.close_at) {
+              programHideAfter = formatDateLocal(new Date(program.close_at));
+            }
+
             submissions.push(
               submitForm(
                 "advertise",
@@ -304,7 +512,7 @@ export default function AdvertiseFormModal({
                   program_id: programId,
                   program_name: program.name,
                   show_from: toIsoString(showFrom),
-                  hide_after: toIsoString(finalHideAfter),
+                  hide_after: toIsoString(programHideAfter),
                   duration_preset: durationPreset,
                   notes: notes.trim() || null,
                 },
@@ -331,12 +539,16 @@ export default function AdvertiseFormModal({
     }
   };
 
-  if (!open) return null;
-
   const disableSubmit =
     submitting ||
     !isOrgReady ||
-    (!selectedOrg && !selectedPrograms) ||
+    (durationPreset === "until_deadline" &&
+      (!selectedPrograms ||
+        selectedProgramIds.size === 0 ||
+        !selectedProgramsHaveDeadlines)) ||
+    (durationPreset !== "until_deadline" &&
+      !selectedOrg &&
+      !selectedPrograms) ||
     (selectedPrograms && selectedProgramIds.size === 0) ||
     !showFrom ||
     (durationPreset === "custom" && !hideAfter);
@@ -350,13 +562,26 @@ export default function AdvertiseFormModal({
     }
 
     if (selectedPrograms && selectedProgramIds.size > 0) {
-      const programPrice = calculatePrice(
-        "program",
-        durationPreset,
-        showFrom,
-        hideAfter
-      );
-      total += programPrice * selectedProgramIds.size;
+      if (durationPreset === "until_deadline") {
+        // Sum individual program prices based on their own deadlines
+        selectedProgramIds.forEach((programId) => {
+          const program = programs.find((p) => p.id === programId);
+          if (program && program.close_at) {
+            total += calculateProgramPriceUntilDeadline(
+              showFrom,
+              program.close_at
+            );
+          }
+        });
+      } else {
+        const programPrice = calculatePrice(
+          "program",
+          durationPreset,
+          showFrom,
+          hideAfter
+        );
+        total += programPrice * selectedProgramIds.size;
+      }
     }
 
     return total;
@@ -369,6 +594,20 @@ export default function AdvertiseFormModal({
 
   const getProgramPrice = () => {
     if (!selectedPrograms || selectedProgramIds.size === 0) return 0;
+    if (durationPreset === "until_deadline") {
+      // Sum individual program prices based on their own deadlines
+      let total = 0;
+      selectedProgramIds.forEach((programId) => {
+        const program = programs.find((p) => p.id === programId);
+        if (program && program.close_at) {
+          total += calculateProgramPriceUntilDeadline(
+            showFrom,
+            program.close_at
+          );
+        }
+      });
+      return total;
+    }
     const pricePerProgram = calculatePrice(
       "program",
       durationPreset,
@@ -379,6 +618,8 @@ export default function AdvertiseFormModal({
   };
 
   const showCustomDates = durationPreset === "custom";
+
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center">
@@ -417,17 +658,19 @@ export default function AdvertiseFormModal({
               <div className="space-y-3">
                 {/* Option 1: Your organization */}
                 <label
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition ${
-                    selectedOrg
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-gray-200 hover:border-blue-300"
+                  className={`flex items-start gap-3 p-4 rounded-xl border-2 transition ${
+                    durationPreset === "until_deadline"
+                      ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                      : selectedOrg
+                      ? "border-blue-600 bg-blue-50 cursor-pointer"
+                      : "border-gray-200 hover:border-blue-300 cursor-pointer"
                   }`}
                 >
                   <input
                     type="checkbox"
                     checked={selectedOrg}
                     onChange={(e) => setSelectedOrg(e.target.checked)}
-                    disabled={submitting}
+                    disabled={submitting || durationPreset === "until_deadline"}
                     className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <div className="flex-1">
@@ -520,8 +763,11 @@ export default function AdvertiseFormModal({
                           ${getOrgPrice().toFixed(2)}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {durationPreset === "custom"
-                            ? "custom duration"
+                          {durationPreset === "custom" ||
+                          durationPreset === "until_deadline"
+                            ? durationPreset === "until_deadline"
+                              ? "until deadline"
+                              : "custom duration"
                             : `for ${presetLabels[durationPreset]}`}
                         </div>
                       </div>
@@ -586,18 +832,40 @@ export default function AdvertiseFormModal({
                                     <div className="text-right ml-4">
                                       <div className="text-sm font-semibold text-gray-900">
                                         $
-                                        {calculatePrice(
-                                          "program",
-                                          durationPreset,
-                                          showFrom,
-                                          hideAfter
-                                        ).toFixed(2)}
+                                        {durationPreset === "until_deadline"
+                                          ? calculateProgramPriceUntilDeadline(
+                                              showFrom,
+                                              program.close_at
+                                            ).toFixed(2)
+                                          : calculatePrice(
+                                              "program",
+                                              durationPreset,
+                                              showFrom,
+                                              hideAfter
+                                            ).toFixed(2)}
                                       </div>
                                       <div className="text-xs text-gray-500">
-                                        {durationPreset === "custom"
-                                          ? "custom"
+                                        {durationPreset === "custom" ||
+                                        durationPreset === "until_deadline"
+                                          ? durationPreset === "until_deadline"
+                                            ? "until deadline"
+                                            : "custom"
                                           : presetLabels[durationPreset]}
                                       </div>
+                                      {durationPreset === "until_deadline" &&
+                                        program.close_at && (
+                                          <div className="text-xs text-gray-400 mt-0.5">
+                                            {new Date(
+                                              program.close_at
+                                            ).toLocaleString(undefined, {
+                                              month: "short",
+                                              day: "numeric",
+                                              year: "numeric",
+                                              hour: "numeric",
+                                              minute: "2-digit",
+                                            })}
+                                          </div>
+                                        )}
                                     </div>
                                   )}
                                 </div>
@@ -609,6 +877,8 @@ export default function AdvertiseFormModal({
                         <div className="p-4 text-sm text-gray-500">
                           {programLoadError
                             ? programLoadError
+                            : durationPreset === "until_deadline"
+                            ? "No public programs with deadlines match that search."
                             : "No public programs match that search."}
                         </div>
                       )}
@@ -681,28 +951,28 @@ export default function AdvertiseFormModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-white rounded-xl border-2 border-gray-200">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Show from
+                        Start date
                       </label>
                       <input
-                        type="datetime-local"
+                        type="date"
                         value={showFrom}
                         onChange={(e) => setShowFrom(e.target.value)}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                        min={formatDateTimeLocal(new Date())}
+                        min={formatDateLocal(new Date())}
                         required
                         disabled={submitting}
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Hide after
+                        End date
                       </label>
                       <input
-                        type="datetime-local"
+                        type="date"
                         value={hideAfter}
                         onChange={(e) => setHideAfter(e.target.value)}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                        min={showFrom || undefined}
+                        min={showFrom || formatDateLocal(new Date())}
                         required
                         disabled={submitting}
                       />
@@ -719,23 +989,34 @@ export default function AdvertiseFormModal({
                   </p>
                   <div className="p-5 bg-white rounded-xl border-2 border-gray-200">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      When should the campaign start?
+                      What day should the campaign start?
                     </label>
                     <input
-                      type="datetime-local"
+                      type="date"
                       value={showFrom}
                       onChange={(e) => setShowFrom(e.target.value)}
                       className="w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                      min={formatDateTimeLocal(new Date())}
+                      min={formatDateLocal(new Date())}
                       required
                       disabled={submitting}
                     />
                     <p className="text-sm text-gray-600 mt-3">
-                      Will run for{" "}
-                      <span className="font-semibold">
-                        {presetLabels[durationPreset]}
-                      </span>{" "}
-                      from this date.
+                      {durationPreset === "until_deadline" ? (
+                        <>
+                          Will run from this date until the selected
+                          program&apos;s deadline. Select today&apos;s date to
+                          start ASAP.
+                        </>
+                      ) : (
+                        <>
+                          Will run for{" "}
+                          <span className="font-semibold">
+                            {presetLabels[durationPreset]}
+                          </span>{" "}
+                          from this date. Select today&apos;s date to start
+                          ASAP.
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>

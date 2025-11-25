@@ -82,10 +82,19 @@ export default function Forms() {
     if (filterStatus !== "all" && submission.status !== filterStatus) {
       return false;
     }
-    // Search by organization name (form_data.name)
+    // Search by organization name and program name
     if (searchQuery.trim()) {
-      const orgName = submission.form_data?.name || "";
-      if (!orgName.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
+      const query = searchQuery.trim().toLowerCase();
+      const orgName =
+        submission.form_data?.organization_name ||
+        submission.form_data?.name ||
+        "";
+      const programName = submission.form_data?.program_name || "";
+
+      const matchesOrg = orgName.toLowerCase().includes(query);
+      const matchesProgram = programName.toLowerCase().includes(query);
+
+      if (!matchesOrg && !matchesProgram) {
         return false;
       }
     }
@@ -200,13 +209,13 @@ export default function Forms() {
               <p>
                 <span className="font-medium">Organization:</span>{" "}
                 {submission.form_data.organization_name || "Unknown"}
+                {submission.form_data.organization_slug && (
+                  <span className="text-gray-500">
+                    {" "}
+                    ({submission.form_data.organization_slug})
+                  </span>
+                )}
               </p>
-              {submission.form_data.organization_slug && (
-                <p>
-                  <span className="font-medium">Slug:</span>{" "}
-                  {submission.form_data.organization_slug}
-                </p>
-              )}
               {submission.form_data.target_type === "program" &&
                 submission.form_data.program_name && (
                   <p>
@@ -217,13 +226,25 @@ export default function Forms() {
               <p>
                 <span className="font-medium">Show from:</span>{" "}
                 {submission.form_data.show_from
-                  ? new Date(submission.form_data.show_from).toLocaleString()
+                  ? (() => {
+                      // Extract date portion from ISO string to avoid timezone issues
+                      const dateStr = submission.form_data.show_from;
+                      const dateOnly = dateStr.split("T")[0];
+                      const [year, month, day] = dateOnly.split("-");
+                      return `${month}/${day}/${year}`;
+                    })()
                   : "—"}
               </p>
               <p>
                 <span className="font-medium">Hide after:</span>{" "}
                 {submission.form_data.hide_after
-                  ? new Date(submission.form_data.hide_after).toLocaleString()
+                  ? (() => {
+                      // Extract date portion from ISO string to avoid timezone issues
+                      const dateStr = submission.form_data.hide_after;
+                      const dateOnly = dateStr.split("T")[0];
+                      const [year, month, day] = dateOnly.split("-");
+                      return `${month}/${day}/${year}`;
+                    })()
                   : "—"}
               </p>
               {submission.form_data.duration_preset && (
@@ -309,13 +330,13 @@ export default function Forms() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Search by Organization Name
+                Search
               </label>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search organizations..."
+                placeholder="Search by organization or program name..."
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
