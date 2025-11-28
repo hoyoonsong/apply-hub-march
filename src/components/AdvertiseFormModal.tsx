@@ -706,11 +706,12 @@ export default function AdvertiseFormModal({
           ✕
         </button>
         <h2 className="text-2xl font-semibold text-gray-900 mb-1">
-          Advertise your organization
+          Advertise!
         </h2>
         <p className="text-sm text-gray-600 mb-6">
-          Request a featured placement so the super admin team can schedule your
-          card in the carousel or gallery.
+          Get your organization or programs noticed on the featured page! <br />{" "}
+          <b>Disclaimer: </b>For a limited time, we're offering a 100% discount
+          on all requests!
         </p>
 
         {/* Tabs */}

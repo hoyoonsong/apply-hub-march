@@ -30,8 +30,8 @@ export default function OrgAdminHome() {
         } = await supabase.auth.getUser();
         if (!user || !org) return;
 
-          // Assign current user as reviewer for all programs in this org
-          await assignOrgAdminAsReviewer(org.id, user.id);
+        // Assign current user as reviewer for all programs in this org
+        await assignOrgAdminAsReviewer(org.id, user.id);
       } catch (error) {
         console.error("Failed to sync org admin reviewers:", error);
         // Don't show error to user, just log it
@@ -70,8 +70,8 @@ export default function OrgAdminHome() {
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Link to={`/org/${orgSlug}/admin/programs`} className="block">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
+          <Link to={`/org/${orgSlug}/admin/programs`} className="block h-full">
             <HubTile
               title="Programs"
               subtitle="Create, edit, and manage programs"
@@ -79,7 +79,7 @@ export default function OrgAdminHome() {
               onClick={() => {}}
             />
           </Link>
-          <Link to={`/org/${orgSlug}/admin/teams`} className="block">
+          <Link to={`/org/${orgSlug}/admin/teams`} className="block h-full">
             <HubTile
               title="My Teams"
               subtitle="Manage team members and their roles"
@@ -87,7 +87,7 @@ export default function OrgAdminHome() {
               onClick={() => {}}
             />
           </Link>
-          <Link to="/review/all" className="block">
+          <Link to="/review/all" className="block h-full">
             <HubTile
               title="Applications Inbox"
               subtitle="Review and change statuses"
@@ -95,7 +95,10 @@ export default function OrgAdminHome() {
               onClick={() => {}}
             />
           </Link>
-          <Link to={`/org/${orgSlug}/admin/publish-results`} className="block">
+          <Link
+            to={`/org/${orgSlug}/admin/publish-results`}
+            className="block h-full"
+          >
             <HubTile
               title="Publish Results"
               subtitle="Publish review results to applicants"
@@ -103,25 +106,24 @@ export default function OrgAdminHome() {
               onClick={() => {}}
             />
           </Link>
-          <HubTile
-            title="Organization Settings"
-            subtitle="Name, slug, description"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              if (!orgId) return;
-              setShowAdvertiseModal(true);
-            }}
-            className="w-full text-left rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50 p-5 shadow-sm hover:shadow-md hover:border-sky-300 transition"
-          >
-            <div className="text-lg font-semibold text-gray-900">
-              Advertise your org
-            </div>
-            <p className="text-sm text-gray-600 mt-1">
-              Request a featured placement and tell us how long to run it.
-            </p>
-          </button>
+          <div className="h-full">
+            <HubTile
+              title="Organization Settings"
+              subtitle="Name, slug, description"
+            />
+          </div>
+          <div className="h-full">
+            <HubTile
+              title="Advertise"
+              subtitle="Request a featured placement and tell us how long to run it."
+              disabled={!orgId}
+              onClick={() => {
+                if (!orgId) return;
+                setShowAdvertiseModal(true);
+              }}
+              accent="blue"
+            />
+          </div>
         </div>
       </div>
       <AdvertiseFormModal
