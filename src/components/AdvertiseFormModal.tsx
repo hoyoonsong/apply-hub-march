@@ -40,6 +40,15 @@ const formatDateLocal = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+// Format date as MM/DD/YYYY (matching super admin Forms page)
+const formatDateDisplay = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return "—";
+  // Extract date portion from ISO string to avoid timezone issues
+  const dateOnly = dateStr.split("T")[0];
+  const [year, month, day] = dateOnly.split("-");
+  return `${month}/${day}/${year}`;
+};
+
 const addDaysToDateInput = (input: string, days: number) => {
   if (!input) return "";
   const base = new Date(input);
@@ -174,7 +183,40 @@ export default function AdvertiseFormModal({
     new Set()
   );
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"form" | "log">("form");
+
+  // Request log state
+  const [requests, setRequests] = useState<any[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
+
   const isOrgReady = Boolean(orgId && orgName);
+
+  // Fetch organization's advertisement requests
+  const loadRequests = async () => {
+    if (!orgId) return;
+    setRequestsLoading(true);
+    setRequestsError(null);
+    try {
+      const { data, error } = await supabase.rpc(
+        "org_list_advertise_requests_v1",
+        {
+          p_org_id: orgId,
+        }
+      );
+
+      if (error) throw error;
+      setRequests(data || []);
+    } catch (err) {
+      console.error("Failed to load requests", err);
+      setRequestsError(
+        err instanceof Error ? err.message : "Failed to load requests"
+      );
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -191,7 +233,15 @@ export default function AdvertiseFormModal({
     setProgramSearch("");
     setSelectedProgramIds(new Set());
     setProgramLoadError(null);
+    setActiveTab("form");
   }, [open]);
+
+  // Load requests when log tab is active
+  useEffect(() => {
+    if (open && activeTab === "log" && orgId) {
+      loadRequests();
+    }
+  }, [open, activeTab, orgId]);
 
   // Uncheck organization when until_deadline is selected (orgs don't have deadlines)
   useEffect(() => {
@@ -525,6 +575,10 @@ export default function AdvertiseFormModal({
 
       await Promise.all(submissions);
       setSuccess(true);
+      // Reload requests if log tab might be viewed
+      if (orgId) {
+        loadRequests();
+      }
       setTimeout(() => {
         setSubmitting(false);
         onClose();
@@ -619,6 +673,25 @@ export default function AdvertiseFormModal({
 
   const showCustomDates = durationPreset === "custom";
 
+  // Helper to calculate time remaining for active campaigns
+  const getTimeRemaining = (
+    hideAfter: string | null | undefined
+  ): string | null => {
+    if (!hideAfter) return null;
+    const endDate = new Date(hideAfter);
+    const now = new Date();
+    if (endDate <= now) return "Ended";
+    const diffMs = endDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) return "1 day left";
+    if (diffDays < 7) return `${diffDays} days left`;
+    const diffWeeks = Math.floor(diffDays / 7);
+    if (diffWeeks === 1) return "1 week left";
+    if (diffWeeks < 4) return `${diffWeeks} weeks left`;
+    const diffMonths = Math.floor(diffDays / 30);
+    return diffMonths === 1 ? "1 month left" : `${diffMonths} months left`;
+  };
+
   if (!open) return null;
 
   return (
@@ -640,492 +713,692 @@ export default function AdvertiseFormModal({
           card in the carousel or gallery.
         </p>
 
-        {success ? (
-          <div className="rounded-lg bg-green-50 p-4 text-green-800">
-            <p className="font-semibold">Thanks! Your request is in.</p>
-            <p className="text-sm mt-1">
-              We&apos;ll confirm the dates and publish it through the featured
-              manager.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* What to feature - Two clear options (can select both) */}
-            <div className="bg-indigo-50/30 rounded-xl p-6 border border-indigo-100">
-              <h3 className="text-base font-semibold text-gray-900 mb-4">
-                What do you want to feature?
-              </h3>
-              <div className="space-y-3">
-                {/* Option 1: Your organization */}
-                <label
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 transition ${
-                    durationPreset === "until_deadline"
-                      ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
-                      : selectedOrg
-                      ? "border-blue-600 bg-blue-50 cursor-pointer"
-                      : "border-gray-200 hover:border-blue-300 cursor-pointer"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedOrg}
-                    onChange={(e) => setSelectedOrg(e.target.checked)}
-                    disabled={submitting || durationPreset === "until_deadline"}
-                    className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-gray-900">
-                          Your organization
-                        </div>
-                        <div className="text-sm text-gray-500 mt-0.5">
-                          Feature your organization card
-                        </div>
-                      </div>
-                      {selectedOrg && (
-                        <div className="text-right ml-4">
-                          <div className="text-lg font-bold text-gray-900">
-                            ${getOrgPrice().toFixed(2)}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {durationPreset === "custom"
-                              ? "custom"
-                              : presetLabels[durationPreset]}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </label>
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 border-b border-gray-200">
+          <button
+            type="button"
+            onClick={() => setActiveTab("form")}
+            className={`px-4 py-2 text-sm font-medium transition ${
+              activeTab === "form"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            New Request
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("log")}
+            className={`px-4 py-2 text-sm font-medium transition ${
+              activeTab === "log"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Request History
+          </button>
+        </div>
 
-                {/* Option 2: Organization Programs */}
-                <label
-                  className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition ${
-                    selectedPrograms
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-gray-200 hover:border-blue-300"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedPrograms}
-                    onChange={(e) => setSelectedPrograms(e.target.checked)}
-                    disabled={submitting}
-                    className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-gray-900">
-                          Organization Programs
-                        </div>
-                        <div className="text-sm text-gray-500 mt-0.5">
-                          Feature one or more of your programs
-                        </div>
-                      </div>
-                      {selectedPrograms && selectedProgramIds.size > 0 && (
-                        <div className="text-right ml-4">
-                          <div className="text-lg font-bold text-gray-900">
-                            ${getProgramPrice().toFixed(2)}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {selectedProgramIds.size}{" "}
-                            {selectedProgramIds.size === 1
-                              ? "program"
-                              : "programs"}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </label>
+        {/* Form Tab */}
+        {activeTab === "form" && (
+          <>
+            {success ? (
+              <div className="rounded-lg bg-green-50 p-4 text-green-800">
+                <p className="font-semibold">Thanks! Your request is in.</p>
+                <p className="text-sm mt-1">
+                  We&apos;ll confirm the dates and publish it through the
+                  featured manager.
+                </p>
               </div>
-
-              {/* Show organization name when "org" is selected */}
-              {selectedOrg && (
-                <div className="mt-6 pt-6 border-t border-indigo-200">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Selected Organization
-                  </h4>
-                  <div className="p-4 bg-white rounded-xl border-2 border-indigo-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-medium text-gray-600 mb-1">
-                          Organization
-                        </div>
-                        <div className="text-base font-semibold text-gray-900">
-                          {orgName || "Loading organization..."}
-                        </div>
-                      </div>
-                      <div className="text-right ml-4">
-                        <div className="text-lg font-bold text-gray-900">
-                          ${getOrgPrice().toFixed(2)}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {durationPreset === "custom" ||
-                          durationPreset === "until_deadline"
-                            ? durationPreset === "until_deadline"
-                              ? "until deadline"
-                              : "custom duration"
-                            : `for ${presetLabels[durationPreset]}`}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Show programs list when "programs" is selected */}
-              {selectedPrograms && (
-                <div className="mt-6 pt-6 border-t border-indigo-200">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Select Programs
-                  </h4>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Search programs
-                      </label>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-8">
+                {/* What to feature - Two clear options (can select both) */}
+                <div className="bg-indigo-50/30 rounded-xl p-6 border border-indigo-100">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">
+                    What do you want to feature?
+                  </h3>
+                  <div className="space-y-3">
+                    {/* Option 1: Your organization */}
+                    <label
+                      className={`flex items-start gap-3 p-4 rounded-xl border-2 transition ${
+                        durationPreset === "until_deadline"
+                          ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                          : selectedOrg
+                          ? "border-blue-600 bg-blue-50 cursor-pointer"
+                          : "border-gray-200 hover:border-blue-300 cursor-pointer"
+                      }`}
+                    >
                       <input
-                        type="text"
-                        value={programSearch}
-                        onChange={(e) => setProgramSearch(e.target.value)}
-                        placeholder="Search programs..."
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                        disabled={programsLoading || submitting}
+                        type="checkbox"
+                        checked={selectedOrg}
+                        onChange={(e) => setSelectedOrg(e.target.checked)}
+                        disabled={
+                          submitting || durationPreset === "until_deadline"
+                        }
+                        className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                    </div>
-                    <div className="max-h-60 overflow-y-auto rounded-xl border-2 border-gray-200 divide-y divide-gray-200 bg-white shadow-sm">
-                      {programsLoading ? (
-                        <div className="p-4 text-sm text-gray-500">
-                          Loading programs…
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold text-gray-900">
+                              Your organization
+                            </div>
+                            <div className="text-sm text-gray-500 mt-0.5">
+                              Feature your organization card
+                            </div>
+                          </div>
+                          {selectedOrg && (
+                            <div className="text-right ml-4">
+                              <div className="text-lg font-bold text-gray-900">
+                                ${getOrgPrice().toFixed(2)}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {durationPreset === "custom"
+                                  ? "custom"
+                                  : presetLabels[durationPreset]}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      ) : filteredPrograms.length > 0 ? (
-                        filteredPrograms.map((program) => {
-                          const isSelected = selectedProgramIds.has(program.id);
-                          return (
-                            <label
-                              key={program.id}
-                              className={`flex items-start gap-3 p-3 cursor-pointer transition ${
-                                isSelected ? "bg-blue-50" : "hover:bg-gray-50"
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => toggleProgram(program.id)}
-                                disabled={submitting}
-                                className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="text-sm font-medium text-gray-900">
-                                      {program.name}
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-0.5">
-                                      Program
+                      </div>
+                    </label>
+
+                    {/* Option 2: Organization Programs */}
+                    <label
+                      className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition ${
+                        selectedPrograms
+                          ? "border-blue-600 bg-blue-50"
+                          : "border-gray-200 hover:border-blue-300"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPrograms}
+                        onChange={(e) => setSelectedPrograms(e.target.checked)}
+                        disabled={submitting}
+                        className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold text-gray-900">
+                              Organization Programs
+                            </div>
+                            <div className="text-sm text-gray-500 mt-0.5">
+                              Feature one or more of your programs
+                            </div>
+                          </div>
+                          {selectedPrograms && selectedProgramIds.size > 0 && (
+                            <div className="text-right ml-4">
+                              <div className="text-lg font-bold text-gray-900">
+                                ${getProgramPrice().toFixed(2)}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {selectedProgramIds.size}{" "}
+                                {selectedProgramIds.size === 1
+                                  ? "program"
+                                  : "programs"}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Show organization name when "org" is selected */}
+                  {selectedOrg && (
+                    <div className="mt-6 pt-6 border-t border-indigo-200">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                        Selected Organization
+                      </h4>
+                      <div className="p-4 bg-white rounded-xl border-2 border-indigo-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-medium text-gray-600 mb-1">
+                              Organization
+                            </div>
+                            <div className="text-base font-semibold text-gray-900">
+                              {orgName || "Loading organization..."}
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <div className="text-lg font-bold text-gray-900">
+                              ${getOrgPrice().toFixed(2)}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {durationPreset === "custom" ||
+                              durationPreset === "until_deadline"
+                                ? durationPreset === "until_deadline"
+                                  ? "until deadline"
+                                  : "custom duration"
+                                : `for ${presetLabels[durationPreset]}`}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show programs list when "programs" is selected */}
+                  {selectedPrograms && (
+                    <div className="mt-6 pt-6 border-t border-indigo-200">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                        Select Programs
+                      </h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Search programs
+                          </label>
+                          <input
+                            type="text"
+                            value={programSearch}
+                            onChange={(e) => setProgramSearch(e.target.value)}
+                            placeholder="Search programs..."
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                            disabled={programsLoading || submitting}
+                          />
+                        </div>
+                        <div className="max-h-60 overflow-y-auto rounded-xl border-2 border-gray-200 divide-y divide-gray-200 bg-white shadow-sm">
+                          {programsLoading ? (
+                            <div className="p-4 text-sm text-gray-500">
+                              Loading programs…
+                            </div>
+                          ) : filteredPrograms.length > 0 ? (
+                            filteredPrograms.map((program) => {
+                              const isSelected = selectedProgramIds.has(
+                                program.id
+                              );
+                              return (
+                                <label
+                                  key={program.id}
+                                  className={`flex items-start gap-3 p-3 cursor-pointer transition ${
+                                    isSelected
+                                      ? "bg-blue-50"
+                                      : "hover:bg-gray-50"
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleProgram(program.id)}
+                                    disabled={submitting}
+                                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-900">
+                                          {program.name}
+                                        </div>
+                                        <div className="text-xs text-gray-500 mt-0.5">
+                                          Program
+                                        </div>
+                                      </div>
+                                      {isSelected && (
+                                        <div className="text-right ml-4">
+                                          <div className="text-sm font-semibold text-gray-900">
+                                            $
+                                            {durationPreset === "until_deadline"
+                                              ? calculateProgramPriceUntilDeadline(
+                                                  showFrom,
+                                                  program.close_at
+                                                ).toFixed(2)
+                                              : calculatePrice(
+                                                  "program",
+                                                  durationPreset,
+                                                  showFrom,
+                                                  hideAfter
+                                                ).toFixed(2)}
+                                          </div>
+                                          <div className="text-xs text-gray-500">
+                                            {durationPreset === "custom" ||
+                                            durationPreset === "until_deadline"
+                                              ? durationPreset ===
+                                                "until_deadline"
+                                                ? "until deadline"
+                                                : "custom"
+                                              : presetLabels[durationPreset]}
+                                          </div>
+                                          {durationPreset ===
+                                            "until_deadline" &&
+                                            program.close_at && (
+                                              <div className="text-xs text-gray-400 mt-0.5">
+                                                {new Date(
+                                                  program.close_at
+                                                ).toLocaleString(undefined, {
+                                                  month: "short",
+                                                  day: "numeric",
+                                                  year: "numeric",
+                                                  hour: "numeric",
+                                                  minute: "2-digit",
+                                                })}
+                                              </div>
+                                            )}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
-                                  {isSelected && (
-                                    <div className="text-right ml-4">
-                                      <div className="text-sm font-semibold text-gray-900">
-                                        $
-                                        {durationPreset === "until_deadline"
-                                          ? calculateProgramPriceUntilDeadline(
-                                              showFrom,
-                                              program.close_at
-                                            ).toFixed(2)
-                                          : calculatePrice(
-                                              "program",
-                                              durationPreset,
-                                              showFrom,
-                                              hideAfter
-                                            ).toFixed(2)}
-                                      </div>
-                                      <div className="text-xs text-gray-500">
-                                        {durationPreset === "custom" ||
-                                        durationPreset === "until_deadline"
-                                          ? durationPreset === "until_deadline"
-                                            ? "until deadline"
-                                            : "custom"
-                                          : presetLabels[durationPreset]}
-                                      </div>
-                                      {durationPreset === "until_deadline" &&
-                                        program.close_at && (
-                                          <div className="text-xs text-gray-400 mt-0.5">
-                                            {new Date(
-                                              program.close_at
-                                            ).toLocaleString(undefined, {
-                                              month: "short",
-                                              day: "numeric",
-                                              year: "numeric",
-                                              hour: "numeric",
-                                              minute: "2-digit",
-                                            })}
-                                          </div>
-                                        )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </label>
-                          );
-                        })
-                      ) : (
-                        <div className="p-4 text-sm text-gray-500">
-                          {programLoadError
-                            ? programLoadError
-                            : durationPreset === "until_deadline"
-                            ? "No public programs with deadlines match that search."
-                            : "No public programs match that search."}
+                                </label>
+                              );
+                            })
+                          ) : (
+                            <div className="p-4 text-sm text-gray-500">
+                              {programLoadError
+                                ? programLoadError
+                                : durationPreset === "until_deadline"
+                                ? "No public programs with deadlines match that search."
+                                : "No public programs match that search."}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    {selectedProgramIds.size > 0 && (
-                      <div className="rounded-lg bg-blue-50 border-2 border-blue-200 px-4 py-3 text-sm text-blue-800 font-medium">
-                        <span className="font-bold">
-                          {selectedProgramIds.size}
-                        </span>{" "}
-                        {selectedProgramIds.size === 1
-                          ? "program selected"
-                          : "programs selected"}
+                        {selectedProgramIds.size > 0 && (
+                          <div className="rounded-lg bg-blue-50 border-2 border-blue-200 px-4 py-3 text-sm text-blue-800 font-medium">
+                            <span className="font-bold">
+                              {selectedProgramIds.size}
+                            </span>{" "}
+                            {selectedProgramIds.size === 1
+                              ? "program selected"
+                              : "programs selected"}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Duration & Start Date - Combined section */}
-            <div className="bg-emerald-50/30 rounded-xl p-6 border border-emerald-100">
-              <h3 className="text-base font-semibold text-gray-900 mb-6">
-                Duration & Start Date
-              </h3>
+                {/* Duration & Start Date - Combined section */}
+                <div className="bg-emerald-50/30 rounded-xl p-6 border border-emerald-100">
+                  <h3 className="text-base font-semibold text-gray-900 mb-6">
+                    Duration & Start Date
+                  </h3>
 
-              {/* Duration selection */}
-              <div className="mb-6">
-                <p className="text-sm font-medium text-gray-700 mb-3">
-                  How long should it run?
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {presetButtons
-                    .filter(({ preset }) => preset !== "custom")
-                    .map(({ preset, label }) => (
+                  {/* Duration selection */}
+                  <div className="mb-6">
+                    <p className="text-sm font-medium text-gray-700 mb-3">
+                      How long should it run?
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {presetButtons
+                        .filter(({ preset }) => preset !== "custom")
+                        .map(({ preset, label }) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            className={`px-5 py-2.5 rounded-lg border text-sm font-semibold transition ${
+                              durationPreset === preset
+                                ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                                : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                            }`}
+                            onClick={() => setDurationPreset(preset)}
+                            disabled={submitting}
+                          >
+                            {label}
+                          </button>
+                        ))}
                       <button
-                        key={preset}
                         type="button"
                         className={`px-5 py-2.5 rounded-lg border text-sm font-semibold transition ${
-                          durationPreset === preset
+                          durationPreset === "custom"
                             ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                             : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
                         }`}
-                        onClick={() => setDurationPreset(preset)}
+                        onClick={() => setDurationPreset("custom")}
                         disabled={submitting}
                       >
-                        {label}
+                        Custom
                       </button>
-                    ))}
-                  <button
-                    type="button"
-                    className={`px-5 py-2.5 rounded-lg border text-sm font-semibold transition ${
-                      durationPreset === "custom"
-                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                        : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
-                    }`}
-                    onClick={() => setDurationPreset("custom")}
-                    disabled={submitting}
-                  >
-                    Custom
-                  </button>
-                </div>
-              </div>
-
-              {/* Custom date inputs - only show when Custom is selected */}
-              {showCustomDates && (
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-3">
-                    Custom Date Range
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-white rounded-xl border-2 border-gray-200">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Start date
-                      </label>
-                      <input
-                        type="date"
-                        value={showFrom}
-                        onChange={(e) => setShowFrom(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                        min={formatDateLocal(new Date())}
-                        required
-                        disabled={submitting}
-                      />
                     </div>
+                  </div>
+
+                  {/* Custom date inputs - only show when Custom is selected */}
+                  {showCustomDates && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        End date
-                      </label>
-                      <input
-                        type="date"
-                        value={hideAfter}
-                        onChange={(e) => setHideAfter(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                        min={showFrom || formatDateLocal(new Date())}
-                        required
-                        disabled={submitting}
-                      />
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        Custom Date Range
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-white rounded-xl border-2 border-gray-200">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Start date
+                          </label>
+                          <input
+                            type="date"
+                            value={showFrom}
+                            onChange={(e) => setShowFrom(e.target.value)}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                            min={formatDateLocal(new Date())}
+                            required
+                            disabled={submitting}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            End date
+                          </label>
+                          <input
+                            type="date"
+                            value={hideAfter}
+                            onChange={(e) => setHideAfter(e.target.value)}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                            min={showFrom || formatDateLocal(new Date())}
+                            required
+                            disabled={submitting}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Start date - always show when not custom */}
+                  {!showCustomDates && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        Start Date
+                      </p>
+                      <div className="p-5 bg-white rounded-xl border-2 border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          What day should the campaign start?
+                        </label>
+                        <input
+                          type="date"
+                          value={showFrom}
+                          onChange={(e) => setShowFrom(e.target.value)}
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          min={formatDateLocal(new Date())}
+                          required
+                          disabled={submitting}
+                        />
+                        <p className="text-sm text-gray-600 mt-3">
+                          {durationPreset === "until_deadline" ? (
+                            <>
+                              Will run from this date until the selected
+                              program&apos;s deadline. Select today&apos;s date
+                              to start ASAP.
+                            </>
+                          ) : (
+                            <>
+                              Will run for{" "}
+                              <span className="font-semibold">
+                                {presetLabels[durationPreset]}
+                              </span>{" "}
+                              from this date. Select today&apos;s date to start
+                              ASAP.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pricing summary section */}
+                <div className="bg-amber-50/30 rounded-xl p-6 border border-amber-100">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">
+                    Pricing Summary
+                  </h3>
+                  <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-5 border-2 border-gray-200 space-y-3">
+                    {selectedOrg && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600">
+                          Organization advertising
+                        </span>
+                        <span className="font-semibold text-gray-900">
+                          ${getOrgPrice().toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    {selectedPrograms && selectedProgramIds.size > 0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600">
+                          Program advertising ({selectedProgramIds.size}{" "}
+                          {selectedProgramIds.size === 1
+                            ? "program"
+                            : "programs"}
+                          )
+                        </span>
+                        <span className="font-semibold text-gray-900">
+                          ${getProgramPrice().toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="pt-3 border-t-2 border-gray-300 flex justify-between items-center">
+                      <span className="font-semibold text-gray-900">
+                        Subtotal
+                      </span>
+                      <span className="text-lg font-bold text-gray-900">
+                        ${calculateTotal().toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                      <div>
+                        <span className="font-semibold text-green-700">
+                          Launch Discount
+                        </span>
+                        <span className="text-xs text-gray-500 block">
+                          100% off
+                        </span>
+                      </div>
+                      <span className="text-lg font-bold text-green-700">
+                        -${calculateTotal().toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="pt-3 border-t-2 border-gray-300 flex justify-between items-center">
+                      <span className="font-semibold text-gray-900">Total</span>
+                      <span className="text-xl font-bold text-gray-900">
+                        $0.00
+                      </span>
+                    </div>
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-xs text-green-800 font-medium">
+                        🎉 Launch discount applied! You won&apos;t be charged
+                        for this campaign.
+                      </p>
                     </div>
                   </div>
                 </div>
-              )}
 
-              {/* Start date - always show when not custom */}
-              {!showCustomDates && (
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-3">
-                    Start Date
-                  </p>
+                {/* Additional details */}
+                <div className="bg-slate-50/30 rounded-xl p-6 border border-slate-100">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">
+                    Additional Information
+                  </h3>
                   <div className="p-5 bg-white rounded-xl border-2 border-gray-200">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      What day should the campaign start?
+                      Additional details (optional)
                     </label>
-                    <input
-                      type="date"
-                      value={showFrom}
-                      onChange={(e) => setShowFrom(e.target.value)}
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={4}
                       className="w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                      min={formatDateLocal(new Date())}
-                      required
+                      placeholder="Anything else we should know? Share context or a preferred card color."
                       disabled={submitting}
                     />
-                    <p className="text-sm text-gray-600 mt-3">
-                      {durationPreset === "until_deadline" ? (
-                        <>
-                          Will run from this date until the selected
-                          program&apos;s deadline. Select today&apos;s date to
-                          start ASAP.
-                        </>
-                      ) : (
-                        <>
-                          Will run for{" "}
-                          <span className="font-semibold">
-                            {presetLabels[durationPreset]}
-                          </span>{" "}
-                          from this date. Select today&apos;s date to start
-                          ASAP.
-                        </>
-                      )}
-                    </p>
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Pricing summary section */}
-            <div className="bg-amber-50/30 rounded-xl p-6 border border-amber-100">
-              <h3 className="text-base font-semibold text-gray-900 mb-4">
-                Pricing Summary
-              </h3>
-              <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-5 border-2 border-gray-200 space-y-3">
-                {selectedOrg && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">
-                      Organization advertising
-                    </span>
-                    <span className="font-semibold text-gray-900">
-                      ${getOrgPrice().toFixed(2)}
-                    </span>
+                {error && (
+                  <div className="rounded-lg bg-red-50 border-2 border-red-200 p-4 text-sm text-red-800 font-medium">
+                    {error}
                   </div>
                 )}
-                {selectedPrograms && selectedProgramIds.size > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">
-                      Program advertising ({selectedProgramIds.size}{" "}
-                      {selectedProgramIds.size === 1 ? "program" : "programs"})
-                    </span>
-                    <span className="font-semibold text-gray-900">
-                      ${getProgramPrice().toFixed(2)}
-                    </span>
-                  </div>
-                )}
-                <div className="pt-3 border-t-2 border-gray-300 flex justify-between items-center">
-                  <span className="font-semibold text-gray-900">Subtotal</span>
-                  <span className="text-lg font-bold text-gray-900">
-                    ${calculateTotal().toFixed(2)}
-                  </span>
-                </div>
-                <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
-                  <div>
-                    <span className="font-semibold text-green-700">
-                      Launch Discount
-                    </span>
-                    <span className="text-xs text-gray-500 block">
-                      100% off
-                    </span>
-                  </div>
-                  <span className="text-lg font-bold text-green-700">
-                    -${calculateTotal().toFixed(2)}
-                  </span>
-                </div>
-                <div className="pt-3 border-t-2 border-gray-300 flex justify-between items-center">
-                  <span className="font-semibold text-gray-900">Total</span>
-                  <span className="text-xl font-bold text-gray-900">$0.00</span>
-                </div>
-                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-xs text-green-800 font-medium">
-                    🎉 Launch discount applied! You won&apos;t be charged for
-                    this campaign.
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            {/* Additional details */}
-            <div className="bg-slate-50/30 rounded-xl p-6 border border-slate-100">
-              <h3 className="text-base font-semibold text-gray-900 mb-4">
-                Additional Information
-              </h3>
-              <div className="p-5 bg-white rounded-xl border-2 border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Additional details (optional)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  placeholder="Anything else we should know? Share context or a preferred card color."
-                  disabled={submitting}
-                />
-              </div>
-            </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={submitting}
+                    className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={disableSubmit}
+                    className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? "Submitting…" : "Submit request"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </>
+        )}
 
-            {error && (
-              <div className="rounded-lg bg-red-50 border-2 border-red-200 p-4 text-sm text-red-800 font-medium">
-                {error}
+        {/* Log Tab */}
+        {activeTab === "log" && (
+          <div className="space-y-4">
+            {requestsLoading ? (
+              <div className="text-center py-8 text-gray-500">
+                Loading requests...
+              </div>
+            ) : requestsError ? (
+              <div className="rounded-lg bg-red-50 border-2 border-red-200 p-4 text-sm text-red-800">
+                {requestsError}
+              </div>
+            ) : requests.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No advertisement requests yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {requests.map((request) => {
+                  const formData = request.form_data || {};
+                  const showFrom = formData.show_from
+                    ? new Date(formData.show_from)
+                    : null;
+                  const hideAfter = formData.hide_after
+                    ? new Date(formData.hide_after)
+                    : null;
+                  const isActive =
+                    showFrom &&
+                    hideAfter &&
+                    new Date() >= showFrom &&
+                    new Date() <= hideAfter &&
+                    request.status === "approved";
+                  const timeRemaining = isActive
+                    ? getTimeRemaining(formData.hide_after)
+                    : null;
+                  const isUpcoming =
+                    showFrom &&
+                    new Date() < showFrom &&
+                    request.status === "approved";
+                  const isEnded = hideAfter && new Date() > hideAfter;
+
+                  return (
+                    <div
+                      key={request.id}
+                      className={`rounded-lg border-2 bg-white p-4 ${
+                        isActive
+                          ? "border-green-200 bg-green-50/30"
+                          : "border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="text-sm font-semibold text-gray-900">
+                              {formData.target_type === "program"
+                                ? formData.program_name || "Program"
+                                : "Organization feature"}
+                            </span>
+                            {isActive && (
+                              <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
+                                Active
+                              </span>
+                            )}
+                            {isUpcoming && (
+                              <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                                Upcoming
+                              </span>
+                            )}
+                            {isEnded && (
+                              <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                                Ended
+                              </span>
+                            )}
+                            <span
+                              className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                request.status === "approved"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : request.status === "pending"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {request.status}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-600 space-y-1 mt-2">
+                            {timeRemaining && (
+                              <div className="font-semibold text-green-700">
+                                ⏱️ {timeRemaining}
+                              </div>
+                            )}
+                            <div>
+                              <span className="font-medium text-gray-700">
+                                Dates:
+                              </span>{" "}
+                              {formatDateDisplay(formData.show_from)} →{" "}
+                              {formatDateDisplay(formData.hide_after)}
+                            </div>
+                            {formData.duration_preset && (
+                              <div>
+                                <span className="font-medium text-gray-700">
+                                  Duration:
+                                </span>{" "}
+                                {formData.duration_preset === "until_deadline"
+                                  ? "Until deadline"
+                                  : formData.duration_preset === "custom"
+                                  ? "Custom"
+                                  : presetLabels[
+                                      formData.duration_preset as DurationPreset
+                                    ] || formData.duration_preset}
+                              </div>
+                            )}
+                            {formData.target_type === "program" &&
+                              formData.program_name && (
+                                <div>
+                                  <span className="font-medium text-gray-700">
+                                    Program:
+                                  </span>{" "}
+                                  {formData.program_name}
+                                </div>
+                              )}
+                            {formData.target_type === "org" &&
+                              formData.organization_name && (
+                                <div>
+                                  <span className="font-medium text-gray-700">
+                                    Org name:
+                                  </span>{" "}
+                                  {formData.organization_name}
+                                </div>
+                              )}
+                            <div>
+                              <span className="font-medium text-gray-700">
+                                Submitted:
+                              </span>{" "}
+                              {new Date(request.created_at).toLocaleString()}
+                            </div>
+                            {request.reviewed_at && (
+                              <div>
+                                <span className="font-medium text-gray-700">
+                                  Reviewed:
+                                </span>{" "}
+                                {new Date(request.reviewed_at).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
-
-            <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={submitting}
-                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={disableSubmit}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? "Submitting…" : "Submit request"}
-              </button>
-            </div>
-          </form>
+          </div>
         )}
       </div>
     </div>
