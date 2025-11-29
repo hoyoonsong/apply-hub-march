@@ -21,6 +21,23 @@ SET spots_mode = 'exact',
 WHERE spots_mode IS NULL;
 
 -- ============================================
+-- UPDATE PROGRAMS_PUBLIC VIEW (if it exists)
+-- ============================================
+-- If you have a programs_public view, you'll need to update it to include spots fields
+-- Example (adjust based on your actual view definition):
+-- 
+-- CREATE OR REPLACE VIEW public.programs_public AS
+-- SELECT 
+--   ... (existing columns) ...,
+--   spots_mode,
+--   spots_count
+-- FROM public.programs
+-- WHERE ... (your existing view conditions) ...;
+--
+-- Note: The frontend code queries both programs_public and programs tables,
+-- so make sure spots fields are available in both places.
+
+-- ============================================
 -- UPDATE PROGRAM CREATION/UPDATE FUNCTIONS
 -- ============================================
 -- NOTE: There are two overloads of org_create_program_draft_v1:

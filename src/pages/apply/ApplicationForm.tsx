@@ -167,7 +167,7 @@ export default function ApplicationForm({
       const { data: programData, error: programError } = await supabase
         .from("programs")
         .select(
-          "id, name, description, organization_id, metadata, open_at, close_at"
+          "id, name, description, organization_id, metadata, open_at, close_at, spots_mode, spots_count"
         )
         .eq("id", progId)
         .single();
@@ -456,6 +456,30 @@ export default function ApplicationForm({
                     ? getDeadlineMessage(programDeadline)
                     : "No deadline set"}
                 </div>
+                {/* Spots Information */}
+                {(() => {
+                  if (!programDetails?.spots_mode) return null;
+                  if (programDetails.spots_mode === "unlimited") {
+                    return (
+                      <div className="text-xs md:text-sm font-medium text-blue-600 mt-1">
+                        Unlimited spots available
+                      </div>
+                    );
+                  }
+                  if (
+                    programDetails.spots_mode === "exact" &&
+                    programDetails.spots_count !== null &&
+                    programDetails.spots_count !== undefined
+                  ) {
+                    return (
+                      <div className="text-xs md:text-sm font-medium text-blue-600 mt-1">
+                        {programDetails.spots_count} spot
+                        {programDetails.spots_count !== 1 ? "s" : ""} available
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 {appRow && appRow.status === "submitted" && canEdit && (
                   <div className="text-xs md:text-sm text-green-600 mt-1">
                     ✓ Application submitted - You can still edit until the
