@@ -29,6 +29,8 @@ export type Program = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  spots_mode?: "exact" | "unlimited" | "tbd" | null;
+  spots_count?: number | null;
 };
 
 export function getReviewStatus(p?: Program | null): ReviewStatus {
@@ -109,6 +111,8 @@ export async function orgCreateProgramDraft(args: {
   open_at?: string | null;
   close_at?: string | null;
   metadata?: any;
+  spots_mode?: "exact" | "unlimited" | "tbd";
+  spots_count?: number | null;
 }): Promise<Program> {
   const { data, error } = await supabase.rpc("org_create_program_draft_v1", {
     p_org_id: args.organization_id,
@@ -118,6 +122,8 @@ export async function orgCreateProgramDraft(args: {
     p_open_at: args.open_at ?? null,
     p_close_at: args.close_at ?? null,
     p_metadata: args.metadata ?? {},
+    p_spots_mode: args.spots_mode ?? "exact",
+    p_spots_count: args.spots_count ?? null,
   });
   if (error) throw new Error(error.message);
   return data as Program;
@@ -131,6 +137,8 @@ export async function orgUpdateProgramDraft(args: {
   open_at?: string | null;
   close_at?: string | null;
   metadata?: any;
+  spots_mode?: "exact" | "unlimited" | "tbd" | null;
+  spots_count?: number | null;
 }): Promise<Program> {
   const { data, error } = await supabase.rpc("org_update_program_draft_v1", {
     p_program_id: args.program_id,
@@ -140,6 +148,8 @@ export async function orgUpdateProgramDraft(args: {
     p_open_at: args.open_at ?? null,
     p_close_at: args.close_at ?? null,
     p_metadata: args.metadata ?? {},
+    p_spots_mode: args.spots_mode ?? null,
+    p_spots_count: args.spots_count ?? null,
   });
   if (error) throw new Error(error.message);
   return data as Program;

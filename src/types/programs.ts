@@ -16,4 +16,6 @@ export type Program = {
   published_at: string | null;
   published_coalition_id: string | null;
   deleted_at: string | null;
+  spots_mode?: "exact" | "unlimited" | "tbd" | null;
+  spots_count?: number | null;
 };

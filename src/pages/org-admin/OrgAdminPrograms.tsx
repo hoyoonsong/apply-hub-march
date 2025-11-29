@@ -28,6 +28,8 @@ type CreateState = {
   open_at: string; // datetime-local value
   close_at: string; // datetime-local value
   is_private: boolean;
+  spots_mode: "exact" | "unlimited" | "tbd";
+  spots_count: string; // string to allow empty input
 };
 
 export default function OrgAdminPrograms() {
@@ -63,6 +65,10 @@ export default function OrgAdminPrograms() {
   const [modalCloseAt, setModalCloseAt] = useState<string>("");
   const [modalDescription, setModalDescription] = useState<string>("");
   const [modalIsPrivate, setModalIsPrivate] = useState<boolean>(false);
+  const [modalSpotsMode, setModalSpotsMode] = useState<
+    "exact" | "unlimited" | "tbd"
+  >("exact");
+  const [modalSpotsCount, setModalSpotsCount] = useState<string>("");
   const [modalSaving, setModalSaving] = useState(false);
 
   const [form, setForm] = useState<CreateState>({
@@ -72,6 +78,8 @@ export default function OrgAdminPrograms() {
     open_at: "",
     close_at: "",
     is_private: false,
+    spots_mode: "exact",
+    spots_count: "",
   });
 
   // Small helper: convert datetime-local to ISO or undefined
@@ -105,6 +113,11 @@ export default function OrgAdminPrograms() {
       ((columnValue === null || columnValue === undefined) &&
         (program.metadata as any)?.is_private === true);
     setModalIsPrivate(isPrivate);
+    // Load spots settings
+    setModalSpotsMode(
+      (program.spots_mode as "exact" | "unlimited" | "tbd") || "exact"
+    );
+    setModalSpotsCount(program.spots_count?.toString() || "");
     setShowDetailsModal(true);
   };
 
@@ -244,6 +257,18 @@ export default function OrgAdminPrograms() {
         return;
       }
 
+      // Validate spots if mode is exact
+      if (form.spots_mode === "exact") {
+        const spotsNum = parseInt(form.spots_count, 10);
+        if (isNaN(spotsNum) || spotsNum < 0) {
+          setCreateError(
+            "Please enter a valid number of spots (0 or greater)."
+          );
+          setCreating(false);
+          return;
+        }
+      }
+
       const newProgram = await orgCreateProgramDraft({
         organization_id: orgId,
         name: form.name,
@@ -251,6 +276,9 @@ export default function OrgAdminPrograms() {
         description: form.description || undefined,
         open_at: toISOorNull(form.open_at),
         close_at: toISOorNull(form.close_at),
+        spots_mode: form.spots_mode,
+        spots_count:
+          form.spots_mode === "exact" ? parseInt(form.spots_count, 10) : null,
       });
 
       // Update is_private after creation (since RPC might not support it)
@@ -269,6 +297,8 @@ export default function OrgAdminPrograms() {
         open_at: "",
         close_at: "",
         is_private: false,
+        spots_mode: "exact",
+        spots_count: "",
       });
 
       // Redirect to the application editor immediately
@@ -474,6 +504,90 @@ export default function OrgAdminPrograms() {
                   }
                   placeholder="Brief description…"
                 />
+              </div>
+              <div className="md:col-span-12">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Available Spots <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                      <input
+                        type="radio"
+                        name="spots_mode"
+                        className="h-4 w-4 text-indigo-600"
+                        checked={form.spots_mode === "exact"}
+                        onChange={() =>
+                          setForm((f) => ({ ...f, spots_mode: "exact" }))
+                        }
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-800">
+                          Exact Number
+                        </span>
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          Set a specific number of spots available
+                        </p>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                      <input
+                        type="radio"
+                        name="spots_mode"
+                        className="h-4 w-4 text-indigo-600"
+                        checked={form.spots_mode === "unlimited"}
+                        onChange={() =>
+                          setForm((f) => ({ ...f, spots_mode: "unlimited" }))
+                        }
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-800">
+                          Unlimited
+                        </span>
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          Accept all qualified applicants
+                        </p>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                      <input
+                        type="radio"
+                        name="spots_mode"
+                        className="h-4 w-4 text-indigo-600"
+                        checked={form.spots_mode === "tbd"}
+                        onChange={() =>
+                          setForm((f) => ({ ...f, spots_mode: "tbd" }))
+                        }
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-800">
+                          To Be Determined
+                        </span>
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          Spots will be set later
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                  {form.spots_mode === "exact" && (
+                    <div>
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                        value={form.spots_count}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            spots_count: e.target.value,
+                          }))
+                        }
+                        placeholder="Enter number of spots"
+                        required={form.spots_mode === "exact"}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="md:col-span-12">
                 <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer">
@@ -1271,6 +1385,81 @@ export default function OrgAdminPrograms() {
                   />
                 </div>
 
+                {/* Available Spots */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Available Spots <span className="text-red-500">*</span>
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                        <input
+                          type="radio"
+                          name="modal_spots_mode"
+                          className="h-4 w-4 text-indigo-600"
+                          checked={modalSpotsMode === "exact"}
+                          onChange={() => setModalSpotsMode("exact")}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-800">
+                            Exact Number
+                          </span>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            Set a specific number of spots available
+                          </p>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                        <input
+                          type="radio"
+                          name="modal_spots_mode"
+                          className="h-4 w-4 text-indigo-600"
+                          checked={modalSpotsMode === "unlimited"}
+                          onChange={() => setModalSpotsMode("unlimited")}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-800">
+                            Unlimited
+                          </span>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            Accept all qualified applicants
+                          </p>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                        <input
+                          type="radio"
+                          name="modal_spots_mode"
+                          className="h-4 w-4 text-indigo-600"
+                          checked={modalSpotsMode === "tbd"}
+                          onChange={() => setModalSpotsMode("tbd")}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-800">
+                            To Be Determined
+                          </span>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            Spots will be set later
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                    {modalSpotsMode === "exact" && (
+                      <div>
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                          value={modalSpotsCount}
+                          onChange={(e) => setModalSpotsCount(e.target.value)}
+                          placeholder="Enter number of spots"
+                          required={modalSpotsMode === "exact"}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Private Program */}
                 <div className="pt-2">
                   <label className="flex items-start gap-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer">
@@ -1308,6 +1497,19 @@ export default function OrgAdminPrograms() {
                     v ? new Date(v).toISOString() : null;
                   try {
                     setModalSaving(true);
+
+                    // Validate spots if mode is exact
+                    if (modalSpotsMode === "exact") {
+                      const spotsNum = parseInt(modalSpotsCount, 10);
+                      if (isNaN(spotsNum) || spotsNum < 0) {
+                        setListError(
+                          "Please enter a valid number of spots (0 or greater)."
+                        );
+                        setModalSaving(false);
+                        return;
+                      }
+                    }
+
                     // Update program details and is_private column directly
                     const { data: updatedProgram, error: updateError } =
                       await supabase
@@ -1319,6 +1521,11 @@ export default function OrgAdminPrograms() {
                           open_at: toISO(modalOpenAt),
                           close_at: toISO(modalCloseAt),
                           is_private: modalIsPrivate,
+                          spots_mode: modalSpotsMode,
+                          spots_count:
+                            modalSpotsMode === "exact"
+                              ? parseInt(modalSpotsCount, 10)
+                              : null,
                         })
                         .eq("id", editingProgram.id)
                         .select()
@@ -1337,6 +1544,11 @@ export default function OrgAdminPrograms() {
                       open_at: toISO(modalOpenAt),
                       close_at: toISO(modalCloseAt),
                       metadata: editingProgram.metadata || {},
+                      spots_mode: modalSpotsMode,
+                      spots_count:
+                        modalSpotsMode === "exact"
+                          ? parseInt(modalSpotsCount, 10)
+                          : null,
                     });
 
                     // Refresh the programs list

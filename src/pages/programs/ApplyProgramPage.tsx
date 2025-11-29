@@ -21,6 +21,8 @@ type ProgramPublic = {
   published_scope: "org" | "coalition" | null;
   published_coalition_id: string | null;
   metadata: any;
+  spots_mode?: "exact" | "unlimited" | "tbd" | null;
+  spots_count?: number | null;
 };
 
 export default function ApplyProgramPage() {
@@ -86,6 +88,27 @@ export default function ApplyProgramPage() {
   const isOpensSoon = isBeforeOpenDate(program.open_at);
   const isOpen = isApplicationOpen(program.open_at, program.close_at);
 
+  // Format spots display
+  const getSpotsText = (): string | null => {
+    if (!program.spots_mode) return null;
+    
+    if (program.spots_mode === "unlimited") {
+      return "Unlimited spots available";
+    }
+    
+    if (program.spots_mode === "tbd") {
+      return null; // Don't show anything for TBD
+    }
+    
+    if (program.spots_mode === "exact" && program.spots_count !== null && program.spots_count !== undefined) {
+      return `${program.spots_count} spot${program.spots_count !== 1 ? 's' : ''} available`;
+    }
+    
+    return null;
+  };
+
+  const spotsText = getSpotsText();
+
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
@@ -114,6 +137,16 @@ export default function ApplyProgramPage() {
                 Application will be available soon
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Spots Information */}
+      {spotsText && !isOpensSoon && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">📍</span>
+            <div className="font-semibold text-blue-900">{spotsText}</div>
           </div>
         </div>
       )}

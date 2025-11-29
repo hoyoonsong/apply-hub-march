@@ -229,6 +229,8 @@ export default function OrgProgramBuilder() {
   const [basicsSaving, setBasicsSaving] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false); // State for modal
   const [isPrivate, setIsPrivate] = useState<boolean>(false);
+  const [basicsSpotsMode, setBasicsSpotsMode] = useState<"exact" | "unlimited" | "tbd">("exact");
+  const [basicsSpotsCount, setBasicsSpotsCount] = useState<string>("");
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -384,6 +386,10 @@ export default function OrgProgramBuilder() {
           const columnIsPrivate = !!row.is_private;
           const shouldBePrivate = columnIsPrivate || metadataIsPrivate;
           setIsPrivate(shouldBePrivate);
+
+          // Load spots settings
+          setBasicsSpotsMode((row.spots_mode as "exact" | "unlimited" | "tbd") || "exact");
+          setBasicsSpotsCount(row.spots_count?.toString() || "");
 
           // Auto-migrate: If metadata has is_private but column doesn't match, update column
           if (metadataIsPrivate && !columnIsPrivate) {
@@ -841,7 +847,7 @@ export default function OrgProgramBuilder() {
                     try {
                       const { data: freshProgram, error } = await supabase
                         .from("programs")
-                        .select("is_private, metadata, type, name, description, open_at, close_at")
+                        .select("is_private, metadata, type, name, description, open_at, close_at, spots_mode, spots_count")
                         .eq("id", program.id)
                         .single();
                       
@@ -852,12 +858,17 @@ export default function OrgProgramBuilder() {
                         setIsPrivate(columnValue === true || (columnValue !== false && metadataValue === true));
                         // Sync type
                         setBasicsType((freshProgram.type as "audition" | "scholarship" | "application" | "competition") || "application");
+                        // Sync spots
+                        setBasicsSpotsMode((freshProgram.spots_mode as "exact" | "unlimited" | "tbd") || "exact");
+                        setBasicsSpotsCount(freshProgram.spots_count?.toString() || "");
                         // Update program state with fresh data
-                        setProgram({ ...program, is_private: columnValue, metadata: freshProgram.metadata, type: freshProgram.type } as any);
+                        setProgram({ ...program, is_private: columnValue, metadata: freshProgram.metadata, type: freshProgram.type, spots_mode: freshProgram.spots_mode, spots_count: freshProgram.spots_count } as any);
                       } else {
                         // Fallback to current program state
                         setIsPrivate(!!(program.is_private ?? (program.metadata as any)?.is_private));
                         setBasicsType((program.type as "audition" | "scholarship" | "application" | "competition") || "application");
+                        setBasicsSpotsMode((program as any).spots_mode || "exact");
+                        setBasicsSpotsCount((program as any).spots_count?.toString() || "");
                       }
                     } catch (err) {
                       // Fallback to current program state on error
@@ -1441,6 +1452,81 @@ export default function OrgProgramBuilder() {
                   />
                 </div>
 
+                {/* Available Spots */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Available Spots <span className="text-red-500">*</span>
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                        <input
+                          type="radio"
+                          name="spots_mode"
+                          className="h-4 w-4 text-indigo-600"
+                          checked={basicsSpotsMode === "exact"}
+                          onChange={() => setBasicsSpotsMode("exact")}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-800">
+                            Exact Number
+                          </span>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            Set a specific number of spots available
+                          </p>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                        <input
+                          type="radio"
+                          name="spots_mode"
+                          className="h-4 w-4 text-indigo-600"
+                          checked={basicsSpotsMode === "unlimited"}
+                          onChange={() => setBasicsSpotsMode("unlimited")}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-800">
+                            Unlimited
+                          </span>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            Accept all qualified applicants
+                          </p>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                        <input
+                          type="radio"
+                          name="spots_mode"
+                          className="h-4 w-4 text-indigo-600"
+                          checked={basicsSpotsMode === "tbd"}
+                          onChange={() => setBasicsSpotsMode("tbd")}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-800">
+                            To Be Determined
+                          </span>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            Spots will be set later
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                    {basicsSpotsMode === "exact" && (
+                      <div>
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                          value={basicsSpotsCount}
+                          onChange={(e) => setBasicsSpotsCount(e.target.value)}
+                          placeholder="Enter number of spots"
+                          required={basicsSpotsMode === "exact"}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Private Program - more compact */}
                 <div className="pt-2">
                   <label className="flex items-start gap-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer">
@@ -1519,6 +1605,16 @@ export default function OrgProgramBuilder() {
                     v ? new Date(v).toISOString() : null;
                   try {
                     setBasicsSaving(true);
+                    // Validate spots if mode is exact
+                    if (basicsSpotsMode === "exact") {
+                      const spotsNum = parseInt(basicsSpotsCount, 10);
+                      if (isNaN(spotsNum) || spotsNum < 0) {
+                        alert("Please enter a valid number of spots (0 or greater).");
+                        setBasicsSaving(false);
+                        return;
+                      }
+                    }
+
                     // Update program details and is_private column directly
                     const { data: updatedProgram, error: updateError } = await supabase
                       .from("programs")
@@ -1529,6 +1625,8 @@ export default function OrgProgramBuilder() {
                         open_at: toISO(basicsOpenAt),
                         close_at: toISO(basicsCloseAt),
                         is_private: isPrivate,
+                        spots_mode: basicsSpotsMode,
+                        spots_count: basicsSpotsMode === "exact" ? parseInt(basicsSpotsCount, 10) : null,
                       })
                       .eq("id", program.id)
                       .select()
@@ -1546,6 +1644,8 @@ export default function OrgProgramBuilder() {
                       open_at: toISO(basicsOpenAt),
                       close_at: toISO(basicsCloseAt),
                       metadata: program.metadata || {},
+                      spots_mode: basicsSpotsMode,
+                      spots_count: basicsSpotsMode === "exact" ? parseInt(basicsSpotsCount, 10) : null,
                     });
 
                     setProgram(updatedProgram as any);

@@ -148,6 +148,21 @@ export function useFeaturedSections() {
                       }
                     }
 
+                    // Format spots display
+                    let spotsText: string | null = null;
+                    if (programData.spots_mode === "unlimited") {
+                      spotsText = "Unlimited spots";
+                    } else if (
+                      programData.spots_mode === "exact" &&
+                      programData.spots_count !== null &&
+                      programData.spots_count !== undefined
+                    ) {
+                      spotsText = `${programData.spots_count} spot${
+                        programData.spots_count !== 1 ? "s" : ""
+                      } available`;
+                    }
+                    // TBD mode shows nothing (spotsText remains null)
+
                     return {
                       ...item,
                       title: item.title || programData.name,
@@ -161,6 +176,7 @@ export function useFeaturedSections() {
                       organization: programData.organizations?.name,
                       organizationSlug: programData.organizations?.slug,
                       coalitionDisplay: coalitionDisplay,
+                      spotsText,
                     };
                   } else if (item.target_type === "coalition") {
                     const coalitionData = coalitionDataMap.get(item.target_id);

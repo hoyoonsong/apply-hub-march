@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { startOrGetApplication } from "../lib/rpc";
 import { isBeforeOpenDate, isPastDeadline } from "../lib/deadlineUtils";
 import type { Program } from "../types/programs";
 import AutoLinkText from "./AutoLinkText";
@@ -11,6 +10,30 @@ function formatDate(s?: string | null) {
   return isNaN(d.getTime()) ? null : d.toLocaleDateString();
 }
 
+function formatSpots(program: Program): string | null {
+  if (!program.spots_mode) return null;
+
+  if (program.spots_mode === "unlimited") {
+    return "Unlimited spots";
+  }
+
+  if (program.spots_mode === "tbd") {
+    return null; // Don't show anything for TBD
+  }
+
+  if (
+    program.spots_mode === "exact" &&
+    program.spots_count !== null &&
+    program.spots_count !== undefined
+  ) {
+    return `${program.spots_count} spot${
+      program.spots_count !== 1 ? "s" : ""
+    } available`;
+  }
+
+  return null;
+}
+
 export default function ProgramCard({ program }: { program: Program }) {
   const navigate = useNavigate();
   const [starting, setStarting] = useState(false);
@@ -18,6 +41,7 @@ export default function ProgramCard({ program }: { program: Program }) {
   const close = formatDate(program.close_at);
   const isOpensSoon = isBeforeOpenDate(program.open_at);
   const isDeadlinePassed = isPastDeadline(program.close_at);
+  const spotsText = formatSpots(program);
 
   const handleStartApplication = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -70,6 +94,11 @@ export default function ProgramCard({ program }: { program: Program }) {
             }}
           >
             <AutoLinkText text={program.description} />
+          </div>
+        )}
+        {spotsText && (
+          <div className="mt-2 text-sm font-medium text-blue-600">
+            {spotsText}
           </div>
         )}
         <div className="mt-4 flex items-center justify-between text-xs text-gray-500">

@@ -100,6 +100,12 @@ function HeroCarousel({
                         )}
                       </span>
                     </div>
+                    {/* Spots Information */}
+                    {item.spotsText && (
+                      <div className="mt-2 md:mt-3 text-xs md:text-base font-medium text-white/95">
+                        {item.spotsText}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   item.description && (
@@ -214,6 +220,13 @@ function ProgramGrid({
               <p className="text-gray-700 text-sm md:text-base mb-2 md:mb-4 line-clamp-2">
                 <AutoLinkText text={item.description} />
               </p>
+            )}
+
+            {/* Spots Information - only for programs */}
+            {item.target_type === "program" && item.spotsText && (
+              <div className="mb-2 md:mb-3 text-sm md:text-base font-medium text-blue-600">
+                {item.spotsText}
+              </div>
             )}
 
             {/* Spacer to push dates to bottom */}
@@ -614,6 +627,21 @@ function AllPrograms() {
               }
             }
 
+            // Format spots display
+            let spotsText: string | null = null;
+            if (program.spots_mode === "unlimited") {
+              spotsText = "Unlimited spots";
+            } else if (
+              program.spots_mode === "exact" &&
+              program.spots_count !== null &&
+              program.spots_count !== undefined
+            ) {
+              spotsText = `${program.spots_count} spot${
+                program.spots_count !== 1 ? "s" : ""
+              } available`;
+            }
+            // TBD mode shows nothing (spotsText remains null)
+
             return {
               id: program.id,
               name: program.name,
@@ -640,6 +668,7 @@ function AllPrograms() {
               openAt: program.open_at,
               closeAt: program.close_at,
               opensSoon,
+              spotsText,
             };
           }
         );
@@ -776,6 +805,13 @@ function AllPrograms() {
                 <p className="text-gray-700 leading-relaxed mb-3 md:mb-4 text-xs md:text-sm">
                   <AutoLinkText text={program.description} />
                 </p>
+              )}
+
+              {/* Spots Information */}
+              {program.spotsText && (
+                <div className="mb-3 md:mb-4 text-sm md:text-base font-medium text-blue-600">
+                  {program.spotsText}
+                </div>
               )}
 
               {/* Deadline Information */}
