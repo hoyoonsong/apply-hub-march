@@ -60,6 +60,14 @@ function formatValue(value: any, field: Field): string {
       return Array.isArray(value) ? value.join(", ") : String(value);
     case "date":
       try {
+        const dateStr = String(value);
+        // If it's in YYYY-MM-DD format, parse as local date to avoid timezone shift
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          const [year, month, day] = dateStr.split("-").map(Number);
+          const d = new Date(year, month - 1, day);
+          return d.toLocaleDateString();
+        }
+        // Otherwise, try to parse as-is
         const d = new Date(value);
         if (!isNaN(d.getTime())) return d.toLocaleDateString();
       } catch {}

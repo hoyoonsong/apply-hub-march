@@ -165,6 +165,26 @@ export default function ReviewerApplication() {
     }
   };
 
+  // Helper function to format dates without timezone issues
+  const formatDateValue = (value: any): string => {
+    if (!value) return "—";
+    const dateStr = String(value);
+    // If it's in YYYY-MM-DD format, parse as local date to avoid timezone shift
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString();
+    }
+    // Otherwise, try to parse as-is
+    try {
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString();
+      }
+    } catch {}
+    return String(value);
+  };
+
   const renderAnswer = (question: any, value: any) => {
     if (value == null || value === "")
       return <span className="text-gray-400">—</span>;
@@ -221,7 +241,7 @@ export default function ReviewerApplication() {
       case "SELECT":
         return value;
       case "DATE":
-        return new Date(value).toLocaleString();
+        return formatDateValue(value);
       default:
         // For text fields, use AutoLinkText to detect URLs
         const textValue = String(value);

@@ -218,43 +218,26 @@ END;
 $$;
 
 -- ============================================
--- HELPER FUNCTION: Check if decision is an acceptance tag
+-- HELPER FUNCTION: Check if decision matches acceptance tag
 -- ============================================
+-- Simplified: Just compare the decision to the provided acceptance tag
+-- Case-insensitive comparison
 CREATE OR REPLACE FUNCTION public.is_acceptance_decision(
   p_decision text,
-  p_program_id uuid
+  p_acceptance_tag text
 )
 RETURNS boolean
 LANGUAGE plpgsql
 STABLE
 AS $$
-DECLARE
-  v_review_form jsonb;
-  v_decision_options jsonb;
-  v_decision_lower text;
 BEGIN
-  -- Default acceptance tags (case-insensitive)
-  IF p_decision IS NULL THEN
+  -- If either is NULL, return false
+  IF p_decision IS NULL OR p_acceptance_tag IS NULL THEN
     RETURN false;
   END IF;
 
-  v_decision_lower := lower(trim(p_decision));
-
-  -- Check against common acceptance patterns
-  IF v_decision_lower IN ('accept', 'accepted', 'approved', 'approve') THEN
-    RETURN true;
-  END IF;
-
-  -- Try to get program's review form config to see if there's a custom acceptance tag
-  -- For now, we'll use a simple heuristic: if it contains "accept" or "approve"
-  -- In the future, this could be configurable via metadata
-  SELECT metadata->'review_form' INTO v_review_form
-  FROM public.programs
-  WHERE id = p_program_id;
-
-  -- For now, use simple pattern matching
-  -- You could enhance this to check against a configured "acceptance_tags" array in metadata
-  RETURN v_decision_lower LIKE '%accept%' OR v_decision_lower LIKE '%approve%';
+  -- Case-insensitive comparison
+  RETURN lower(trim(p_decision)) = lower(trim(p_acceptance_tag));
 END;
 $$;
 
@@ -267,9 +250,11 @@ $$;
 -- that can be called from within those functions, or we'll need to see the actual functions
 
 -- Helper function to decrement spots when publishing acceptance results
+-- Now takes the acceptance_tag directly (simpler!)
 CREATE OR REPLACE FUNCTION public.decrement_program_spots_if_needed(
   p_program_id uuid,
-  p_decision text
+  p_decision text,
+  p_acceptance_tag text
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -289,8 +274,8 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Check if this decision is an acceptance
-  v_is_acceptance := public.is_acceptance_decision(p_decision, p_program_id);
+  -- Check if this decision matches the acceptance tag (case-insensitive)
+  v_is_acceptance := public.is_acceptance_decision(p_decision, p_acceptance_tag);
   IF NOT v_is_acceptance THEN
     RETURN; -- Not an acceptance, don't decrement
   END IF;
@@ -313,20 +298,22 @@ $$;
 -- you'll need to modify them. Here's a template for what needs to be added:
 
 -- In publish_results_v1, after creating each publication, add:
---   SELECT program_id INTO v_program_id FROM applications WHERE id = app_id;
---   SELECT decision INTO v_decision FROM application_reviews WHERE application_id = app_id;
---   PERFORM public.decrement_program_spots_if_needed(v_program_id, v_decision);
+--   PERFORM public.decrement_program_spots_if_needed(v_program_id, v_decision, p_acceptance_tag);
 
 -- In publish_all_finalized_for_program_v1, in the loop that publishes results, add:
---   PERFORM public.decrement_program_spots_if_needed(p_program_id, review_decision);
+--   PERFORM public.decrement_program_spots_if_needed(p_program_id, review_decision, p_acceptance_tag);
 
 -- Here's a complete example wrapper that you can use to update publish_results_v1:
 -- (Adjust based on your actual function signature)
 
 /*
+-- Example: How to update publish_results_v1
+-- Add p_acceptance_tag parameter and call decrement function
+
 CREATE OR REPLACE FUNCTION public.publish_results_v1(
   p_application_ids uuid[],
-  p_visibility jsonb
+  p_visibility jsonb,
+  p_acceptance_tag text DEFAULT NULL  -- NEW PARAMETER
 )
 RETURNS TABLE(...) -- adjust return type as needed
 LANGUAGE plpgsql
@@ -341,21 +328,68 @@ DECLARE
 BEGIN
   -- ... existing logic to create publications ...
   
-  -- After creating publications, decrement spots for acceptances
-  FOREACH app_id IN ARRAY p_application_ids
-  LOOP
-    -- Get program_id and decision
-    SELECT a.program_id, ar.decision
-    INTO v_program_id, v_decision
-    FROM applications a
-    LEFT JOIN application_reviews ar ON ar.application_id = a.id
-    WHERE a.id = app_id;
-    
-    -- Decrement spots if this is an acceptance
-    IF v_program_id IS NOT NULL AND v_decision IS NOT NULL THEN
-      PERFORM public.decrement_program_spots_if_needed(v_program_id, v_decision);
-    END IF;
-  END LOOP;
+  -- After creating publications, decrement spots for acceptances (if acceptance_tag provided)
+  IF p_acceptance_tag IS NOT NULL THEN
+    FOREACH app_id IN ARRAY p_application_ids
+    LOOP
+      -- Get program_id and decision
+      SELECT a.program_id, ar.decision
+      INTO v_program_id, v_decision
+      FROM applications a
+      LEFT JOIN application_reviews ar ON ar.application_id = a.id
+      WHERE a.id = app_id;
+      
+      -- Decrement spots if this matches the acceptance tag
+      IF v_program_id IS NOT NULL AND v_decision IS NOT NULL THEN
+        PERFORM public.decrement_program_spots_if_needed(v_program_id, v_decision, p_acceptance_tag);
+      END IF;
+    END LOOP;
+  END IF;
+  
+  -- ... return results ...
+END;
+$$;
+
+-- Example: How to update publish_all_finalized_for_program_v1
+-- Add p_acceptance_tag parameter and call decrement function
+
+CREATE OR REPLACE FUNCTION public.publish_all_finalized_for_program_v1(
+  p_program_id uuid,
+  p_visibility jsonb,
+  p_only_unpublished boolean DEFAULT true,
+  p_acceptance_tag text DEFAULT NULL  -- NEW PARAMETER
+)
+RETURNS TABLE(...) -- adjust return type as needed
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  review_record RECORD;
+  -- ... other variables
+BEGIN
+  -- ... existing logic to get finalized reviews and create publications ...
+  
+  -- After creating publications, decrement spots for acceptances (if acceptance_tag provided)
+  IF p_acceptance_tag IS NOT NULL THEN
+    FOR review_record IN 
+      -- Your existing query to get finalized reviews
+      SELECT ar.decision, a.id as application_id
+      FROM application_reviews ar
+      JOIN applications a ON a.id = ar.application_id
+      WHERE a.program_id = p_program_id
+      AND ar.status = 'submitted'
+      -- ... your other conditions ...
+    LOOP
+      IF review_record.decision IS NOT NULL THEN
+        PERFORM public.decrement_program_spots_if_needed(
+          p_program_id, 
+          review_record.decision, 
+          p_acceptance_tag
+        );
+      END IF;
+    END LOOP;
+  END IF;
   
   -- ... return results ...
 END;

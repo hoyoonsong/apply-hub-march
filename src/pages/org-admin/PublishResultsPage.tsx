@@ -42,6 +42,10 @@ export default function PublishResultsPage() {
   });
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [decisionFilter, setDecisionFilter] = useState<string>("all");
+  const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
+  const [pendingPublishAction, setPendingPublishAction] = useState<"selected" | "all" | null>(null);
+  const [acceptanceTag, setAcceptanceTag] = useState<string>("");
+  const [updateSpots, setUpdateSpots] = useState<boolean>(true);
 
   // Prefill from program metadata right-rail reviewer config
   useEffect(() => {
@@ -113,32 +117,77 @@ export default function PublishResultsPage() {
   const isFiltered = useMemo(() => decisionFilter !== "all", [decisionFilter]);
 
   const publishAll = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.rpc(
-      "publish_all_finalized_for_program_v1",
-      {
-        p_program_id: programId,
-        p_visibility: visibility,
-        p_only_unpublished: onlyUnpublished,
-      }
-    );
-    setLoading(false);
-    if (error) return alert(error.message);
-    alert(`Published ${data?.length ?? 0} finalized result(s).`);
-    load();
+    // Show modal to get acceptance tag
+    setPendingPublishAction("all");
+    setShowAcceptanceModal(true);
   };
 
   const publishSelected = async () => {
     if (selectedIds.length === 0) return;
+    // Show modal to get acceptance tag
+    setPendingPublishAction("selected");
+    setShowAcceptanceModal(true);
+  };
+
+  const confirmPublish = async () => {
+    if (updateSpots && !acceptanceTag.trim()) {
+      alert("Please specify which decision tag counts as acceptance, or uncheck 'Update spots'.");
+      return;
+    }
+
     setLoading(true);
-    const { data, error } = await supabase.rpc("publish_results_v1", {
-      p_application_ids: selectedIds,
-      p_visibility: visibility,
-    });
-    setLoading(false);
-    if (error) return alert(error.message);
-    alert(`Published ${data?.length ?? 0} selected result(s).`);
-    load();
+    setShowAcceptanceModal(false);
+
+    try {
+      const params: any = {
+        p_program_id: programId,
+        p_visibility: visibility,
+        p_only_unpublished: onlyUnpublished,
+      };
+      
+      // Only add acceptance_tag if updateSpots is checked
+      if (updateSpots && acceptanceTag.trim()) {
+        params.p_acceptance_tag = acceptanceTag.trim();
+      }
+
+      if (pendingPublishAction === "all") {
+        console.log("DEBUG: Publishing all with params:", {
+          updateSpots,
+          acceptanceTag,
+          params
+        });
+        const { data, error } = await supabase.rpc(
+          "publish_all_finalized_for_program_v1",
+          params
+        );
+        if (error) throw error;
+        alert(`Published ${data?.length ?? 0} finalized result(s).${updateSpots ? ' Spots updated.' : ''}`);
+      } else if (pendingPublishAction === "selected") {
+        const publishParams: any = {
+          p_application_ids: selectedIds,
+          p_visibility: visibility,
+        };
+        if (updateSpots && acceptanceTag.trim()) {
+          publishParams.p_acceptance_tag = acceptanceTag.trim();
+        }
+        console.log("DEBUG: Publishing with params:", {
+          updateSpots,
+          acceptanceTag,
+          publishParams
+        });
+        const { data, error } = await supabase.rpc("publish_results_v1", publishParams);
+        if (error) throw error;
+        alert(`Published ${data?.length ?? 0} selected result(s).${updateSpots ? ' Spots updated.' : ''}`);
+      }
+      load();
+    } catch (error: any) {
+      alert(error.message || "Failed to publish results");
+    } finally {
+      setLoading(false);
+      setPendingPublishAction(null);
+      setAcceptanceTag("");
+      setUpdateSpots(true); // Reset to default
+    }
   };
 
   return (
@@ -500,6 +549,82 @@ export default function PublishResultsPage() {
           </div>
         </aside>
       </div>
+
+      {/* Acceptance Tag Modal */}
+      {showAcceptanceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Publish Results
+            </h2>
+            
+            <div className="mb-4">
+              <label className="flex items-center gap-2 mb-4">
+                <input
+                  type="checkbox"
+                  checked={updateSpots}
+                  onChange={(e) => setUpdateSpots(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Update available spots
+                </span>
+              </label>
+              {updateSpots && (
+                <>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Which decision tag counts as "acceptance"?
+                  </p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Acceptance Decision Tag
+                  </label>
+                  <select
+                    value={acceptanceTag}
+                    onChange={(e) => setAcceptanceTag(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select a decision tag...</option>
+                    {decisionOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Only applications with this decision will decrease the available spots count.
+                  </p>
+                </>
+              )}
+              {!updateSpots && (
+                <p className="text-sm text-gray-600">
+                  Spots will not be updated when publishing these results.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowAcceptanceModal(false);
+                  setPendingPublishAction(null);
+                  setAcceptanceTag("");
+                  setUpdateSpots(true);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPublish}
+                disabled={(updateSpots && !acceptanceTag.trim()) || loading}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Publishing..." : updateSpots ? "Publish & Update Spots" : "Publish"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

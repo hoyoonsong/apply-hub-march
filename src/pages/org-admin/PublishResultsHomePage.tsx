@@ -213,7 +213,7 @@ export default function PublishResultsHomePage() {
                       {program.name}
                     </h3>
                     <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                      <AutoLinkText text={program.description || "No description available"} />
+                      {program.description || "No description available"}
                     </p>
                   </div>
 
