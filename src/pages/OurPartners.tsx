@@ -84,9 +84,7 @@ function OurPartners() {
                     organization to review applications efficiently.
                   </p>
                   <p className="text-base text-gray-600">
-                    "Omnipply has transformed how we handle applications. The
-                    streamlined process has allowed us to focus more on what we
-                    do best - making music."
+                    {/*quotes go here*/}
                   </p>
                 </div>
               </div>
@@ -114,7 +112,7 @@ function OurPartners() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 sm:py-12 mt-12 sm:mt-24 md:mt-32">
+      <footer className="bg-gray-900 text-white py-8 sm:py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col gap-4">
             <div className="text-center">
@@ -160,4 +158,3 @@ function OurPartners() {
 }
 
 export default OurPartners;
-

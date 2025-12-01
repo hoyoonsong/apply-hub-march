@@ -155,7 +155,7 @@ function About() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 sm:py-12 mt-12 sm:mt-24 md:mt-32">
+      <footer className="bg-gray-900 text-white py-8 sm:py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col gap-4">
             <div className="text-center">
