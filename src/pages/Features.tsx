@@ -260,12 +260,45 @@ function Features() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-6xl mx-auto px-6 text-center">
-          <p className="text-gray-400">
-            © 2024 Omnipply. Making forms easier for both applicants and
-            organizations.
-          </p>
+      <footer className="bg-gray-900 text-white py-8 sm:py-12 mt-12 sm:mt-24 md:mt-32">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-col gap-4">
+            <div className="text-center">
+              <p className="text-gray-400 text-sm sm:text-base">
+                © 2025 Omnipply. Simplifying applications. Amplifying
+                opportunities.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-evenly items-center gap-3 sm:gap-4">
+              <button
+                onClick={() => navigate("/about")}
+                className="text-gray-300 hover:text-white text-sm sm:text-base transition-colors"
+              >
+                About
+              </button>
+              <button
+                onClick={() => navigate("/helpful-links")}
+                className="text-gray-300 hover:text-white text-sm sm:text-base transition-colors"
+              >
+                Helpful Links
+              </button>
+              <button
+                onClick={() => navigate("/our-partners")}
+                className="text-gray-300 hover:text-white text-sm sm:text-base transition-colors"
+              >
+                Our Partners
+              </button>
+              <p className="text-gray-300 text-sm sm:text-base font-medium">
+                Contact:{" "}
+                <a
+                  href="mailto:omnipply@gmail.com"
+                  className="text-blue-400 hover:text-blue-300 text-sm sm:text-base transition-colors underline"
+                >
+                  omnipply@gmail.com
+                </a>
+              </p>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

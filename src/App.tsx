@@ -3,6 +3,9 @@ import { AuthProvider } from "./auth/AuthProvider";
 import { ScopeProvider } from "./auth/ScopeProvider";
 import NewLaunchPage from "./NewLaunchPage";
 import Features from "./pages/Features";
+import About from "./pages/About";
+import HelpfulLinks from "./pages/HelpfulLinks";
+import OurPartners from "./pages/OurPartners";
 import Dashboard from "./Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedSuperRoute from "./components/ProtectedSuperRoute";
@@ -54,6 +57,9 @@ export default function App() {
           <Routes>
             <Route path="/" element={<NewLaunchPage />} />
             <Route path="/features" element={<Features />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/helpful-links" element={<HelpfulLinks />} />
+            <Route path="/our-partners" element={<OurPartners />} />
             <Route path="/post-auth" element={<PostAuth />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route
