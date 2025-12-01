@@ -1338,6 +1338,14 @@ export default function OrgProgramBuilder() {
         program={program as any}
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
+        includeProfile={includeProfile}
+        includeCoalitionCommon={includeCoalitionCommon}
+        profileSections={{
+          personal: includePersonalInfo,
+          family: includeFamilyInfo,
+          writing: includeWritingInfo,
+          experience: includeExperienceInfo,
+        }}
       />
 
       {/* Edit Details Modal */}

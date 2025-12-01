@@ -23,6 +23,7 @@ type UserRole =
 type Profile = {
   id: string;
   full_name: string | null;
+  email?: string | null;
   role: UserRole;
   created_at: string;
   updated_at: string | null;
@@ -192,7 +193,31 @@ export default function Users() {
         limit: 1000, // Large limit instead of pagination
         offset: 0,
       });
-      setUsers(data ?? []);
+      
+      // If emails are not included, fetch them from profiles in batch
+      const usersData = data ?? [];
+      const usersNeedingEmail = usersData.filter((u) => !u.email);
+      
+      if (usersNeedingEmail.length > 0) {
+        const userIds = usersNeedingEmail.map((u) => u.id);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, email")
+          .in("id", userIds);
+        
+        const emailMap = new Map(
+          (profiles || []).map((p) => [p.id, p.email])
+        );
+        
+        const usersWithEmails = usersData.map((user) => ({
+          ...user,
+          email: user.email || emailMap.get(user.id) || null,
+        }));
+        
+        setUsers(usersWithEmails);
+      } else {
+        setUsers(usersData);
+      }
     } catch (error: any) {
       setUsers([]);
     } finally {
@@ -358,6 +383,14 @@ export default function Users() {
               <h1 className="text-3xl font-bold text-gray-900">Users</h1>
               <p className="mt-2 text-gray-600">
                 Manage user accounts and their role assignments
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                Total: {users.length} user{users.length !== 1 ? "s" : ""}
+                {roleFilter !== "" && filteredUsers.length !== users.length && (
+                  <span className="ml-2">
+                    ({filteredUsers.length} shown with {roleFilter} filter)
+                  </span>
+                )}
               </p>
             </div>
             <Link
@@ -597,8 +630,8 @@ export default function Users() {
                               >
                                 {u.full_name || "Unnamed User"}
                               </div>
-                              <div className="text-xs text-gray-500 font-mono truncate">
-                                {u.id.substring(0, 8)}...
+                              <div className="text-xs text-gray-500 truncate">
+                                {u.email || u.id.substring(0, 8) + "..."}
                               </div>
                               <div className="text-xs text-gray-400 sm:hidden">
                                 {new Date(u.created_at).toLocaleDateString()}
@@ -707,8 +740,10 @@ function InlineAssignments({
     await onChanged();
   }
 
+  // Only show org-level admin assignments to avoid duplicates from "my teams" page
+  // Program-level admin assignments are redundant when user is already an org admin
   const admins = data.filter(
-    (d) => d.kind === "admin" && d.status === "active"
+    (d) => d.kind === "admin" && d.status === "active" && d.scope_type === "org"
   );
   const reviewers = data.filter(
     (d) => d.kind === "reviewer" && d.status === "active"

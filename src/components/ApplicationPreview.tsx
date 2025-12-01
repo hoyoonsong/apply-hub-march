@@ -23,6 +23,15 @@ interface ApplicationPreviewProps {
   isOpen: boolean;
   onClose: () => void;
   alwaysOpen?: boolean; // For super admin preview where it's always visible
+  // Override props for real-time preview (used in builder before saving)
+  includeProfile?: boolean;
+  includeCoalitionCommon?: boolean;
+  profileSections?: {
+    personal?: boolean;
+    family?: boolean;
+    writing?: boolean;
+    experience?: boolean;
+  };
 }
 
 export default function ApplicationPreview({
@@ -31,6 +40,9 @@ export default function ApplicationPreview({
   isOpen,
   onClose,
   alwaysOpen = false,
+  includeProfile: overrideIncludeProfile,
+  includeCoalitionCommon: overrideIncludeCoalitionCommon,
+  profileSections: overrideProfileSections,
 }: ApplicationPreviewProps) {
   // In-preview, avoid hitting storage for signed URLs. Use a lightweight mock preview.
   const MockFilePreview = ({ fileInfo }: { fileInfo: any }) => {
@@ -85,10 +97,23 @@ export default function ApplicationPreview({
   };
 
   // Check if program uses profile autofill
-  const programUsesProfile = (program: Program) => {
+  // Use override prop if provided (for real-time preview), otherwise check program metadata
+  const programUsesProfile = (program: Program | undefined) => {
+    if (overrideIncludeProfile !== undefined) {
+      return overrideIncludeProfile;
+    }
+    if (!program) return false;
     const appMeta = program?.metadata?.application || {};
     const formMeta = program?.metadata?.form || {};
     return !!(appMeta?.profile?.enabled || formMeta?.include_profile);
+  };
+  
+  // Get profile sections - use override if provided, otherwise from program metadata
+  const getProfileSections = () => {
+    if (overrideProfileSections !== undefined) {
+      return overrideProfileSections;
+    }
+    return program?.metadata?.application?.profile?.sections;
   };
 
   // Create a mock profile for preview
@@ -681,9 +706,7 @@ export default function ApplicationPreview({
               </p>
               <ProfileCardPreview
                 profile={createMockProfile()}
-                sectionSettings={
-                  program?.metadata?.application?.profile?.sections
-                }
+                sectionSettings={getProfileSections()}
               />
             </div>
           </div>
@@ -822,9 +845,7 @@ export default function ApplicationPreview({
                   </p>
                   <ProfileCardPreview
                     profile={createMockProfile()}
-                    sectionSettings={
-                      program?.metadata?.application?.profile?.sections
-                    }
+                    sectionSettings={getProfileSections()}
                   />
                 </div>
               </div>

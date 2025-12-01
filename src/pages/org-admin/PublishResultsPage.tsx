@@ -164,8 +164,8 @@ export default function PublishResultsPage() {
         alert(`Published ${data?.length ?? 0} finalized result(s).${updateSpots ? ' Spots updated.' : ''}`);
       } else if (pendingPublishAction === "selected") {
         const publishParams: any = {
-          p_application_ids: selectedIds,
-          p_visibility: visibility,
+      p_application_ids: selectedIds,
+      p_visibility: visibility,
         };
         if (updateSpots && acceptanceTag.trim()) {
           publishParams.p_acceptance_tag = acceptanceTag.trim();
@@ -183,7 +183,7 @@ export default function PublishResultsPage() {
     } catch (error: any) {
       alert(error.message || "Failed to publish results");
     } finally {
-      setLoading(false);
+    setLoading(false);
       setPendingPublishAction(null);
       setAcceptanceTag("");
       setUpdateSpots(true); // Reset to default

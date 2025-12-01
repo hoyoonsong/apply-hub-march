@@ -1068,6 +1068,14 @@ export default function CoalitionProgramBuilder() {
         program={program as any}
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
+        includeProfile={includeProfile}
+        includeCoalitionCommon={includeCoalitionCommon}
+        profileSections={{
+          personal: includePersonalInfo,
+          family: includeFamilyInfo,
+          writing: includeWritingInfo,
+          experience: includeExperienceInfo,
+        }}
       />
     </div>
   );
