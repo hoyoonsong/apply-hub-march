@@ -67,7 +67,7 @@ function NewLaunchPage() {
                 onClick={() => (user ? navigate("/dashboard") : setOpen(true))}
                 className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 sm:py-4 px-8 sm:px-10 rounded-xl text-base sm:text-lg md:text-xl transition-all duration-300 transform hover:scale-105 shadow-xl"
               >
-                {user ? "Go to Dashboard" : "Login / Sign up here"}
+                {user ? "Go to Dashboard" : "Sign up / Log in here"}
               </button>
               <button
                 onClick={() => setOrgSignupOpen(true)}

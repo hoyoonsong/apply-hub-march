@@ -46,17 +46,19 @@ export default function PublishResultsPage() {
   const [pendingPublishAction, setPendingPublishAction] = useState<"selected" | "all" | null>(null);
   const [acceptanceTag, setAcceptanceTag] = useState<string>("");
   const [updateSpots, setUpdateSpots] = useState<boolean>(true);
+  const [spotsMode, setSpotsMode] = useState<string | null>(null);
 
   // Prefill from program metadata right-rail reviewer config
   useEffect(() => {
     (async () => {
       const { data: prg } = await supabase
         .from("programs")
-        .select("name, metadata")
+        .select("name, metadata, spots_mode")
         .eq("id", programId)
         .single();
       if (prg) {
         setProgramName(prg.name);
+        setSpotsMode(prg.spots_mode);
         const rf = prg.metadata?.reviewerForm || {};
         setVisibility((v) => ({
           decision: rf.decision ?? v.decision,
@@ -117,22 +119,46 @@ export default function PublishResultsPage() {
   const isFiltered = useMemo(() => decisionFilter !== "all", [decisionFilter]);
 
   const publishAll = async () => {
-    // Show modal to get acceptance tag
-    setPendingPublishAction("all");
-    setShowAcceptanceModal(true);
+    // Only show modal if spots_mode is 'exact'
+    // If spotsMode is null (still loading), default to showing modal to be safe
+    if (spotsMode === "exact" || spotsMode === null) {
+      setPendingPublishAction("all");
+      setShowAcceptanceModal(true);
+    } else {
+      // Skip modal and publish directly without updating spots
+      setPendingPublishAction("all");
+      setUpdateSpots(false);
+      setAcceptanceTag("");
+      await confirmPublish();
+    }
   };
 
   const publishSelected = async () => {
     if (selectedIds.length === 0) return;
-    // Show modal to get acceptance tag
-    setPendingPublishAction("selected");
-    setShowAcceptanceModal(true);
+    // Only show modal if spots_mode is 'exact'
+    // If spotsMode is null (still loading), default to showing modal to be safe
+    if (spotsMode === "exact" || spotsMode === null) {
+      setPendingPublishAction("selected");
+      setShowAcceptanceModal(true);
+    } else {
+      // Skip modal and publish directly without updating spots
+      setPendingPublishAction("selected");
+      setUpdateSpots(false);
+      setAcceptanceTag("");
+      await confirmPublish();
+    }
   };
 
   const confirmPublish = async () => {
-    if (updateSpots && !acceptanceTag.trim()) {
+    // Only validate acceptance tag if updateSpots is checked AND spots_mode is exact
+    if (updateSpots && spotsMode === "exact" && !acceptanceTag.trim()) {
       alert("Please specify which decision tag counts as acceptance, or uncheck 'Update spots'.");
       return;
+    }
+    
+    // If updateSpots is checked but spots_mode is not exact, ignore updateSpots
+    if (updateSpots && spotsMode !== "exact") {
+      setUpdateSpots(false);
     }
 
     setLoading(true);
@@ -616,10 +642,10 @@ export default function PublishResultsPage() {
               </button>
               <button
                 onClick={confirmPublish}
-                disabled={(updateSpots && !acceptanceTag.trim()) || loading}
+                disabled={(updateSpots && spotsMode === "exact" && !acceptanceTag.trim()) || loading}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? "Publishing..." : updateSpots ? "Publish & Update Spots" : "Publish"}
+                {loading ? "Publishing..." : updateSpots && spotsMode === "exact" ? "Publish & Update Spots" : "Publish"}
               </button>
             </div>
           </div>
