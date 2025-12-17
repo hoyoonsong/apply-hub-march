@@ -74,6 +74,7 @@ export default function ReviewQueue() {
             status,
             created_at,
             updated_at,
+            submitted_at,
             programs!inner(name, organization_id, organizations(name))
           `
           )
@@ -140,7 +141,7 @@ export default function ReviewQueue() {
             status: "not_started",
             score: null,
             updated_at: app.updated_at,
-            submitted_at: app.created_at,
+            submitted_at: app.submitted_at || app.updated_at || app.created_at,
             comments: null,
             ratings: null,
             reviewer_id: null,
@@ -248,7 +249,7 @@ export default function ReviewQueue() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Updated
+                    Submitted At
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Applicant
@@ -274,9 +275,18 @@ export default function ReviewQueue() {
                 {allRows.map((row) => (
                   <tr key={row.review_id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(
-                        row.updated_at || row.submitted_at || 0
-                      ).toLocaleString()}
+                      {row.submitted_at || row.updated_at ? (
+                        <>
+                          <span className="text-gray-500 mr-1">
+                            Submitted at:
+                          </span>
+                          {new Date(
+                            row.submitted_at || row.updated_at || 0
+                          ).toLocaleString()}
+                        </>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {row.applicant_name}

@@ -37,7 +37,7 @@ export default function ReviewQueuePage() {
         programResult.value.data
       ) {
         if (programResult.value.data.name) {
-        setProgramName(programResult.value.data.name);
+          setProgramName(programResult.value.data.name);
         }
         const org = (programResult.value.data as any).organizations;
         if (org?.slug) {
@@ -46,10 +46,7 @@ export default function ReviewQueuePage() {
       }
 
       // Handle form config result
-      if (
-        formConfigResult.status === "fulfilled" &&
-        formConfigResult.value
-      ) {
+      if (formConfigResult.status === "fulfilled" && formConfigResult.value) {
         setProgramFormConfig(formConfigResult.value);
       } else {
         // Use default config if loading fails
@@ -81,6 +78,7 @@ export default function ReviewQueuePage() {
             status,
             created_at,
             updated_at,
+            submitted_at,
             programs!inner(name, organization_id, organizations(name))
           `
           )
@@ -106,7 +104,8 @@ export default function ReviewQueuePage() {
         return;
       }
 
-      const existingReviews = (reviewsResult.value.data ?? []) as ReviewsListRow[];
+      const existingReviewsRaw = (reviewsResult.value.data ??
+        []) as ReviewsListRow[];
 
       // Handle applications result
       if (appsResult.status === "rejected") {
@@ -128,6 +127,29 @@ export default function ReviewQueuePage() {
 
       const submittedApps = appsResult.value.data;
 
+      // Map of application_id -> application submitted time (app-level)
+      const appSubmittedMap = new Map<string, string | null>();
+      submittedApps?.forEach((app: any) => {
+        appSubmittedMap.set(
+          app.id,
+          app.submitted_at || app.updated_at || app.created_at
+        );
+      });
+
+      // Normalize submitted_at on existing review rows to mean
+      // "when the application was submitted", not "when the review was saved".
+      const existingReviews: ReviewsListRow[] = existingReviewsRaw.map(
+        (review) => {
+          const appSubmitted =
+            appSubmittedMap.get(review.application_id) || null;
+          return {
+            ...review,
+            submitted_at:
+              appSubmitted ?? review.submitted_at ?? review.updated_at ?? null,
+          };
+        }
+      );
+
       // Create a map of existing reviews by application_id
       const reviewsMap = new Map<string, ReviewsListRow>();
       existingReviews.forEach((review) => {
@@ -147,7 +169,7 @@ export default function ReviewQueuePage() {
             status: "not_started",
             score: null,
             updated_at: app.updated_at,
-            submitted_at: app.created_at,
+            submitted_at: app.submitted_at || app.updated_at || app.created_at,
             comments: null,
             ratings: null,
             reviewer_id: null,
@@ -242,9 +264,7 @@ export default function ReviewQueuePage() {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold">
-        Review Queue - {programName}
-      </h1>
+        <h1 className="text-2xl font-semibold">Review Queue - {programName}</h1>
         {orgSlug && programId && (
           <Link
             to={`/org/${orgSlug}/admin/programs/${programId}/publish`}
@@ -266,7 +286,7 @@ export default function ReviewQueuePage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Updated
+                    Submitted At
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Applicant
@@ -292,9 +312,9 @@ export default function ReviewQueuePage() {
                 {allRows.map((row) => (
                   <tr key={row.review_id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(
-                        row.updated_at || row.submitted_at || 0
-                      ).toLocaleString()}
+                      {row.submitted_at
+                        ? new Date(row.submitted_at).toLocaleString()
+                        : "—"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {row.applicant_name}
