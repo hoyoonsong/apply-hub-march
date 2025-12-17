@@ -170,6 +170,28 @@ export default function ReviewWorkspacePage() {
     }
   }
 
+  async function handleUnfinalize() {
+    if (
+      !window.confirm(
+        "Unfinalize this review? You'll be able to make changes and finalize again."
+      )
+    )
+      return;
+    try {
+      const saved = await upsertReview({
+        applicationId: applicationId!,
+        score,
+        ratings,
+        comments,
+        status: "draft",
+      });
+      setReview(saved);
+    } catch (e: any) {
+      alert(e.message ?? "Failed to unfinalize review.");
+    }
+  }
+
+
   const schemaFields: Array<{ id: string; label: string; type: string }> =
     useMemo(() => {
       const s = program?.metadata?.application_schema?.fields;
@@ -203,15 +225,21 @@ export default function ReviewWorkspacePage() {
           >
             Back to Inbox
           </Link>
-          <button
-            disabled={submitted}
-            onClick={handleSubmit}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium text-white ${
-              submitted ? "bg-gray-400" : "bg-indigo-600 hover:bg-indigo-700"
-            }`}
-          >
-            {submitted ? "finalized" : "finalize"}
-          </button>
+          {submitted ? (
+            <button
+              onClick={handleUnfinalize}
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700"
+            >
+              Unfinalize
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              finalize
+            </button>
+          )}
         </div>
       </div>
 

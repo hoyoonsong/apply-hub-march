@@ -20,6 +20,7 @@ export default function ReviewAppPage() {
     error,
     saveDraft,
     submit,
+    unfinalize,
     setScore,
     setComments,
     setDecision,
@@ -193,6 +194,17 @@ export default function ReviewAppPage() {
                           </div>
                         )}
                       </div>
+                      <button
+                        className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
+                        onClick={() => {
+                          if (window.confirm("Unfinalize this review? You'll be able to make changes and finalize again.")) {
+                            unfinalize();
+                          }
+                        }}
+                        disabled={saving === "saving"}
+                      >
+                        {saving === "saving" ? "Unfinalizing..." : "Unfinalize"}
+                      </button>
                     </div>
                   ) : (
                     // Draft state - show save and submit buttons

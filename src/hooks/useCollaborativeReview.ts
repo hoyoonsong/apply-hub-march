@@ -421,13 +421,19 @@ export function useCollaborativeReview(appId: string) {
           ...(next.decision ? { decision: next.decision } : {}),
         };
 
-        const { error } = await supabase.rpc("app_upsert_review_v1", {
+        const submitParams: any = {
           p_application_id: appId,
           p_score: next.score ?? review?.score ?? null,
           p_comments: next.comments ?? review?.comments ?? null,
           p_ratings: ratingsWithDecision,
           p_status: "submitted",
-        });
+        };
+        
+        // Always include p_decision (even if null) to avoid function signature ambiguity
+        const submitDecision = next.decision ?? (review as any)?.decision ?? null;
+        submitParams.p_decision = submitDecision;
+
+        const { error } = await supabase.rpc("app_upsert_review_v1", submitParams);
 
         if (!error) {
           // Record save time to prevent double reload from Realtime
@@ -450,6 +456,55 @@ export function useCollaborativeReview(appId: string) {
       (review as any)?.decision,
     ]
   );
+
+  // Unfinalize review function
+  const unfinalize = useCallback(async () => {
+    setSaving("saving");
+    try {
+      // Store decision in ratings JSON as a workaround
+      const ratingsWithDecision = {
+        ...(review?.ratings ?? {}),
+        ...((review as any)?.decision ? { decision: (review as any).decision } : {}),
+      };
+
+      const params: any = {
+        p_application_id: appId,
+        p_score: review?.score ?? null,
+        p_comments: review?.comments ?? null,
+        p_ratings: ratingsWithDecision,
+        p_status: "draft",
+      };
+      
+      // Always include p_decision (even if null) to avoid function signature ambiguity
+      const decision = (review as any)?.decision ?? null;
+      params.p_decision = decision;
+
+      const { error, data } = await supabase.rpc("app_upsert_review_v1", params);
+
+      if (error) {
+        console.error("Unfinalize error:", error);
+        setSaving("error");
+        setError(error.message || "Failed to unfinalize review");
+      } else {
+        // Record save time to prevent double reload from Realtime
+        (window as any).lastSaveTime = Date.now();
+        // Refresh data to get updated reviewer_name and updated_at
+        await loadRef.current();
+        setSaving("saved");
+      }
+    } catch (error: any) {
+      console.error("Unfinalize exception:", error);
+      setSaving("error");
+      setError(error.message || "Failed to unfinalize review");
+    }
+  }, [
+    appId,
+    review?.score,
+    review?.comments,
+    review?.ratings,
+    (review as any)?.decision,
+  ]);
+
 
   // Helper functions for individual field updates
   const setScore = useCallback((score: number | null) => {
@@ -495,6 +550,7 @@ export function useCollaborativeReview(appId: string) {
     error,
     saveDraft,
     submit,
+    unfinalize,
     setScore,
     setComments,
     setRatingsJSON,

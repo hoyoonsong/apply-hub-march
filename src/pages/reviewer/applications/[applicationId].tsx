@@ -5,6 +5,7 @@ import {
   upsertReview,
   getProgramReviewForm,
 } from "../../../lib/api";
+import { supabase } from "../../../lib/supabase";
 import AutoLinkText from "../../../components/AutoLinkText";
 
 type ApplicationData = {
@@ -49,6 +50,7 @@ export default function ReviewerApplication() {
   const [comments, setComments] = useState<string>("");
   const [ratings, setRatings] = useState<Record<string, any>>({});
   const [decision, setDecision] = useState<string | null>(null);
+  const [reviewStatus, setReviewStatus] = useState<"draft" | "submitted" | null>(null);
 
   // Reviewer form config
   const [reviewForm, setReviewForm] = useState<{
@@ -104,11 +106,27 @@ export default function ReviewerApplication() {
           // Continue with defaults
         }
 
-        // Initialize review data
-        setScore(null);
-        setComments("");
-        setRatings({});
-        setDecision(null);
+        // Load existing review if it exists
+        const { data: existingReview } = await supabase
+          .from("application_reviews")
+          .select("*")
+          .eq("application_id", applicationId!)
+          .maybeSingle();
+
+        if (existingReview) {
+          setScore(existingReview.score);
+          setComments(existingReview.comments ?? "");
+          setRatings(existingReview.ratings ?? {});
+          setDecision(existingReview.decision ?? (existingReview.ratings as any)?.decision ?? null);
+          setReviewStatus(existingReview.status as "draft" | "submitted");
+        } else {
+          // Initialize review data
+          setScore(null);
+          setComments("");
+          setRatings({});
+          setDecision(null);
+          setReviewStatus(null);
+        }
       } catch (e: any) {
         setError(e.message ?? "Failed to load application");
       } finally {
@@ -156,6 +174,7 @@ export default function ReviewerApplication() {
         status: "submitted",
         decision: reviewForm.show_decision ? decision : null,
       });
+      setReviewStatus("submitted");
       alert("Review submitted!");
       navigate(`/reviewer/programs/${app.application.program_id}/queue`);
     } catch (e: any) {
@@ -164,6 +183,35 @@ export default function ReviewerApplication() {
       setSaving(false);
     }
   };
+
+  const handleUnfinalize = async () => {
+    if (!app) return;
+    if (
+      !window.confirm(
+        "Unfinalize this review? You'll be able to make changes and finalize again."
+      )
+    )
+      return;
+
+    setSaving(true);
+    try {
+      await upsertReview({
+        applicationId: applicationId!,
+        score: reviewForm.show_score ? score : null,
+        comments: reviewForm.show_comments ? comments : null,
+        ratings,
+        status: "draft",
+        decision: reviewForm.show_decision ? decision : null,
+      });
+      setReviewStatus("draft");
+      alert("Review unfinalized. You can now make changes.");
+    } catch (e: any) {
+      alert(e.message ?? "Failed to unfinalize review");
+    } finally {
+      setSaving(false);
+    }
+  };
+
 
   // Helper function to format dates without timezone issues
   const formatDateValue = (value: any): string => {
@@ -344,6 +392,7 @@ export default function ReviewerApplication() {
                       max={100}
                       value={score ?? ""}
                       onChange={(e) => setScore(Number(e.target.value))}
+                      disabled={reviewStatus === "submitted"}
                       className="w-full rounded border px-3 py-2 text-sm"
                     />
                   </div>
@@ -398,6 +447,7 @@ export default function ReviewerApplication() {
                     className="w-full rounded border px-3 py-2 text-sm"
                     value={decision ?? ""}
                     onChange={(e) => setDecision(e.target.value || null)}
+                    disabled={reviewStatus === "submitted"}
                   >
                     <option value="">Select a decision...</option>
                     {reviewForm.decision_options.map((option) => (
@@ -411,20 +461,37 @@ export default function ReviewerApplication() {
 
               {/* Action buttons */}
               <div className="space-y-2">
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={saving}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  {saving ? "Saving..." : "Save Draft"}
-                </button>
-                <button
-                  onClick={handleSubmitReview}
-                  disabled={saving}
-                  className="w-full rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                  {saving ? "Submitting..." : "Submit Review"}
-                </button>
+                {reviewStatus === "submitted" ? (
+                  <>
+                    <div className="text-center text-sm text-green-600 font-medium mb-2">
+                      ✓ Review Submitted
+                    </div>
+                    <button
+                      onClick={handleUnfinalize}
+                      disabled={saving}
+                      className="w-full rounded-md bg-orange-600 px-3 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+                    >
+                      {saving ? "Unfinalizing..." : "Unfinalize"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleSaveDraft}
+                      disabled={saving}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      {saving ? "Saving..." : "Save Draft"}
+                    </button>
+                    <button
+                      onClick={handleSubmitReview}
+                      disabled={saving}
+                      className="w-full rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {saving ? "Submitting..." : "Submit Review"}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
