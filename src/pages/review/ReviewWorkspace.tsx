@@ -233,12 +233,12 @@ export default function ReviewWorkspacePage() {
               Unfinalize
             </button>
           ) : (
-            <button
-              onClick={handleSubmit}
+          <button
+            onClick={handleSubmit}
               className="rounded-md px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-            >
+          >
               finalize
-            </button>
+          </button>
           )}
         </div>
       </div>

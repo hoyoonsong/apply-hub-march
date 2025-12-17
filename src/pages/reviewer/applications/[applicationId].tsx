@@ -120,11 +120,11 @@ export default function ReviewerApplication() {
           setDecision(existingReview.decision ?? (existingReview.ratings as any)?.decision ?? null);
           setReviewStatus(existingReview.status as "draft" | "submitted");
         } else {
-          // Initialize review data
-          setScore(null);
-          setComments("");
-          setRatings({});
-          setDecision(null);
+        // Initialize review data
+        setScore(null);
+        setComments("");
+        setRatings({});
+        setDecision(null);
           setReviewStatus(null);
         }
       } catch (e: any) {
@@ -476,20 +476,20 @@ export default function ReviewerApplication() {
                   </>
                 ) : (
                   <>
-                    <button
-                      onClick={handleSaveDraft}
-                      disabled={saving}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      {saving ? "Saving..." : "Save Draft"}
-                    </button>
-                    <button
-                      onClick={handleSubmitReview}
-                      disabled={saving}
-                      className="w-full rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                    >
-                      {saving ? "Submitting..." : "Submit Review"}
-                    </button>
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={saving}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save Draft"}
+                </button>
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={saving}
+                  className="w-full rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                >
+                  {saving ? "Submitting..." : "Submit Review"}
+                </button>
                   </>
                 )}
               </div>
