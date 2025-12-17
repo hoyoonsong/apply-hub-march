@@ -14,6 +14,8 @@ export default function CapabilityHub({
     initialCapabilities ?? null
   );
   const [loading, setLoading] = useState(initialCapabilities === undefined);
+  const [showAllAdmins, setShowAllAdmins] = useState(false);
+  const [showAllReviewers, setShowAllReviewers] = useState(false);
 
   const refreshCapabilities = async () => {
     setLoading(true);
@@ -144,7 +146,10 @@ export default function CapabilityHub({
                 </h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {capabilities.adminOrgs.map((org) => (
+                {(showAllAdmins
+                  ? capabilities.adminOrgs
+                  : capabilities.adminOrgs.slice(0, 3)
+                ).map((org) => (
                   <Link
                     key={org.id}
                     to={`/org/${org.slug}/admin`}
@@ -178,6 +183,50 @@ export default function CapabilityHub({
                   </Link>
                 ))}
               </div>
+              {capabilities.adminOrgs.length > 3 && (
+                <div className="mt-4 flex justify-center">
+                  <button
+                    onClick={() => setShowAllAdmins(!showAllAdmins)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                  >
+                    {showAllAdmins ? (
+                      <>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 15l7-7 7 7"
+                          />
+                        </svg>
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                        Show All ({capabilities.adminOrgs.length})
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -190,7 +239,10 @@ export default function CapabilityHub({
                 </h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {capabilities.reviewerPrograms.map((program) => (
+                {(showAllReviewers
+                  ? capabilities.reviewerPrograms
+                  : capabilities.reviewerPrograms.slice(0, 6)
+                ).map((program) => (
                   <Link
                     key={program.id}
                     to={`/review/${program.id}`}
@@ -226,6 +278,50 @@ export default function CapabilityHub({
                   </Link>
                 ))}
               </div>
+              {capabilities.reviewerPrograms.length > 6 && (
+                <div className="mt-4 flex justify-center">
+                  <button
+                    onClick={() => setShowAllReviewers(!showAllReviewers)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                  >
+                    {showAllReviewers ? (
+                      <>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 15l7-7 7 7"
+                          />
+                        </svg>
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                        Show All ({capabilities.reviewerPrograms.length})
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

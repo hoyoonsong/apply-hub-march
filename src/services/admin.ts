@@ -29,7 +29,9 @@ export async function adminListPrograms(orgId: string, includeDeleted = false) {
       published_coalition_id,
       created_at,
       updated_at,
-      deleted_at
+      deleted_at,
+      spots_mode,
+      spots_count
     `
     )
     .eq("organization_id", orgId);
