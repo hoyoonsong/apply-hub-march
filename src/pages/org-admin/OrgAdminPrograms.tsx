@@ -424,13 +424,13 @@ export default function OrgAdminPrograms() {
             </div>
           </div>
           <form onSubmit={handleCreate}>
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-start">
               <div className="md:col-span-4">
                 <label className="block text-sm font-semibold text-gray-800 mb-2">
                   Title
                 </label>
                 <input
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 h-[44px]"
                   value={form.name}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, name: e.target.value }))
@@ -444,7 +444,7 @@ export default function OrgAdminPrograms() {
                   Type
                 </label>
                 <select
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 h-[44px]"
                   value={form.type}
                   onChange={(e) =>
                     setForm((f) => ({
@@ -470,7 +470,7 @@ export default function OrgAdminPrograms() {
                 <input
                   type="datetime-local"
                   step="60"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 h-[44px]"
                   value={form.open_at}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, open_at: e.target.value }))
@@ -484,20 +484,19 @@ export default function OrgAdminPrograms() {
                 <input
                   type="datetime-local"
                   step="60"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 h-[44px]"
                   value={form.close_at}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, close_at: e.target.value }))
                   }
                 />
               </div>
-              <div className="md:col-span-12">
+              <div className="md:col-span-5">
                 <label className="block text-sm font-semibold text-gray-800 mb-2">
                   Description
                 </label>
                 <textarea
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
-                  rows={3}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none leading-normal h-[68px]"
                   value={form.description}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, description: e.target.value }))
@@ -505,13 +504,13 @@ export default function OrgAdminPrograms() {
                   placeholder="Brief description…"
                 />
               </div>
-              <div className="md:col-span-12">
+              <div className="md:col-span-7">
                 <label className="block text-sm font-semibold text-gray-800 mb-2">
                   Available Spots <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-3">
                   <div className="flex gap-3">
-                    <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                    <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1 h-[68px]">
                       <input
                         type="radio"
                         name="spots_mode"
@@ -521,16 +520,36 @@ export default function OrgAdminPrograms() {
                           setForm((f) => ({ ...f, spots_mode: "exact" }))
                         }
                       />
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-gray-800">
-                          Exact Number
-                        </span>
-                        <p className="text-xs text-gray-600 mt-0.5">
-                          Set a specific number of spots available
-                        </p>
+                      <div className="flex-1 flex items-center gap-2">
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-800">
+                            Exact Number
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          className={`w-20 rounded-lg border px-3 py-1.5 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 ${
+                            form.spots_mode === "exact"
+                              ? "border-gray-300 text-gray-900"
+                              : "bg-gray-50 text-gray-400 border-gray-200"
+                          }`}
+                          value={form.spots_count}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setForm((f) => ({
+                              ...f,
+                              spots_count: e.target.value,
+                            }));
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          placeholder="Spots"
+                          required={form.spots_mode === "exact"}
+                          disabled={form.spots_mode !== "exact"}
+                        />
                       </div>
                     </label>
-                    <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                    <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1 h-[68px]">
                       <input
                         type="radio"
                         name="spots_mode"
@@ -544,12 +563,9 @@ export default function OrgAdminPrograms() {
                         <span className="text-sm font-medium text-gray-800">
                           Unlimited
                         </span>
-                        <p className="text-xs text-gray-600 mt-0.5">
-                          Accept all qualified applicants
-                        </p>
                       </div>
                     </label>
-                    <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                    <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1 h-[68px]">
                       <input
                         type="radio"
                         name="spots_mode"
@@ -563,30 +579,9 @@ export default function OrgAdminPrograms() {
                         <span className="text-sm font-medium text-gray-800">
                           To Be Determined
                         </span>
-                        <p className="text-xs text-gray-600 mt-0.5">
-                          Spots will be set later
-                        </p>
                       </div>
                     </label>
                   </div>
-                  {form.spots_mode === "exact" && (
-                    <div>
-                      <input
-                        type="number"
-                        min="0"
-                        className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                        value={form.spots_count}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            spots_count: e.target.value,
-                          }))
-                        }
-                        placeholder="Enter number of spots"
-                        required={form.spots_mode === "exact"}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
               <div className="md:col-span-12">

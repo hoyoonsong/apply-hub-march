@@ -280,9 +280,9 @@ export default function ReviewQueue() {
                           <span className="text-gray-500 mr-1">
                             Submitted at:
                           </span>
-                          {new Date(
+                      {new Date(
                             row.submitted_at || row.updated_at || 0
-                          ).toLocaleString()}
+                      ).toLocaleString()}
                         </>
                       ) : (
                         "—"
