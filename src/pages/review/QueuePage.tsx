@@ -108,24 +108,22 @@ export default function ReviewQueuePage() {
         []) as ReviewsListRow[];
 
       // Handle applications result
-      if (appsResult.status === "rejected") {
-        console.error("Error fetching applications:", appsResult.reason);
-        setErr("Failed to load applications");
-        setAllRows([]);
-        setLoading(false);
-        return;
+      // Note: This query may fail for reviewers due to RLS, which is OK
+      // We'll just use what we got from reviews_list_v1
+      let submittedApps: any[] = [];
+      if (appsResult.status === "fulfilled" && !appsResult.value.error) {
+        submittedApps = appsResult.value.data || [];
+      } else if (appsResult.status === "rejected") {
+        console.warn(
+          "Could not fetch applications (likely RLS restriction):",
+          appsResult.reason
+        );
+      } else if (appsResult.value?.error) {
+        console.warn(
+          "Could not fetch applications (likely RLS restriction):",
+          appsResult.value.error.message
+        );
       }
-
-      const appsError = appsResult.value.error;
-      if (appsError) {
-        console.error("Error fetching submitted applications:", appsError);
-        setErr(appsError.message);
-        setAllRows([]);
-        setLoading(false);
-        return;
-      }
-
-      const submittedApps = appsResult.value.data;
 
       // Map of application_id -> application submitted time (app-level)
       const appSubmittedMap = new Map<string, string | null>();
