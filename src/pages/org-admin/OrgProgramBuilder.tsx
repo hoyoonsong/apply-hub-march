@@ -824,19 +824,11 @@ export default function OrgProgramBuilder() {
               <h1 className="text-2xl font-semibold text-gray-900">
                 {program?.name || "Loading..."} - Edit Application
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {program?.description ? (
-                  <>
-                    <AutoLinkText text={program.description} />
-                    {org?.name && ` · Organization: ${org.name}`}
-                  </>
-                ) : (
-                  <>
-                    Program description
-                    {org?.name && ` · Organization: ${org.name}`}
-                  </>
-                )}
-              </p>
+              {org?.name && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Organization: {org.name}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <button
@@ -1003,6 +995,62 @@ export default function OrgProgramBuilder() {
           {/* Main Content - Approval Required Sections */}
           <div className="flex-1 min-w-0">
             <br />
+
+            {/* Program Description */}
+            {(program?.description || program?.open_at || program?.close_at) && (
+              <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 shadow-sm mb-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-1 h-6 bg-gray-500 rounded-full"></div>
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Program Description
+                  </h2>
+                </div>
+                <div className="space-y-4">
+                  {program?.description && (
+                    <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed bg-white rounded-lg border border-gray-200 p-4">
+                      <AutoLinkText
+                        text={program.description}
+                        preserveWhitespace={true}
+                      />
+                    </div>
+                  )}
+                  {(program?.open_at || program?.close_at) && (
+                    <div className="bg-white rounded-lg border border-gray-200 p-4">
+                      <div className="text-sm text-gray-700 space-y-2">
+                        {program?.open_at && (
+                          <div>
+                            <span className="font-semibold text-gray-900">Opens:</span>{" "}
+                            <span className="text-gray-600">
+                              {new Date(program.open_at).toLocaleString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {program?.close_at && (
+                          <div>
+                            <span className="font-semibold text-gray-900">Closes:</span>{" "}
+                            <span className="text-gray-600">
+                              {new Date(program.close_at).toLocaleString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Common Application Options */}
             <div className="bg-blue-50 border-2 border-blue-200 rounded-t-xl p-6 shadow-sm">
@@ -1467,7 +1515,7 @@ export default function OrgProgramBuilder() {
                   </label>
                   <div className="space-y-3">
                     <div className="flex gap-3">
-                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1 h-[68px]">
                         <input
                           type="radio"
                           name="spots_mode"
@@ -1475,16 +1523,30 @@ export default function OrgProgramBuilder() {
                           checked={basicsSpotsMode === "exact"}
                           onChange={() => setBasicsSpotsMode("exact")}
                         />
-                        <div className="flex-1">
-                          <span className="text-sm font-medium text-gray-800">
-                            Exact Number
-                          </span>
-                          <p className="text-xs text-gray-600 mt-0.5">
-                            Set a specific number of spots available
-                          </p>
+                        <div className="flex-1 flex items-center gap-2">
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-gray-800">
+                              Exact Number
+                            </span>
+                          </div>
+                          {basicsSpotsMode === "exact" && (
+                            <input
+                              type="number"
+                              min="0"
+                              className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                              value={basicsSpotsCount}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                setBasicsSpotsCount(e.target.value);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder="Spots"
+                              required={basicsSpotsMode === "exact"}
+                            />
+                          )}
                         </div>
                       </label>
-                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1 h-[68px]">
                         <input
                           type="radio"
                           name="spots_mode"
@@ -1496,12 +1558,9 @@ export default function OrgProgramBuilder() {
                           <span className="text-sm font-medium text-gray-800">
                             Unlimited
                           </span>
-                          <p className="text-xs text-gray-600 mt-0.5">
-                            Accept all qualified applicants
-                          </p>
                         </div>
                       </label>
-                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1">
+                      <label className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex-1 h-[68px]">
                         <input
                           type="radio"
                           name="spots_mode"
@@ -1513,25 +1572,9 @@ export default function OrgProgramBuilder() {
                           <span className="text-sm font-medium text-gray-800">
                             To Be Determined
                           </span>
-                          <p className="text-xs text-gray-600 mt-0.5">
-                            Spots will be set later
-                          </p>
                         </div>
                       </label>
                     </div>
-                    {basicsSpotsMode === "exact" && (
-                      <div>
-                        <input
-                          type="number"
-                          min="0"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                          value={basicsSpotsCount}
-                          onChange={(e) => setBasicsSpotsCount(e.target.value)}
-                          placeholder="Enter number of spots"
-                          required={basicsSpotsMode === "exact"}
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
 
