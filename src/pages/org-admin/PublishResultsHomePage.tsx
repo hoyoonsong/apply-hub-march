@@ -32,6 +32,7 @@ export default function PublishResultsHomePage() {
         if (!org) return;
 
         // Get programs with finalized and published counts
+        // Order by most recently updated first (same as OrgAdminPrograms)
         const { data, error } = await supabase
           .from("programs")
           .select(
@@ -44,7 +45,8 @@ export default function PublishResultsHomePage() {
           )
           .eq("organization_id", org.id)
           .eq("published", true)
-          .is("deleted_at", null);
+          .is("deleted_at", null)
+          .order("updated_at", { ascending: false });
 
         if (error) {
           console.error("Error loading programs:", error);

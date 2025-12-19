@@ -24,7 +24,6 @@ import {
 type CreateState = {
   name: string;
   type: "audition" | "scholarship" | "application" | "competition";
-  description: string;
   open_at: string; // datetime-local value
   close_at: string; // datetime-local value
   is_private: boolean;
@@ -63,7 +62,6 @@ export default function OrgAdminPrograms() {
   >("application");
   const [modalOpenAt, setModalOpenAt] = useState<string>("");
   const [modalCloseAt, setModalCloseAt] = useState<string>("");
-  const [modalDescription, setModalDescription] = useState<string>("");
   const [modalIsPrivate, setModalIsPrivate] = useState<boolean>(false);
   const [modalSpotsMode, setModalSpotsMode] = useState<
     "exact" | "unlimited" | "tbd"
@@ -74,7 +72,6 @@ export default function OrgAdminPrograms() {
   const [form, setForm] = useState<CreateState>({
     name: "",
     type: "audition",
-    description: "",
     open_at: "",
     close_at: "",
     is_private: false,
@@ -105,7 +102,6 @@ export default function OrgAdminPrograms() {
     setModalType(program.type);
     setModalOpenAt(toDateTimeLocal(program.open_at));
     setModalCloseAt(toDateTimeLocal(program.close_at));
-    setModalDescription(program.description || "");
     // Check is_private from column first, then metadata
     const columnValue = (program as any).is_private;
     const isPrivate =
@@ -273,7 +269,6 @@ export default function OrgAdminPrograms() {
         organization_id: orgId,
         name: form.name,
         type: form.type,
-        description: form.description || undefined,
         open_at: toISOorNull(form.open_at),
         close_at: toISOorNull(form.close_at),
         spots_mode: form.spots_mode,
@@ -293,7 +288,6 @@ export default function OrgAdminPrograms() {
       setForm({
         name: "",
         type: "audition",
-        description: "",
         open_at: "",
         close_at: "",
         is_private: false,
@@ -491,19 +485,6 @@ export default function OrgAdminPrograms() {
                   }
                 />
               </div>
-              <div className="md:col-span-5">
-                <label className="block text-sm font-semibold text-gray-800 mb-2">
-                  Description / Instructions
-                </label>
-                <textarea
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none leading-normal h-[68px]"
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, description: e.target.value }))
-                  }
-                  placeholder="Brief description…"
-                />
-              </div>
               <div className="md:col-span-7">
                 <label className="block text-sm font-semibold text-gray-800 mb-2">
                   Available Spots <span className="text-red-500">*</span>
@@ -584,8 +565,11 @@ export default function OrgAdminPrograms() {
                   </div>
                 </div>
               </div>
-              <div className="md:col-span-12">
-                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer">
+              <div className="md:col-span-5">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Privacy
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer h-[68px]">
                   <input
                     type="checkbox"
                     className="h-4 w-4 text-indigo-600"
@@ -599,8 +583,7 @@ export default function OrgAdminPrograms() {
                       Private Program
                     </span>
                     <p className="text-xs text-gray-600 mt-0.5">
-                      Private programs won't appear on the homepage or in public
-                      listings. They can only be accessed via direct link.
+                      Won't appear on homepage or public listings
                     </p>
                   </div>
                 </label>
@@ -1107,75 +1090,74 @@ export default function OrgAdminPrograms() {
                           <tr>
                             <td colSpan={5} className="bg-gray-50 px-6 py-4">
                               <div className="space-y-3">
-                                {/* Metadata Grid with Description */}
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                  {/* Left Column: Type, Created, Opens, Closes */}
-                                  <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <div className="text-center">
-                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                        Type
-                                      </p>
-                                      <span
-                                        className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
-                                          p.type === "audition"
-                                            ? "bg-purple-100 text-purple-800"
-                                            : p.type === "scholarship"
-                                            ? "bg-green-100 text-green-800"
-                                            : p.type === "application"
-                                            ? "bg-blue-100 text-blue-800"
-                                            : p.type === "competition"
-                                            ? "bg-orange-100 text-orange-800"
-                                            : "bg-gray-100 text-gray-800"
-                                        }`}
-                                      >
-                                        {p.type}
-                                      </span>
-                                    </div>
-                                    <div className="text-center">
-                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                        Created
-                                      </p>
-                                      <p className="text-sm text-gray-700">
-                                        {new Date(
-                                          p.created_at
-                                        ).toLocaleString()}
-                                      </p>
-                                    </div>
-                                    <div className="text-center">
-                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                        Opens
-                                      </p>
-                                      <p className="text-sm text-gray-700">
-                                        {p.open_at
-                                          ? new Date(p.open_at).toLocaleString()
-                                          : "—"}
-                                      </p>
-                                    </div>
-                                    <div className="text-center">
-                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                        Closes
-                                      </p>
-                                      <p className="text-sm text-gray-700">
-                                        {p.close_at
-                                          ? new Date(
-                                              p.close_at
-                                            ).toLocaleString()
-                                          : "—"}
-                                      </p>
-                                    </div>
+                                {/* Metadata Grid */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                                  <div className="text-center">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      Type
+                                    </p>
+                                    <span
+                                      className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                                        p.type === "audition"
+                                          ? "bg-purple-100 text-purple-800"
+                                          : p.type === "scholarship"
+                                          ? "bg-green-100 text-green-800"
+                                          : p.type === "application"
+                                          ? "bg-blue-100 text-blue-800"
+                                          : p.type === "competition"
+                                          ? "bg-orange-100 text-orange-800"
+                                          : "bg-gray-100 text-gray-800"
+                                      }`}
+                                    >
+                                      {p.type}
+                                    </span>
                                   </div>
-
-                                  {/* Right Column: Description */}
-                                  {p.description && (
-                                    <div className="lg:col-span-1 text-center">
-                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                        Description
-                                      </p>
-                                      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                                        {p.description}
-                                      </p>
-                                    </div>
-                                  )}
+                                  <div className="text-center">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      Created
+                                    </p>
+                                    <p className="text-sm text-gray-700">
+                                      {new Date(p.created_at).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      Opens
+                                    </p>
+                                    <p className="text-sm text-gray-700">
+                                      {p.open_at
+                                        ? new Date(p.open_at).toLocaleString()
+                                        : "—"}
+                                    </p>
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      Closes
+                                    </p>
+                                    <p className="text-sm text-gray-700">
+                                      {p.close_at
+                                        ? new Date(p.close_at).toLocaleString()
+                                        : "—"}
+                                    </p>
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      Available Spots
+                                    </p>
+                                    <p className="text-sm text-gray-700">
+                                      {p.spots_mode === "unlimited"
+                                        ? "Unlimited"
+                                        : p.spots_mode === "tbd"
+                                        ? "TBD"
+                                        : p.spots_mode === "exact" &&
+                                          p.spots_count !== null &&
+                                          p.spots_count !== undefined
+                                        ? `${p.spots_count} spot${
+                                            p.spots_count !== 1 ? "s" : ""
+                                          }`
+                                        : "—"}
+                                    </p>
+                                  </div>
                                 </div>
 
                                 {/* Action Buttons Row - Bottom Right */}
@@ -1366,20 +1348,6 @@ export default function OrgAdminPrograms() {
                   </div>
                 </div>
 
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Description
-                  </label>
-                  <textarea
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
-                    rows={3}
-                    value={modalDescription}
-                    onChange={(e) => setModalDescription(e.target.value)}
-                    placeholder="Program description"
-                  />
-                </div>
-
                 {/* Available Spots */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -1507,7 +1475,6 @@ export default function OrgAdminPrograms() {
                         .update({
                           name: modalName.trim(),
                           type: modalType,
-                          description: modalDescription.trim() || null,
                           open_at: toISO(modalOpenAt),
                           close_at: toISO(modalCloseAt),
                           is_private: modalIsPrivate,
@@ -1530,7 +1497,6 @@ export default function OrgAdminPrograms() {
                       program_id: editingProgram.id,
                       name: modalName.trim(),
                       type: modalType,
-                      description: modalDescription.trim() || undefined,
                       open_at: toISO(modalOpenAt),
                       close_at: toISO(modalCloseAt),
                       metadata: editingProgram.metadata || {},

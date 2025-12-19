@@ -39,6 +39,8 @@ type Program = {
   published_coalition_id: string | null;
   open_at?: string | null;
   close_at?: string | null;
+  is_private?: boolean | null;
+  type?: "audition" | "scholarship" | "application" | "competition" | null;
 };
 
 type Org = { id: string; slug: string; name: string };
@@ -222,15 +224,22 @@ export default function OrgProgramBuilder() {
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [basicsName, setBasicsName] = useState<string>("");
-  const [basicsType, setBasicsType] = useState<"audition" | "scholarship" | "application" | "competition">("application");
+  const [basicsType, setBasicsType] = useState<
+    "audition" | "scholarship" | "application" | "competition"
+  >("application");
   const [basicsOpenAt, setBasicsOpenAt] = useState<string>("");
   const [basicsCloseAt, setBasicsCloseAt] = useState<string>("");
-  const [basicsDescription, setBasicsDescription] = useState<string>("");
   const [basicsSaving, setBasicsSaving] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false); // State for modal
   const [isPrivate, setIsPrivate] = useState<boolean>(false);
-  const [basicsSpotsMode, setBasicsSpotsMode] = useState<"exact" | "unlimited" | "tbd">("exact");
+  const [basicsSpotsMode, setBasicsSpotsMode] = useState<
+    "exact" | "unlimited" | "tbd"
+  >("exact");
   const [basicsSpotsCount, setBasicsSpotsCount] = useState<string>("");
+  const [isEditingDescription, setIsEditingDescription] =
+    useState<boolean>(false);
+  const [editingDescription, setEditingDescription] = useState<string>("");
+  const [savingDescription, setSavingDescription] = useState<boolean>(false);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -349,7 +358,13 @@ export default function OrgProgramBuilder() {
         if (mounted) {
           setProgram(row);
           setBasicsName(row.name || "");
-          setBasicsType((row.type as "audition" | "scholarship" | "application" | "competition") || "application");
+          setBasicsType(
+            (row.type as
+              | "audition"
+              | "scholarship"
+              | "application"
+              | "competition") || "application"
+          );
           // Fetch open/close directly from programs to ensure availability
           try {
             const { data: timing } = await supabase
@@ -365,7 +380,6 @@ export default function OrgProgramBuilder() {
             setBasicsCloseAt(
               closeAtVal ? new Date(closeAtVal).toISOString().slice(0, 16) : ""
             );
-            setBasicsDescription(timing?.description ?? row.description ?? "");
           } catch (e) {
             setBasicsOpenAt(
               row.open_at
@@ -377,9 +391,7 @@ export default function OrgProgramBuilder() {
                 ? new Date(row.close_at).toISOString().slice(0, 16)
                 : ""
             );
-            setBasicsDescription(row.description || "");
           }
-          setBasicsDescription(row.description || "");
 
           // Load private setting from column (fallback to metadata for migration)
           const metadataIsPrivate = !!(row.metadata as any)?.is_private;
@@ -388,7 +400,9 @@ export default function OrgProgramBuilder() {
           setIsPrivate(shouldBePrivate);
 
           // Load spots settings
-          setBasicsSpotsMode((row.spots_mode as "exact" | "unlimited" | "tbd") || "exact");
+          setBasicsSpotsMode(
+            (row.spots_mode as "exact" | "unlimited" | "tbd") || "exact"
+          );
           setBasicsSpotsCount(row.spots_count?.toString() || "");
 
           // Auto-migrate: If metadata has is_private but column doesn't match, update column
@@ -399,9 +413,15 @@ export default function OrgProgramBuilder() {
               .eq("id", row.id)
               .then(({ error }) => {
                 if (error) {
-                  console.warn("Failed to migrate is_private from metadata:", error);
+                  console.warn(
+                    "Failed to migrate is_private from metadata:",
+                    error
+                  );
                 } else {
-                  console.log("Auto-migrated is_private from metadata to column for program:", row.id);
+                  console.log(
+                    "Auto-migrated is_private from metadata to column for program:",
+                    row.id
+                  );
                 }
               });
           }
@@ -839,33 +859,85 @@ export default function OrgProgramBuilder() {
                     try {
                       const { data: freshProgram, error } = await supabase
                         .from("programs")
-                        .select("is_private, metadata, type, name, description, open_at, close_at, spots_mode, spots_count")
+                        .select(
+                          "is_private, metadata, type, name, description, open_at, close_at, spots_mode, spots_count"
+                        )
                         .eq("id", program.id)
                         .single();
-                      
+
                       if (!error && freshProgram) {
                         const columnValue = freshProgram.is_private;
-                        const metadataValue = (freshProgram.metadata as any)?.is_private;
+                        const metadataValue = (freshProgram.metadata as any)
+                          ?.is_private;
                         // Column takes precedence, fallback to metadata
-                        setIsPrivate(columnValue === true || (columnValue !== false && metadataValue === true));
+                        setIsPrivate(
+                          columnValue === true ||
+                            (columnValue !== false && metadataValue === true)
+                        );
                         // Sync type
-                        setBasicsType((freshProgram.type as "audition" | "scholarship" | "application" | "competition") || "application");
+                        setBasicsType(
+                          (freshProgram.type as
+                            | "audition"
+                            | "scholarship"
+                            | "application"
+                            | "competition") || "application"
+                        );
                         // Sync spots
-                        setBasicsSpotsMode((freshProgram.spots_mode as "exact" | "unlimited" | "tbd") || "exact");
-                        setBasicsSpotsCount(freshProgram.spots_count?.toString() || "");
+                        setBasicsSpotsMode(
+                          (freshProgram.spots_mode as
+                            | "exact"
+                            | "unlimited"
+                            | "tbd") || "exact"
+                        );
+                        setBasicsSpotsCount(
+                          freshProgram.spots_count?.toString() || ""
+                        );
                         // Update program state with fresh data
-                        setProgram({ ...program, is_private: columnValue, metadata: freshProgram.metadata, type: freshProgram.type, spots_mode: freshProgram.spots_mode, spots_count: freshProgram.spots_count } as any);
+                        setProgram({
+                          ...program,
+                          is_private: columnValue,
+                          metadata: freshProgram.metadata,
+                          type: freshProgram.type,
+                          spots_mode: freshProgram.spots_mode,
+                          spots_count: freshProgram.spots_count,
+                        } as any);
                       } else {
                         // Fallback to current program state
-                        setIsPrivate(!!(program.is_private ?? (program.metadata as any)?.is_private));
-                        setBasicsType((program.type as "audition" | "scholarship" | "application" | "competition") || "application");
-                        setBasicsSpotsMode((program as any).spots_mode || "exact");
-                        setBasicsSpotsCount((program as any).spots_count?.toString() || "");
+                        setIsPrivate(
+                          !!(
+                            program.is_private ??
+                            (program.metadata as any)?.is_private
+                          )
+                        );
+                        setBasicsType(
+                          (program.type as
+                            | "audition"
+                            | "scholarship"
+                            | "application"
+                            | "competition") || "application"
+                        );
+                        setBasicsSpotsMode(
+                          (program as any).spots_mode || "exact"
+                        );
+                        setBasicsSpotsCount(
+                          (program as any).spots_count?.toString() || ""
+                        );
                       }
                     } catch (err) {
                       // Fallback to current program state on error
-                      setIsPrivate(!!(program.is_private ?? (program.metadata as any)?.is_private));
-                      setBasicsType((program.type as "audition" | "scholarship" | "application" | "competition") || "application");
+                      setIsPrivate(
+                        !!(
+                          program.is_private ??
+                          (program.metadata as any)?.is_private
+                        )
+                      );
+                      setBasicsType(
+                        (program.type as
+                          | "audition"
+                          | "scholarship"
+                          | "application"
+                          | "competition") || "application"
+                      );
                     }
                   }
                   setShowDetailsModal(true);
@@ -997,21 +1069,116 @@ export default function OrgProgramBuilder() {
             <br />
 
             {/* Program Description */}
-            {(program?.description || program?.open_at || program?.close_at) && (
+            {program && (
               <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 shadow-sm mb-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-1 h-6 bg-gray-500 rounded-full"></div>
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Program Description
-                  </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1 h-6 bg-gray-500 rounded-full"></div>
+                    <h2 className="text-lg font-bold text-gray-900">
+                      Description / Instructions
+                    </h2>
+                  </div>
+                  {!isEditingDescription && !isDisabled && (
+                    <button
+                      onClick={() => {
+                        setEditingDescription(program?.description || "");
+                        setIsEditingDescription(true);
+                      }}
+                      className="px-3 py-1.5 text-sm font-medium text-indigo-600 bg-white border border-indigo-300 rounded-lg hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                      {program?.description ? "Edit" : "Add Description"}
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-4">
-                  {program?.description && (
+                  {isEditingDescription ? (
+                    <div className="space-y-3">
+                      <textarea
+                        className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
+                        rows={6}
+                        value={editingDescription}
+                        onChange={(e) => setEditingDescription(e.target.value)}
+                        placeholder="Enter program description..."
+                        disabled={savingDescription}
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => {
+                            setIsEditingDescription(false);
+                            setEditingDescription("");
+                          }}
+                          disabled={savingDescription}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!program) return;
+                            setSavingDescription(true);
+                            try {
+                              const { error: updateError } = await supabase
+                                .from("programs")
+                                .update({
+                                  description:
+                                    editingDescription.trim() || null,
+                                })
+                                .eq("id", program.id);
+
+                              if (updateError) throw updateError;
+
+                              // Update local program state
+                              setProgram({
+                                ...program,
+                                description: editingDescription.trim() || null,
+                              });
+
+                              setIsEditingDescription(false);
+                              setEditingDescription("");
+                            } catch (error: any) {
+                              console.error(
+                                "Failed to update description:",
+                                error
+                              );
+                              alert(
+                                "Failed to update description. Please try again."
+                              );
+                            } finally {
+                              setSavingDescription(false);
+                            }
+                          }}
+                          disabled={savingDescription}
+                          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {savingDescription ? "Saving..." : "Save"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : program?.description ? (
                     <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed bg-white rounded-lg border border-gray-200 p-4">
                       <AutoLinkText
                         text={program.description}
                         preserveWhitespace={true}
                       />
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-lg border border-gray-200 border-dashed p-6 text-center">
+                      <p className="text-sm text-gray-500 mb-2">
+                        No description yet. Click "Add Description" to add one.
+                      </p>
                     </div>
                   )}
                   {(program?.open_at || program?.close_at) && (
@@ -1019,29 +1186,39 @@ export default function OrgProgramBuilder() {
                       <div className="text-sm text-gray-700 space-y-2">
                         {program?.open_at && (
                           <div>
-                            <span className="font-semibold text-gray-900">Opens:</span>{" "}
+                            <span className="font-semibold text-gray-900">
+                              Opens:
+                            </span>{" "}
                             <span className="text-gray-600">
-                              {new Date(program.open_at).toLocaleString(undefined, {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                                hour: "numeric",
-                                minute: "2-digit",
-                              })}
+                              {new Date(program.open_at).toLocaleString(
+                                undefined,
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                }
+                              )}
                             </span>
                           </div>
                         )}
                         {program?.close_at && (
                           <div>
-                            <span className="font-semibold text-gray-900">Closes:</span>{" "}
+                            <span className="font-semibold text-gray-900">
+                              Closes:
+                            </span>{" "}
                             <span className="text-gray-600">
-                              {new Date(program.close_at).toLocaleString(undefined, {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                                hour: "numeric",
-                                minute: "2-digit",
-                              })}
+                              {new Date(program.close_at).toLocaleString(
+                                undefined,
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                }
+                              )}
                             </span>
                           </div>
                         )}
@@ -1494,20 +1671,6 @@ export default function OrgProgramBuilder() {
                   </div>
                 </div>
 
-                {/* Description - more compact */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Description
-                  </label>
-                  <textarea
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
-                    rows={3}
-                    value={basicsDescription}
-                    onChange={(e) => setBasicsDescription(e.target.value)}
-                    placeholder="Program description"
-                  />
-                </div>
-
                 {/* Available Spots */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -1588,16 +1751,21 @@ export default function OrgProgramBuilder() {
                       onChange={async (e) => {
                         const newValue = e.target.checked;
                         setIsPrivate(newValue);
-                        
+
                         // Auto-save is_private immediately when toggled
                         if (program) {
                           try {
                             // Update both column and clean up metadata
                             const updates: any = { is_private: newValue };
-                            
+
                             // If setting to public (false), remove is_private from metadata if it exists
-                            if (!newValue && (program.metadata as any)?.is_private) {
-                              const newMetadata = { ...(program.metadata || {}) };
+                            if (
+                              !newValue &&
+                              (program.metadata as any)?.is_private
+                            ) {
+                              const newMetadata = {
+                                ...(program.metadata || {}),
+                              };
                               delete newMetadata.is_private;
                               updates.metadata = newMetadata;
                             }
@@ -1608,23 +1776,32 @@ export default function OrgProgramBuilder() {
                               .eq("id", program.id);
 
                             if (updateError) {
-                              console.error("Failed to update is_private:", updateError);
+                              console.error(
+                                "Failed to update is_private:",
+                                updateError
+                              );
                               // Revert on error
                               setIsPrivate(!newValue);
-                              alert("Failed to update private setting. Please try again.");
+                              alert(
+                                "Failed to update private setting. Please try again."
+                              );
                             } else {
                               // Update program state to reflect change
-                              const updatedProgram = { 
-                                ...program, 
+                              const updatedProgram = {
+                                ...program,
                                 is_private: newValue,
-                                ...(updates.metadata ? { metadata: updates.metadata } : {})
+                                ...(updates.metadata
+                                  ? { metadata: updates.metadata }
+                                  : {}),
                               };
                               setProgram(updatedProgram as any);
                             }
                           } catch (err) {
                             console.error("Error updating is_private:", err);
                             setIsPrivate(!newValue);
-                            alert("Failed to update private setting. Please try again.");
+                            alert(
+                              "Failed to update private setting. Please try again."
+                            );
                           }
                         }
                       }}
@@ -1634,7 +1811,8 @@ export default function OrgProgramBuilder() {
                         Private Program
                       </span>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Won't appear on homepage or public listings. Only accessible via direct link.
+                        Won't appear on homepage or public listings. Only
+                        accessible via direct link.
                       </p>
                     </div>
                   </label>
@@ -1660,43 +1838,51 @@ export default function OrgProgramBuilder() {
                     if (basicsSpotsMode === "exact") {
                       const spotsNum = parseInt(basicsSpotsCount, 10);
                       if (isNaN(spotsNum) || spotsNum < 0) {
-                        alert("Please enter a valid number of spots (0 or greater).");
+                        alert(
+                          "Please enter a valid number of spots (0 or greater)."
+                        );
                         setBasicsSaving(false);
                         return;
                       }
                     }
 
                     // Update program details and is_private column directly
-                    const { data: updatedProgram, error: updateError } = await supabase
-                      .from("programs")
-                      .update({
-                        name: basicsName.trim(),
-                        type: basicsType,
-                        description: basicsDescription.trim() || null,
-                        open_at: toISO(basicsOpenAt),
-                        close_at: toISO(basicsCloseAt),
-                        is_private: isPrivate,
-                        spots_mode: basicsSpotsMode,
-                        spots_count: basicsSpotsMode === "exact" ? parseInt(basicsSpotsCount, 10) : null,
-                      })
-                      .eq("id", program.id)
-                      .select()
-                      .single();
+                    const { data: updatedProgram, error: updateError } =
+                      await supabase
+                        .from("programs")
+                        .update({
+                          name: basicsName.trim(),
+                          type: basicsType,
+                          open_at: toISO(basicsOpenAt),
+                          close_at: toISO(basicsCloseAt),
+                          is_private: isPrivate,
+                          spots_mode: basicsSpotsMode,
+                          spots_count:
+                            basicsSpotsMode === "exact"
+                              ? parseInt(basicsSpotsCount, 10)
+                              : null,
+                        })
+                        .eq("id", program.id)
+                        .select()
+                        .single();
 
                     if (updateError) throw updateError;
-                    if (!updatedProgram) throw new Error("Failed to update program");
+                    if (!updatedProgram)
+                      throw new Error("Failed to update program");
 
                     // Also update via RPC to ensure metadata is synced
                     await orgUpdateProgramDraft({
                       program_id: program.id,
                       name: basicsName.trim(),
                       type: basicsType,
-                      description: basicsDescription.trim() || undefined,
                       open_at: toISO(basicsOpenAt),
                       close_at: toISO(basicsCloseAt),
                       metadata: program.metadata || {},
                       spots_mode: basicsSpotsMode,
-                      spots_count: basicsSpotsMode === "exact" ? parseInt(basicsSpotsCount, 10) : null,
+                      spots_count:
+                        basicsSpotsMode === "exact"
+                          ? parseInt(basicsSpotsCount, 10)
+                          : null,
                     });
 
                     setProgram(updatedProgram as any);

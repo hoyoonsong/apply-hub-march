@@ -26,10 +26,12 @@ export default function ProgramReviewerFormCard({
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [newOption, setNewOption] = useState("");
   // Use ref to track latest form state to avoid stale closures
   const formRef = useRef<ReviewForm>(DEFAULTS);
   const snapshotRef = useRef<ReviewForm>(DEFAULTS);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Keep refs in sync with state
   useEffect(() => {
@@ -39,6 +41,15 @@ export default function ProgramReviewerFormCard({
   useEffect(() => {
     snapshotRef.current = loadedFormSnapshot;
   }, [loadedFormSnapshot]);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -62,13 +73,18 @@ export default function ProgramReviewerFormCard({
 
   const save = async () => {
     // Prevent saving if already saving
-    if (saving) {
+    if (saving || saveStatus === "saving") {
       return;
     }
     
-    // Use refs to get the latest state (avoids stale closures)
-    const currentForm = formRef.current;
-    const currentSnapshot = snapshotRef.current;
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Use the current form state directly (not refs) to ensure we have the latest
+    const currentForm = form;
+    const currentSnapshot = loadedFormSnapshot;
     
     // Normalize the current form state
     const normalizedCurrent: ReviewForm = {
@@ -91,46 +107,70 @@ export default function ProgramReviewerFormCard({
     // Prevent redundant saves if nothing changed
     if (JSON.stringify(normalizedCurrent) === JSON.stringify(normalizedSnapshot)) {
       console.log("No changes detected, skipping save");
+      setSaveStatus("idle");
       return;
     }
     
     setSaving(true);
+    setSaveStatus("saving");
     try {
       const payload = normalizedCurrent;
       console.log("Saving reviewer form with payload:", payload);
-      await setProgramReviewForm(programId, payload);
+      // setProgramReviewForm returns the full program row, which includes metadata.review_form
+      const result = await setProgramReviewForm(programId, payload);
       console.log("Reviewer form saved successfully");
       
-      // Update snapshot immediately to prevent duplicate saves
-      setLoadedFormSnapshot(normalizedCurrent);
-      snapshotRef.current = normalizedCurrent;
+      // Extract review_form from the returned program's metadata
+      // This avoids an unnecessary re-fetch - we use the data returned from the save
+      const savedForm = result?.metadata?.review_form;
+      const merged = { ...DEFAULTS, ...(savedForm ?? {}) } as ReviewForm;
       
-      // Re-fetch to ensure UI reflects persisted state (this might return slightly different data)
-      const latest = await getProgramReviewForm(programId);
-      const merged = { ...DEFAULTS, ...(latest ?? {}) } as ReviewForm;
+      // Update form state and snapshot with the saved data
       setForm(merged);
       setLoadedFormSnapshot(merged);
       formRef.current = merged;
       snapshotRef.current = merged;
+      
+      // Show success message
+      setSaveStatus("saved");
+      
+      // Clear success message after 3 seconds
+      saveTimeoutRef.current = setTimeout(() => {
+        setSaveStatus("idle");
+      }, 3000);
     } catch (error) {
       console.error("Failed to save reviewer form:", error);
-      alert("Failed to save reviewer form");
+      setSaveStatus("error");
+      alert(`Failed to save reviewer form: ${error instanceof Error ? error.message : "Unknown error"}`);
+      // Clear error message after 5 seconds
+      saveTimeoutRef.current = setTimeout(() => {
+        setSaveStatus("idle");
+      }, 5000);
     } finally {
       setSaving(false);
     }
   };
 
-  const removeOption = (opt: string) =>
-    setForm((f) => ({
-      ...f,
-      decision_options: f.decision_options.filter((o) => o !== opt),
-    }));
+  const removeOption = (opt: string) => {
+    setForm((f) => {
+      const newForm = {
+        ...f,
+        decision_options: f.decision_options.filter((o) => o !== opt),
+      };
+      formRef.current = newForm; // Update ref immediately
+      return newForm;
+    });
+  };
 
   const addOption = () => {
     const v = newOption.trim();
     if (!v) return;
     if (form.decision_options.includes(v)) return;
-    setForm((f) => ({ ...f, decision_options: [...f.decision_options, v] }));
+    setForm((f) => {
+      const newForm = { ...f, decision_options: [...f.decision_options, v] };
+      formRef.current = newForm; // Update ref immediately
+      return newForm;
+    });
     setNewOption("");
   };
 
@@ -161,6 +201,7 @@ export default function ProgramReviewerFormCard({
             onChange={(e) => {
               const newForm = { ...form, show_score: e.target.checked };
               setForm(newForm);
+              formRef.current = newForm; // Update ref immediately
             }}
           />
           <span className="font-medium text-gray-700">Score</span>
@@ -174,6 +215,7 @@ export default function ProgramReviewerFormCard({
             onChange={(e) => {
               const newForm = { ...form, show_comments: e.target.checked };
               setForm(newForm);
+              formRef.current = newForm; // Update ref immediately
             }}
           />
           <span className="font-medium text-gray-700">Comments</span>
@@ -187,6 +229,7 @@ export default function ProgramReviewerFormCard({
             onChange={(e) => {
               const newForm = { ...form, show_decision: e.target.checked };
               setForm(newForm);
+              formRef.current = newForm; // Update ref immediately
             }}
           />
           <span className="font-medium text-gray-700">Decision (select)</span>
@@ -233,13 +276,74 @@ export default function ProgramReviewerFormCard({
           </div>
         )}
 
-        <div className="pt-4 flex justify-end">
+        <div className="pt-4 flex items-center justify-end gap-3">
+          {saveStatus === "saved" && (
+            <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <span>Saved successfully!</span>
+            </div>
+          )}
+          {saveStatus === "error" && (
+            <div className="flex items-center gap-2 text-sm text-red-600 font-medium">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              <span>Save failed</span>
+            </div>
+          )}
           <button
-            disabled={saving}
+            disabled={saving || saveStatus === "saving"}
             onClick={save}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 font-medium"
+            className="px-6 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >
-            {saving ? "Saving..." : "Save"}
+            {saving || saveStatus === "saving" ? (
+              <span className="flex items-center gap-2">
+                <svg
+                  className="animate-spin h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Saving...
+              </span>
+            ) : (
+              "Save"
+            )}
           </button>
         </div>
       </div>

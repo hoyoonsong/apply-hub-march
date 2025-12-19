@@ -118,8 +118,17 @@ export async function setProgramReviewForm(programId: string, form: any) {
   console.log("setProgramReviewForm result:", { data, error });
   if (error) throw error;
   
-  // Invalidate cache when form is updated
-  reviewFormCache.delete(programId);
+  // Update cache with the returned data to avoid future fetches
+  // The RPC returns the full program row, extract review_form from metadata
+  if (data?.metadata?.review_form) {
+    reviewFormCache.set(programId, {
+      data: data.metadata.review_form,
+      timestamp: Date.now(),
+    });
+  } else {
+    // If for some reason the returned data doesn't have review_form, invalidate cache
+    reviewFormCache.delete(programId);
+  }
   
   return data;
 }
