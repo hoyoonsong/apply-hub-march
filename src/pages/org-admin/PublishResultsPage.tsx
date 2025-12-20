@@ -74,6 +74,7 @@ export default function PublishResultsPage() {
     claim_deadline: string | null;
     spot_claimed_at: string | null;
     spot_declined_at: string | null;
+    decision: string | null;
   };
   const [allPublications, setAllPublications] = useState<PublicationRow[]>([]);
   const [editingDeadline, setEditingDeadline] = useState<string | null>(null);
@@ -110,9 +111,16 @@ export default function PublishResultsPage() {
   // Load all publications (only for claimable decision)
   const loadPublications = async () => {
     if (!programId || !claimableDecision) {
+      console.log(
+        `Skipping loadPublications: programId=${programId}, claimableDecision="${claimableDecision}"`
+      );
       setAllPublications([]);
       return;
     }
+
+    console.log(
+      `🔍 Calling SQL with: programId=${programId}, claimableDecision="${claimableDecision}" (length: ${claimableDecision.length})`
+    );
 
     // Load all publications with claimable decision only
     const { data: pubData, error: pubError } = await supabase.rpc(
@@ -123,17 +131,100 @@ export default function PublishResultsPage() {
       }
     );
     if (pubError) {
-      console.error("Error loading publications:", pubError);
+      console.error("❌ Error loading publications:", pubError);
       // Still set empty array so UI doesn't break
       setAllPublications([]);
     } else if (pubData) {
-      setAllPublications(pubData as PublicationRow[]);
+      const pubs = pubData as PublicationRow[];
+      console.log(
+        `✅ Loaded ${pubs.length} publications for decision "${claimableDecision}"`
+      );
+      // Debug: log all decisions returned
+      const mismatches: string[] = [];
+      pubs.forEach((pub, idx) => {
+        const pubDecisionNorm = (pub.decision || "").toLowerCase().trim();
+        const claimableNorm = (claimableDecision || "").toLowerCase().trim();
+        if (pubDecisionNorm !== claimableNorm) {
+          mismatches.push(
+            `[${idx}] decision="${pub.decision}" (normalized: "${pubDecisionNorm}")`
+          );
+        }
+      });
+      if (mismatches.length > 0) {
+        console.error(
+          `🚨 SQL RETURNED ${mismatches.length} PUBLICATIONS WITH WRONG DECISION!`,
+          mismatches
+        );
+        console.error(
+          `Expected: "${claimableDecision}" (normalized: "${(
+            claimableDecision || ""
+          )
+            .toLowerCase()
+            .trim()}")`
+        );
+      }
+      setAllPublications(pubs);
+    } else {
+      console.log("No publication data returned");
+      setAllPublications([]);
     }
   };
 
   useEffect(() => {
     loadPublications();
   }, [programId, claimableDecision]);
+
+  // Deduplicate publications: if same applicant has claimed, show only that. Otherwise show most recent.
+  // Only include publications that match the claimable decision
+  const deduplicatedPublications = useMemo(() => {
+    if (!claimableDecision) return [];
+
+    const claimable = claimableDecision.toLowerCase().trim();
+
+    // First, filter to only publications with matching decision (strict check)
+    const matchingPublications = allPublications.filter((pub) => {
+      const pubDecision = (pub.decision || "").toLowerCase().trim();
+      const matches =
+        pubDecision === claimable && pubDecision !== "" && claimable !== "";
+      // Debug: log mismatches
+      if (!matches && pubDecision) {
+        console.log(
+          `Filtering out publication: decision="${pubDecision}", claimable="${claimable}"`
+        );
+      }
+      return matches;
+    });
+
+    const byApplicant = new Map<string, PublicationRow[]>();
+
+    // Group by applicant name
+    for (const pub of matchingPublications) {
+      const name = pub.applicant_name;
+      if (!byApplicant.has(name)) {
+        byApplicant.set(name, []);
+      }
+      byApplicant.get(name)!.push(pub);
+    }
+
+    // For each applicant, pick the right publication
+    const result: PublicationRow[] = [];
+    for (const [, pubs] of byApplicant.entries()) {
+      // If any publication is claimed, show only the claimed one
+      const claimed = pubs.find((p) => p.spot_claimed_at);
+      if (claimed) {
+        result.push(claimed);
+      } else {
+        // Otherwise, show the most recent one (they're already sorted by published_at DESC)
+        result.push(pubs[0]);
+      }
+    }
+
+    // Sort by published_at DESC
+    return result.sort(
+      (a, b) =>
+        new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+    );
+  }, [allPublications, claimableDecision]);
 
   const load = async () => {
     setLoading(true);
@@ -652,26 +743,26 @@ export default function PublishResultsPage() {
 
               {/* Claiming Configuration Info */}
               <div className="mb-6 p-3 bg-gray-50 rounded-md">
-                <p className="text-sm text-gray-700 mb-1">
-                  <span className="font-medium">Decision:</span>{" "}
-                  <span className="font-semibold">{claimableDecision}</span>
-                </p>
-                <p className="text-sm text-gray-700 mt-1">
-                  <span className="font-medium">Decline responses:</span>{" "}
-                  <span className="font-semibold">Allowed</span>
-                </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Note: Deadlines are set per publication when publishing
-                  results.
-                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">Decision:</span>{" "}
+                    <span className="font-semibold">{claimableDecision}</span>
+                  </p>
+                  {spotsMode === "exact" && spotsCount !== null && (
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Remaining spots:</span>{" "}
+                      <span className="font-semibold">{spotsCount}</span>
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Publications Spreadsheet */}
               <div className="mb-6">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
-                  All Publications ({allPublications.length})
+                  All Publications ({deduplicatedPublications.length})
                 </h4>
-                {allPublications.length === 0 ? (
+                {deduplicatedPublications.length === 0 ? (
                   <p className="text-sm text-gray-500">No publications yet.</p>
                 ) : (
                   <div className="overflow-auto rounded-lg border border-gray-200 max-h-96">
@@ -693,7 +784,7 @@ export default function PublishResultsPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {allPublications.map((pub) => (
+                        {deduplicatedPublications.map((pub) => (
                           <tr
                             key={pub.publication_id}
                             className="hover:bg-gray-50"
@@ -758,24 +849,81 @@ export default function PublishResultsPage() {
                               )}
                             </td>
                             <td className="px-3 py-2 text-sm">
-                              {pub.spot_claimed_at ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Claimed
-                                </span>
-                              ) : pub.spot_declined_at ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                  Declined
-                                </span>
-                              ) : pub.claim_deadline &&
-                                new Date(pub.claim_deadline) < new Date() ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                  Missed
-                                </span>
-                              ) : (
-                                <span className="text-gray-400 text-sm">
-                                  Pending
-                                </span>
-                              )}
+                              {(() => {
+                                // STRICT CHECK: Only show status if decision matches claimable decision exactly
+                                const pubDecision = (pub.decision || "")
+                                  .toLowerCase()
+                                  .trim();
+                                const claimable = (claimableDecision || "")
+                                  .toLowerCase()
+                                  .trim();
+
+                                // Debug: log mismatches
+                                if (pubDecision !== claimable) {
+                                  console.log(
+                                    `Status label check: pub.decision="${pub.decision}" (normalized: "${pubDecision}"), claimable="${claimableDecision}" (normalized: "${claimable}") - showing "—"`
+                                  );
+                                }
+
+                                // If decision doesn't match OR is empty, show nothing
+                                if (
+                                  !pubDecision ||
+                                  !claimable ||
+                                  pubDecision !== claimable
+                                ) {
+                                  return (
+                                    <span className="text-gray-400 text-sm">
+                                      —
+                                    </span>
+                                  );
+                                }
+
+                                // DOUBLE CHECK: Ensure decision still matches before showing any label
+                                // (This is a safety check in case data changed)
+                                const finalCheck =
+                                  (pub.decision || "").toLowerCase().trim() ===
+                                  claimable;
+                                if (!finalCheck) {
+                                  console.error(
+                                    `CRITICAL: Attempted to show label for non-matching decision! pub.decision="${pub.decision}", claimable="${claimableDecision}"`
+                                  );
+                                  return (
+                                    <span className="text-gray-400 text-sm">
+                                      —
+                                    </span>
+                                  );
+                                }
+
+                                // Only show status labels for matching decisions
+                                if (pub.spot_claimed_at) {
+                                  return (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      Claimed
+                                    </span>
+                                  );
+                                } else if (pub.spot_declined_at) {
+                                  return (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                      Declined
+                                    </span>
+                                  );
+                                } else if (
+                                  pub.claim_deadline &&
+                                  new Date(pub.claim_deadline) < new Date()
+                                ) {
+                                  return (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                      Missed
+                                    </span>
+                                  );
+                                } else {
+                                  return (
+                                    <span className="text-gray-400 text-sm">
+                                      Pending
+                                    </span>
+                                  );
+                                }
+                              })()}
                             </td>
                           </tr>
                         ))}
@@ -784,15 +932,6 @@ export default function PublishResultsPage() {
                   </div>
                 )}
               </div>
-
-              {spotsMode === "exact" && spotsCount !== null && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                  <p className="text-sm text-gray-700">
-                    <span className="font-medium">Remaining spots:</span>{" "}
-                    {spotsCount}
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </div>

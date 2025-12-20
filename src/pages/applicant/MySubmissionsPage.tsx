@@ -76,10 +76,27 @@ export default function MySubmissionsPage() {
   const refreshResults = async () => {
     const { data, error } = await supabase.rpc("get_published_results_v1");
     if (!error && data) {
-      setResultsRows((data ?? []) as ResultsRow[]);
+      const allPubs = (data ?? []) as ResultsRow[];
       
-      // Load claiming configs for each program
-      const programIds = [...new Set((data as any[]).map(r => r.program_id))] as string[];
+      // Deduplicate: show only the most recent publication per application
+      // Group by application_id and pick the one with the latest published_at
+      const byApplication = new Map<string, ResultsRow>();
+      for (const pub of allPubs) {
+        const existing = byApplication.get(pub.application_id);
+        if (!existing || new Date(pub.published_at) > new Date(existing.published_at)) {
+          byApplication.set(pub.application_id, pub);
+        }
+      }
+      
+      // Convert back to array (most recent first)
+      const deduplicated = Array.from(byApplication.values()).sort(
+        (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+      );
+      
+      setResultsRows(deduplicated);
+      
+      // Load claiming configs for each program (use deduplicated data)
+      const programIds = [...new Set(deduplicated.map(r => r.program_id))] as string[];
       const configs: Record<string, any> = {};
       
       for (const pid of programIds) {
@@ -430,20 +447,27 @@ export default function MySubmissionsPage() {
                     const v = r.visibility;
                     const p = r.payload || {};
                     const config = programClaimingConfigs[r.program_id];
+                    const decision = (p.decision || "").toLowerCase();
+                    const claimableDecision = (config?.claimableDecision || "").toLowerCase();
+                    const decisionMatches = decision === claimableDecision;
                     
-                    // Check if ANY publication for this program has been claimed/declined
-                    // This ensures all publications show the same status
-                    const programResults = resultsRows.filter(rr => rr.program_id === r.program_id);
+                    // Only check publications that match the claimable decision
+                    // Filter to publications with matching decision first
+                    const programResults = resultsRows.filter(rr => {
+                      if (rr.program_id !== r.program_id) return false;
+                      const pubDecision = ((rr.payload?.decision || "") as string).toLowerCase();
+                      return pubDecision === claimableDecision;
+                    });
+                    
+                    // Check if any matching publication has been claimed/declined
                     const anyClaimed = programResults.some(rr => !!rr.spot_claimed_at);
                     const anyDeclined = programResults.some(rr => !!rr.spot_declined_at);
                     const claimedPublication = programResults.find(rr => !!rr.spot_claimed_at);
                     const declinedPublication = programResults.find(rr => !!rr.spot_declined_at);
                     
-                    const isClaimed = anyClaimed;
-                    const isDeclined = anyDeclined;
-                    const decision = (p.decision || "").toLowerCase();
-                    const claimableDecision = (config?.claimableDecision || "").toLowerCase();
-                    const decisionMatches = decision === claimableDecision;
+                    // Only show claimed/declined status if THIS publication's decision matches
+                    const isClaimed = decisionMatches && anyClaimed;
+                    const isDeclined = decisionMatches && anyDeclined;
                     const canClaim = config?.enabled && 
                                      decisionMatches && 
                                      !isClaimed && 
@@ -518,7 +542,8 @@ export default function MySubmissionsPage() {
                         )}
                         
                         {/* Spot Claiming Section */}
-                        {config?.enabled && (
+                        {/* Only show claiming section if decision matches claimable decision */}
+                        {config?.enabled && decisionMatches && (
                           <div className="mt-4 pt-4 border-t border-gray-200">
                             {isClaimed ? (
                               <div className="bg-green-50 border border-green-200 rounded-lg p-4">

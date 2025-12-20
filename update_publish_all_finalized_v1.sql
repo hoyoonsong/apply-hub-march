@@ -34,13 +34,30 @@ BEGIN
     RAISE EXCEPTION 'Not authorized';
   END IF;
 
-  SELECT ARRAY_AGG(x.application_id) INTO _app_ids
-  FROM (
-    SELECT q.application_id
-    FROM public.admin_finalized_queue q
-    WHERE q.program_id = p_program_id
-      AND (NOT p_only_unpublished OR q.already_published = false)
-  ) x;
+  -- Use the same logic as get_publish_queue to determine which reviews need publishing
+  SELECT ARRAY_AGG(a.id) INTO _app_ids
+  FROM public.applications a
+  JOIN public.application_reviews ar ON ar.application_id = a.id
+  LEFT JOIN public.application_publications ap ON ap.id = a.results_current_publication_id
+  WHERE a.program_id = p_program_id
+    AND ar.status = 'submitted'
+    AND (
+      -- If p_only_unpublished is true, only include reviews that need republishing
+      NOT p_only_unpublished
+      OR (
+        -- Review needs republishing if:
+        -- 1. No publication exists, OR
+        -- 2. Review was finalized AFTER the publication was published
+        ap.id IS NULL
+        OR (
+          -- Check if submitted_at is newer than published_at
+          (ar.submitted_at IS NOT NULL AND ar.submitted_at > ap.published_at)
+          OR
+          -- Fallback to updated_at if submitted_at is NULL
+          (ar.submitted_at IS NULL AND ar.updated_at > ap.published_at)
+        )
+      )
+    );
 
   IF _app_ids IS NULL OR array_length(_app_ids,1) IS NULL THEN
     RETURN;
