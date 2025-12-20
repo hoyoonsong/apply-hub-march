@@ -315,7 +315,7 @@ export default function ApplicationForm({
         setAppRow(updatedApp);
         localStorage.removeItem(`app:${applicationId}:answers`);
         alert("Application submitted!");
-        navigate("/");
+        navigate("/my-submissions");
       } else if (appRow.status === "submitted" && isEditing) {
         await saveApplication(applicationId!, answers);
         const updatedApp = await getApplication(applicationId!);

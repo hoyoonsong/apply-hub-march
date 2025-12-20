@@ -57,57 +57,90 @@ export default function MySubmissionsPage() {
   const [activeTab, setActiveTab] = useState<"applications" | "results">(
     "applications"
   );
-  const [resultsRows, setResultsRows] = useState<ResultsRow[]>([]);
+  // Group publications by program_id - each program can have multiple publications
+  const [resultsByProgram, setResultsByProgram] = useState<
+    Record<string, ResultsRow[]>
+  >({});
+  // Track which publication index is currently shown for each program (0 = latest)
+  const [currentPublicationIndex, setCurrentPublicationIndex] = useState<
+    Record<string, number>
+  >({});
   const [applicationsRows, setApplicationsRows] = useState<ApplicationRow[]>(
     []
   );
   const [loading, setLoading] = useState(false);
-  const [claimingLoading, setClaimingLoading] = useState<Record<string, boolean>>({});
+  const [claimingLoading, setClaimingLoading] = useState<
+    Record<string, boolean>
+  >({});
   const { user } = useAuth();
   const { hasUnread } = useUnreadNotifications();
-  
+
   // Store program claiming configs (deadline is now per-publication, not per-program)
-  const [programClaimingConfigs, setProgramClaimingConfigs] = useState<Record<string, {
-    enabled: boolean;
-    claimableDecision: string;
-    allowDecline: boolean;
-    spotsCount: number | null;
-    spotsMode: string | null;
-  }>>({});
+  const [programClaimingConfigs, setProgramClaimingConfigs] = useState<
+    Record<
+      string,
+      {
+        enabled: boolean;
+        claimableDecision: string;
+        allowDecline: boolean;
+        spotsCount: number | null;
+        spotsMode: string | null;
+      }
+    >
+  >({});
 
   const refreshResults = async () => {
     const { data, error } = await supabase.rpc("get_published_results_v1");
     if (!error && data) {
       const allPubs = (data ?? []) as ResultsRow[];
-      
-      // Deduplicate: show only the most recent publication per application
-      // Group by application_id and pick the one with the latest published_at
-      const byApplication = new Map<string, ResultsRow>();
+
+      // Group publications by program_id, sorted by published_at DESC (latest first)
+      const byProgram: Record<string, ResultsRow[]> = {};
       for (const pub of allPubs) {
-        const existing = byApplication.get(pub.application_id);
-        if (!existing || new Date(pub.published_at) > new Date(existing.published_at)) {
-          byApplication.set(pub.application_id, pub);
+        if (!byProgram[pub.program_id]) {
+          byProgram[pub.program_id] = [];
+        }
+        byProgram[pub.program_id].push(pub);
+      }
+
+      // Sort each program's publications by published_at DESC (latest first)
+      for (const programId in byProgram) {
+        byProgram[programId].sort(
+          (a, b) =>
+            new Date(b.published_at).getTime() -
+            new Date(a.published_at).getTime()
+        );
+      }
+
+      setResultsByProgram(byProgram);
+
+      // Initialize current index to 0 (latest) for each program
+      const newIndices: Record<string, number> = {};
+      for (const programId in byProgram) {
+        if (!(programId in currentPublicationIndex)) {
+          newIndices[programId] = 0;
+        } else {
+          // Keep existing index, but clamp to valid range
+          const maxIndex = byProgram[programId].length - 1;
+          newIndices[programId] = Math.min(
+            currentPublicationIndex[programId],
+            maxIndex
+          );
         }
       }
-      
-      // Convert back to array (most recent first)
-      const deduplicated = Array.from(byApplication.values()).sort(
-        (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
-      );
-      
-      setResultsRows(deduplicated);
-      
-      // Load claiming configs for each program (use deduplicated data)
-      const programIds = [...new Set(deduplicated.map(r => r.program_id))] as string[];
+      setCurrentPublicationIndex((prev) => ({ ...prev, ...newIndices }));
+
+      // Load claiming configs for each program
+      const programIds = Object.keys(byProgram);
       const configs: Record<string, any> = {};
-      
+
       for (const pid of programIds) {
         const { data: prg } = await supabase
           .from("programs")
           .select("metadata, spots_mode, spots_count")
           .eq("id", pid)
           .single();
-        
+
         if (prg) {
           const claiming = prg.metadata?.spotClaiming || {};
           configs[pid] = {
@@ -119,25 +152,28 @@ export default function MySubmissionsPage() {
           };
         }
       }
-      
+
       setProgramClaimingConfigs(configs);
     }
   };
-  
-  const handleClaimOrDecline = async (publicationId: string, action: "claim" | "decline") => {
+
+  const handleClaimOrDecline = async (
+    publicationId: string,
+    action: "claim" | "decline"
+  ) => {
     setClaimingLoading((prev) => ({ ...prev, [publicationId]: true }));
-    
+
     try {
       const { data, error } = await supabase.rpc("claim_or_decline_spot", {
         p_publication_id: publicationId,
         p_action: action,
       });
-      
+
       if (error) throw error;
-      
+
       // Refresh results to get updated status
       await refreshResults();
-      
+
       if (action === "claim") {
         alert("✅ Your spot has been claimed!");
       } else {
@@ -170,7 +206,7 @@ export default function MySubmissionsPage() {
         )
         .eq("user_id", user.id)
         .neq("status", "draft")
-        .order("created_at", { ascending: false });
+        .order("updated_at", { ascending: false });
 
       if (error) {
         console.error("Error fetching applications:", error);
@@ -187,7 +223,7 @@ export default function MySubmissionsPage() {
   // Load data on mount and when user changes
   useEffect(() => {
     if (!user?.id) return;
-    
+
     // Parallelize both refresh calls
     Promise.all([refreshResults(), refreshApplications()]);
   }, [user?.id]); // Only re-run when user changes, not on tab change
@@ -203,7 +239,7 @@ export default function MySubmissionsPage() {
         .update({ read_at: new Date().toISOString() })
         .eq("user_id", user.id)
         .is("read_at", null);
-      
+
       if (error) {
         console.error("Error marking notifications as read:", error);
       }
@@ -237,7 +273,7 @@ export default function MySubmissionsPage() {
         debouncedRefresh
       )
       .subscribe();
-      
+
     return () => {
       clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
@@ -358,11 +394,14 @@ export default function MySubmissionsPage() {
               <div className="space-y-3 md:space-y-4">
                 {applicationsRows.map((app) => {
                   // Check if results are published for this application
-                  const hasResults = resultsRows.some(
-                    (r) => r.application_id === app.id
-                  );
-                  const displayStatus = hasResults ? "results_released" : app.status;
-                  
+                  const hasResults =
+                    resultsByProgram[app.program_id]?.some(
+                      (r) => r.application_id === app.id
+                    ) || false;
+                  const displayStatus = hasResults
+                    ? "results_released"
+                    : app.status;
+
                   return (
                     <div
                       key={app.id}
@@ -377,7 +416,8 @@ export default function MySubmissionsPage() {
                             {app.programs.organizations.name}
                           </p>
                           <p className="text-xs text-gray-500 mt-2">
-                            Submitted: {new Date(app.created_at).toLocaleString()}
+                            Submitted:{" "}
+                            {new Date(app.created_at).toLocaleString()}
                           </p>
                         </div>
                         <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
@@ -412,7 +452,7 @@ export default function MySubmissionsPage() {
       {activeTab === "results" && (
         <div className="bg-white rounded-b-lg shadow-sm">
           <div className="p-3 md:p-6">
-            {resultsRows.length === 0 ? (
+            {Object.keys(resultsByProgram).length === 0 ? (
               <div className="text-center py-12 md:py-16">
                 <div className="mx-auto h-16 w-16 md:h-24 md:w-24 text-gray-300 mb-4 md:mb-6">
                   <svg
@@ -439,46 +479,173 @@ export default function MySubmissionsPage() {
               </div>
             ) : (
               <div className="space-y-4 md:space-y-6">
-                {resultsRows
+                {Object.entries(resultsByProgram)
                   .sort(
-                    (a, b) =>
-                      new Date(b.published_at).getTime() -
-                      new Date(a.published_at).getTime()
+                    ([, pubsA], [, pubsB]) =>
+                      new Date(pubsB[0]?.published_at || 0).getTime() -
+                      new Date(pubsA[0]?.published_at || 0).getTime()
                   )
-                  .map((r) => {
+                  .map(([programId, publications]) => {
+                    const currentIndex =
+                      currentPublicationIndex[programId] || 0;
+                    const r = publications[currentIndex];
+                    const totalPublications = publications.length;
+                    const hasMultiplePublications = totalPublications > 1;
+
+                    if (!r) return null;
                     const v = r.visibility;
                     const p = r.payload || {};
                     const config = programClaimingConfigs[r.program_id];
                     const decision = (p.decision || "").toLowerCase();
-                    const claimableDecision = (config?.claimableDecision || "").toLowerCase();
+                    const claimableDecision = (
+                      config?.claimableDecision || ""
+                    ).toLowerCase();
                     const decisionMatches = decision === claimableDecision;
-                    
+
                     // Use the new fields that check ALL publications for this application
                     // (not just the ones visible in the UI) to detect if spot was claimed/declined
                     // on any publication, even an older one that's not currently displayed
                     const anyClaimed = !!r.any_publication_claimed_at;
                     const anyDeclined = !!r.any_publication_declined_at;
-                    
+
                     // Only show claimed/declined status if THIS publication's decision matches
                     const isClaimed = decisionMatches && anyClaimed;
                     const isDeclined = decisionMatches && anyDeclined;
-                    const canClaim = config?.enabled && 
-                                     decisionMatches && 
-                                     !isClaimed && 
-                                     !isDeclined;
+                    const canClaim =
+                      config?.enabled &&
+                      decisionMatches &&
+                      !isClaimed &&
+                      !isDeclined;
                     // Use publication's deadline (per-publication, not program-level)
-                    const deadline = r.claim_deadline ? new Date(r.claim_deadline) : null;
-                    const deadlinePassed = deadline ? new Date() > deadline : false;
-                    const spotsAvailable = config?.spotsMode !== "exact" || (config?.spotsCount ?? 0) > 0;
-                    const showClaimButtons = canClaim && !deadlinePassed && spotsAvailable;
+                    const deadline = r.claim_deadline
+                      ? new Date(r.claim_deadline)
+                      : null;
+                    const deadlinePassed = deadline
+                      ? new Date() > deadline
+                      : false;
+                    const spotsAvailable =
+                      config?.spotsMode !== "exact" ||
+                      (config?.spotsCount ?? 0) > 0;
+                    const showClaimButtons =
+                      canClaim && !deadlinePassed && spotsAvailable;
                     // Only show deadline-related messages if decision matches claimable decision
-                    const showDeadlineMessage = config?.enabled && decisionMatches && deadlinePassed && !isClaimed && !isDeclined;
-                    
+                    const showDeadlineMessage =
+                      config?.enabled &&
+                      decisionMatches &&
+                      deadlinePassed &&
+                      !isClaimed &&
+                      !isDeclined;
+
+                    const goToPrevious = () => {
+                      if (currentIndex > 0) {
+                        setCurrentPublicationIndex((prev) => ({
+                          ...prev,
+                          [programId]: currentIndex - 1,
+                        }));
+                      }
+                    };
+
+                    const goToNext = () => {
+                      if (currentIndex < totalPublications - 1) {
+                        setCurrentPublicationIndex((prev) => ({
+                          ...prev,
+                          [programId]: currentIndex + 1,
+                        }));
+                      }
+                    };
+
                     return (
                       <div
-                        key={r.publication_id}
-                        className="border border-gray-200 rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow duration-200"
+                        key={`${programId}-${currentIndex}`}
+                        className="border border-gray-200 rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow duration-200 relative"
                       >
+                        {/* Carousel Navigation */}
+                        {hasMultiplePublications && (
+                          <div className="mb-4 pb-4 border-b border-gray-200">
+                            <div className="relative flex items-center justify-center mb-3">
+                              {/* Centered navigation buttons and text */}
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={goToPrevious}
+                                  disabled={currentIndex === 0}
+                                  className="p-2 rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                  aria-label="Previous publication"
+                                >
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 19l-7-7 7-7"
+                                    />
+                                  </svg>
+                                </button>
+                                <span className="text-sm text-gray-600 font-medium">
+                                  Publication {currentIndex + 1} of{" "}
+                                  {totalPublications}
+                                </span>
+                                <button
+                                  onClick={goToNext}
+                                  disabled={
+                                    currentIndex === totalPublications - 1
+                                  }
+                                  className="p-2 rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                  aria-label="Next publication"
+                                >
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 5l7 7-7 7"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                              {/* Latest/Past result badge - positioned absolutely on the right */}
+                              <div className="absolute right-0 text-xs text-gray-500">
+                                {currentIndex === 0 ? (
+                                  <span className="text-blue-600 font-medium">
+                                    Latest
+                                  </span>
+                                ) : (
+                                  <span>Past result</span>
+                                )}
+                              </div>
+                            </div>
+                            {/* Dot indicators */}
+                            <div className="flex items-center justify-center gap-2">
+                              {publications.map((_, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => {
+                                    setCurrentPublicationIndex((prev) => ({
+                                      ...prev,
+                                      [programId]: idx,
+                                    }));
+                                  }}
+                                  className={`transition-all duration-200 ${
+                                    idx === currentIndex
+                                      ? "w-8 h-2 bg-blue-600 rounded-full"
+                                      : "w-2 h-2 bg-gray-300 rounded-full hover:bg-gray-400"
+                                  }`}
+                                  aria-label={`Go to publication ${idx + 1}`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex justify-between items-start mb-3 md:mb-4">
                           <div>
                             <h3 className="text-base md:text-lg font-semibold text-gray-900">
@@ -518,7 +685,10 @@ export default function MySubmissionsPage() {
                                 Reviewer Comments:
                               </div>
                               <div className="text-gray-700 leading-relaxed">
-                                <AutoLinkText text={p.comments} preserveWhitespace={true} />
+                                <AutoLinkText
+                                  text={p.comments}
+                                  preserveWhitespace={true}
+                                />
                               </div>
                             </div>
                           )}
@@ -530,11 +700,14 @@ export default function MySubmissionsPage() {
                               Additional Message
                             </div>
                             <div className="text-amber-700">
-                              <AutoLinkText text={v.customMessage} preserveWhitespace={true} />
+                              <AutoLinkText
+                                text={v.customMessage}
+                                preserveWhitespace={true}
+                              />
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Spot Claiming Section */}
                         {/* Only show claiming section if decision matches claimable decision */}
                         {config?.enabled && decisionMatches && (
@@ -542,68 +715,105 @@ export default function MySubmissionsPage() {
                             {isClaimed ? (
                               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-green-600 font-semibold">✅ Spot Claimed</span>
+                                  <span className="text-green-600 font-semibold">
+                                    ✅ Spot Claimed
+                                  </span>
                                 </div>
                                 <p className="text-sm text-green-700">
-                                  Your spot was successfully claimed on {r.any_publication_claimed_at ? new Date(r.any_publication_claimed_at).toLocaleString() : '—'}
+                                  Your spot was successfully claimed on{" "}
+                                  {r.any_publication_claimed_at
+                                    ? new Date(
+                                        r.any_publication_claimed_at
+                                      ).toLocaleString()
+                                    : "—"}
                                 </p>
                               </div>
                             ) : isDeclined ? (
                               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                                 <p className="text-sm text-gray-700">
-                                  You declined this offer on {r.any_publication_declined_at ? new Date(r.any_publication_declined_at).toLocaleString() : '—'}
+                                  You declined this offer on{" "}
+                                  {r.any_publication_declined_at
+                                    ? new Date(
+                                        r.any_publication_declined_at
+                                      ).toLocaleString()
+                                    : "—"}
                                 </p>
                               </div>
                             ) : showDeadlineMessage ? (
                               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                                 <p className="text-sm text-gray-700">
-                                  ⏰ Time has run out. The deadline to claim your spot has passed.
+                                  ⏰ Time has run out. The deadline to claim
+                                  your spot has passed.
                                 </p>
                               </div>
                             ) : !spotsAvailable && decisionMatches ? (
                               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                                 <p className="text-sm text-red-700">
-                                  ❌ No spots available. All spots have been claimed.
+                                  ❌ No spots available. All spots have been
+                                  claimed.
                                 </p>
                               </div>
                             ) : showClaimButtons ? (
                               <div className="space-y-3">
                                 {deadline && (
                                   <p className="text-xs text-gray-600">
-                                    Claim by: {deadline.toLocaleString()} 
-                                    ({Math.ceil((deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining)
+                                    Claim by: {deadline.toLocaleString()}(
+                                    {Math.ceil(
+                                      (deadline.getTime() -
+                                        new Date().getTime()) /
+                                        (1000 * 60 * 60 * 24)
+                                    )}{" "}
+                                    days remaining)
                                   </p>
                                 )}
                                 <div className="flex gap-3">
                                   <button
-                                    onClick={() => handleClaimOrDecline(r.publication_id, "claim")}
+                                    onClick={() =>
+                                      handleClaimOrDecline(
+                                        r.publication_id,
+                                        "claim"
+                                      )
+                                    }
                                     disabled={claimingLoading[r.publication_id]}
                                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                                   >
-                                    {claimingLoading[r.publication_id] ? "Processing..." : "Claim My Spot"}
+                                    {claimingLoading[r.publication_id]
+                                      ? "Processing..."
+                                      : "Claim My Spot"}
                                   </button>
                                   {config.allowDecline && (
                                     <button
-                                      onClick={() => handleClaimOrDecline(r.publication_id, "decline")}
-                                      disabled={claimingLoading[r.publication_id]}
+                                      onClick={() =>
+                                        handleClaimOrDecline(
+                                          r.publication_id,
+                                          "decline"
+                                        )
+                                      }
+                                      disabled={
+                                        claimingLoading[r.publication_id]
+                                      }
                                       className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                                     >
-                                      {claimingLoading[r.publication_id] ? "Processing..." : "Decline Offer"}
+                                      {claimingLoading[r.publication_id]
+                                        ? "Processing..."
+                                        : "Decline Offer"}
                                     </button>
                                   )}
                                 </div>
-                                {config.spotsMode === "exact" && config.spotsCount !== null && (
-                                  <p className="text-xs text-gray-500">
-                                    Remaining spots: {config.spotsCount}
-                                  </p>
-                                )}
+                                {config.spotsMode === "exact" &&
+                                  config.spotsCount !== null && (
+                                    <p className="text-xs text-gray-500">
+                                      Remaining spots: {config.spotsCount}
+                                    </p>
+                                  )}
                               </div>
                             ) : null}
                           </div>
                         )}
                       </div>
                     );
-                  })}
+                  })
+                  .filter(Boolean)}
               </div>
             )}
           </div>
