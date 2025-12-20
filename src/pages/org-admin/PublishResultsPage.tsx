@@ -75,6 +75,8 @@ export default function PublishResultsPage() {
     spot_claimed_at: string | null;
     spot_declined_at: string | null;
     decision: string | null;
+    any_publication_claimed_at: string | null;
+    any_publication_declined_at: string | null;
   };
   const [allPublications, setAllPublications] = useState<PublicationRow[]>([]);
   const [editingDeadline, setEditingDeadline] = useState<string | null>(null);
@@ -176,12 +178,16 @@ export default function PublishResultsPage() {
 
   // Deduplicate publications: if same applicant has claimed, show only that. Otherwise show most recent.
   // Only include publications that match the claimable decision
+  // Note: If a publication's decision is edited away from the claimable decision, it will disappear from this table.
+  // If it's edited back to the claimable decision, it will reappear with the correct claim status
+  // (because safeguard fields track claims across ALL publications for the application)
   const deduplicatedPublications = useMemo(() => {
     if (!claimableDecision) return [];
 
     const claimable = claimableDecision.toLowerCase().trim();
 
     // First, filter to only publications with matching decision (strict check)
+    // This ensures publications with non-matching decisions are excluded
     const matchingPublications = allPublications.filter((pub) => {
       const pubDecision = (pub.decision || "").toLowerCase().trim();
       const matches =
@@ -209,13 +215,20 @@ export default function PublishResultsPage() {
     // For each applicant, pick the right publication
     const result: PublicationRow[] = [];
     for (const [, pubs] of byApplicant.entries()) {
-      // If any publication is claimed, show only the claimed one
-      const claimed = pubs.find((p) => p.spot_claimed_at);
+      // If any publication for this application has been claimed, show the claimed one
+      // Use safeguard field to check across ALL publications for this application
+      const claimed = pubs.find((p) => p.any_publication_claimed_at);
       if (claimed) {
         result.push(claimed);
       } else {
-        // Otherwise, show the most recent one (they're already sorted by published_at DESC)
-        result.push(pubs[0]);
+        // Check for declined status using safeguard field
+        const declined = pubs.find((p) => p.any_publication_declined_at);
+        if (declined) {
+          result.push(declined);
+        } else {
+          // Otherwise, show the most recent one (they're already sorted by published_at DESC)
+          result.push(pubs[0]);
+        }
       }
     }
 
@@ -894,14 +907,21 @@ export default function PublishResultsPage() {
                                   );
                                 }
 
+                                // Use safeguard fields to check if ANY publication for this application has been claimed/declined
+                                // This ensures we show the correct status even if claim was made on a different publication
+                                const anyClaimed =
+                                  !!pub.any_publication_claimed_at;
+                                const anyDeclined =
+                                  !!pub.any_publication_declined_at;
+
                                 // Only show status labels for matching decisions
-                                if (pub.spot_claimed_at) {
+                                if (anyClaimed) {
                                   return (
                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                       Claimed
                                     </span>
                                   );
-                                } else if (pub.spot_declined_at) {
+                                } else if (anyDeclined) {
                                   return (
                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                       Declined

@@ -64,6 +64,18 @@ BEGIN
     RAISE EXCEPTION 'Program not found';
   END IF;
 
+  -- SAFEGUARD: Check if any other publication for this application has already been claimed or declined
+  -- This prevents claiming multiple times even if there are multiple publications with the same decision
+  IF EXISTS (
+    SELECT 1 
+    FROM public.application_publications 
+    WHERE application_id = _app_id 
+      AND id != p_publication_id 
+      AND (spot_claimed_at IS NOT NULL OR spot_declined_at IS NOT NULL)
+  ) THEN
+    RAISE EXCEPTION 'You have already claimed or declined a spot for this application';
+  END IF;
+
   -- Get program and claiming config
   SELECT * INTO _program FROM public.programs WHERE id = _program_id;
   _claiming_config := _program.metadata->'spotClaiming';

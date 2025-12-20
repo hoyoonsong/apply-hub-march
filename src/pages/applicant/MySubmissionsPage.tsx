@@ -27,6 +27,8 @@ type ResultsRow = {
   spot_claimed_at?: string | null;
   spot_declined_at?: string | null;
   claim_deadline?: string | null;
+  any_publication_claimed_at?: string | null;
+  any_publication_declined_at?: string | null;
 };
 
 type ApplicationRow = {
@@ -451,19 +453,11 @@ export default function MySubmissionsPage() {
                     const claimableDecision = (config?.claimableDecision || "").toLowerCase();
                     const decisionMatches = decision === claimableDecision;
                     
-                    // Only check publications that match the claimable decision
-                    // Filter to publications with matching decision first
-                    const programResults = resultsRows.filter(rr => {
-                      if (rr.program_id !== r.program_id) return false;
-                      const pubDecision = ((rr.payload?.decision || "") as string).toLowerCase();
-                      return pubDecision === claimableDecision;
-                    });
-                    
-                    // Check if any matching publication has been claimed/declined
-                    const anyClaimed = programResults.some(rr => !!rr.spot_claimed_at);
-                    const anyDeclined = programResults.some(rr => !!rr.spot_declined_at);
-                    const claimedPublication = programResults.find(rr => !!rr.spot_claimed_at);
-                    const declinedPublication = programResults.find(rr => !!rr.spot_declined_at);
+                    // Use the new fields that check ALL publications for this application
+                    // (not just the ones visible in the UI) to detect if spot was claimed/declined
+                    // on any publication, even an older one that's not currently displayed
+                    const anyClaimed = !!r.any_publication_claimed_at;
+                    const anyDeclined = !!r.any_publication_declined_at;
                     
                     // Only show claimed/declined status if THIS publication's decision matches
                     const isClaimed = decisionMatches && anyClaimed;
@@ -551,13 +545,13 @@ export default function MySubmissionsPage() {
                                   <span className="text-green-600 font-semibold">✅ Spot Claimed</span>
                                 </div>
                                 <p className="text-sm text-green-700">
-                                  Your spot was successfully claimed on {claimedPublication ? new Date(claimedPublication.spot_claimed_at!).toLocaleString() : '—'}
+                                  Your spot was successfully claimed on {r.any_publication_claimed_at ? new Date(r.any_publication_claimed_at).toLocaleString() : '—'}
                                 </p>
                               </div>
                             ) : isDeclined ? (
                               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                                 <p className="text-sm text-gray-700">
-                                  You declined this offer on {declinedPublication ? new Date(declinedPublication.spot_declined_at!).toLocaleString() : '—'}
+                                  You declined this offer on {r.any_publication_declined_at ? new Date(r.any_publication_declined_at).toLocaleString() : '—'}
                                 </p>
                               </div>
                             ) : showDeadlineMessage ? (
