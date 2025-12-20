@@ -6,11 +6,13 @@
 -- Add columns to application_publications table
 ALTER TABLE public.application_publications
 ADD COLUMN IF NOT EXISTS spot_claimed_at timestamp with time zone,
-ADD COLUMN IF NOT EXISTS spot_declined_at timestamp with time zone;
+ADD COLUMN IF NOT EXISTS spot_declined_at timestamp with time zone,
+ADD COLUMN IF NOT EXISTS claim_deadline timestamp with time zone;
 
 -- Add comments for documentation
 COMMENT ON COLUMN public.application_publications.spot_claimed_at IS 'Timestamp when applicant claimed their spot';
 COMMENT ON COLUMN public.application_publications.spot_declined_at IS 'Timestamp when applicant declined their spot';
+COMMENT ON COLUMN public.application_publications.claim_deadline IS 'Deadline for claiming spot (per publication)';
 
 -- ============================================
 -- RPC FUNCTION: Claim or Decline Spot
@@ -73,11 +75,6 @@ BEGIN
 
   -- Extract claiming settings
   _claimable_decision := _claiming_config->>'claimableDecision';
-  _claim_deadline := CASE 
-    WHEN _claiming_config->>'claimDeadline' IS NOT NULL 
-    THEN (_claiming_config->>'claimDeadline')::timestamp with time zone
-    ELSE NULL
-  END;
   _allow_decline := COALESCE((_claiming_config->>'allowDecline')::boolean, true);
   _spots_mode := _program.spots_mode;
   _spots_count := _program.spots_count;
@@ -86,6 +83,9 @@ BEGIN
   IF LOWER(TRIM(COALESCE(_decision, ''))) != LOWER(TRIM(_claimable_decision)) THEN
     RAISE EXCEPTION 'Your decision does not match the claimable decision';
   END IF;
+
+  -- Use publication's deadline (per-publication, not program-level)
+  _claim_deadline := _pub.claim_deadline;
 
   -- Validate deadline (if set)
   IF _claim_deadline IS NOT NULL AND now() > _claim_deadline THEN

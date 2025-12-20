@@ -7,7 +7,8 @@ CREATE OR REPLACE FUNCTION public.publish_all_finalized_for_program_v1(
   p_program_id uuid, 
   p_visibility jsonb DEFAULT jsonb_build_object('decision', true, 'score', false, 'comments', false, 'customMessage', NULL::unknown), 
   p_only_unpublished boolean DEFAULT true,
-  p_acceptance_tag text DEFAULT NULL  -- NEW PARAMETER
+  p_acceptance_tag text DEFAULT NULL,
+  p_claim_deadline timestamp with time zone DEFAULT NULL
 )
 RETURNS SETOF application_publications
 LANGUAGE plpgsql
@@ -45,8 +46,8 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Pass through the acceptance_tag to publish_results_v1
-  RETURN QUERY SELECT * FROM public.publish_results_v1(_app_ids, p_visibility, p_acceptance_tag);
+  -- Pass through the acceptance_tag and claim_deadline to publish_results_v1
+  RETURN QUERY SELECT * FROM public.publish_results_v1(_app_ids, p_visibility, p_acceptance_tag, p_claim_deadline);
 END;
 $function$;
 

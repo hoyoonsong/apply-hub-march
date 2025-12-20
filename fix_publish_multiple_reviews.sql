@@ -1,7 +1,11 @@
 -- ============================================
--- UPDATE PUBLISH FUNCTIONS TO SKIP AUTO-DECREMENT WHEN CLAIMING IS ENABLED
+-- FIX PUBLISH FUNCTION FOR MULTIPLE REVIEWERS
+-- Ensures publish_results_v1 handles multiple reviews correctly
 -- ============================================
 
+-- Update publish_results_v1 to get the most recent submitted review
+-- This is needed because after fixing the constraint, multiple reviewers
+-- can review the same application
 CREATE OR REPLACE FUNCTION public.publish_results_v1(
   p_application_ids uuid[], 
   p_visibility jsonb DEFAULT jsonb_build_object('decision', true, 'score', false, 'comments', false, 'customMessage', NULL::unknown),
@@ -53,13 +57,17 @@ BEGIN
     END IF;
 
     -- gather review snapshot - CHECK BOTH decision column AND ratings JSONB
+    -- Get the most recent submitted review (if multiple reviewers exist)
     SELECT 
       COALESCE(r.decision, (r.ratings->>'decision')::text),
       r.score, 
       r.comments
       INTO _decision, _score, _comments
     FROM public.application_reviews r
-    WHERE r.application_id = _app_id;
+    WHERE r.application_id = _app_id
+      AND r.status = 'submitted'
+    ORDER BY r.submitted_at DESC NULLS LAST, r.updated_at DESC
+    LIMIT 1;
 
     _payload := jsonb_build_object(
       'decision', _decision,

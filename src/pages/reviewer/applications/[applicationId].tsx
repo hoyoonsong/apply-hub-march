@@ -106,11 +106,14 @@ export default function ReviewerApplication() {
           // Continue with defaults
         }
 
-        // Load existing review if it exists
+        // Load existing review if it exists (filter by current reviewer)
+        // Load existing review (collaborative - get most recent)
         const { data: existingReview } = await supabase
           .from("application_reviews")
           .select("*")
           .eq("application_id", applicationId!)
+          .order("updated_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (existingReview) {

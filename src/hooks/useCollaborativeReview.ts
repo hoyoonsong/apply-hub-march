@@ -195,12 +195,14 @@ export function useCollaborativeReview(appId: string) {
 
       setAnswers(appData?.answers ?? {});
 
-      // Load review data directly
+      // Load review data directly (collaborative - get most recent review)
       const { data: reviewData, error: reviewError } = await supabase
         .from("application_reviews")
         .select("*")
         .eq("application_id", appId)
-        .single();
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (reviewError && reviewError.code !== "PGRST116") {
         console.error("Error loading review:", reviewError);
@@ -433,9 +435,16 @@ export function useCollaborativeReview(appId: string) {
         const submitDecision = next.decision ?? (review as any)?.decision ?? null;
         submitParams.p_decision = submitDecision;
 
-        const { error } = await supabase.rpc("app_upsert_review_v1", submitParams);
+        const { error, data } = await supabase.rpc("app_upsert_review_v1", submitParams);
 
         if (!error) {
+          // Update review state immediately with submitted status
+          setReview((prev) => ({
+            ...prev,
+            status: "submitted" as const,
+            submitted_at: data?.submitted_at || new Date().toISOString(),
+            updated_at: data?.updated_at || new Date().toISOString(),
+          }));
           // Record save time to prevent double reload from Realtime
           (window as any).lastSaveTime = Date.now();
           // Refresh data to get updated reviewer_name and updated_at
@@ -486,6 +495,12 @@ export function useCollaborativeReview(appId: string) {
         setSaving("error");
         setError(error.message || "Failed to unfinalize review");
       } else {
+        // Update review state immediately with draft status
+        setReview((prev) => ({
+          ...prev,
+          status: "draft" as const,
+          updated_at: data?.updated_at || new Date().toISOString(),
+        }));
         // Record save time to prevent double reload from Realtime
         (window as any).lastSaveTime = Date.now();
         // Refresh data to get updated reviewer_name and updated_at

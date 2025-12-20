@@ -16,7 +16,8 @@ RETURNS TABLE (
   visibility jsonb,
   payload jsonb,
   spot_claimed_at timestamp with time zone,
-  spot_declined_at timestamp with time zone
+  spot_declined_at timestamp with time zone,
+  claim_deadline timestamp with time zone
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -33,7 +34,8 @@ BEGIN
     ap.visibility,
     ap.payload,
     ap.spot_claimed_at,
-    ap.spot_declined_at
+    ap.spot_declined_at,
+    ap.claim_deadline
   FROM public.application_publications ap
   JOIN public.applications a ON a.id = ap.application_id
   JOIN public.programs p ON p.id = a.program_id

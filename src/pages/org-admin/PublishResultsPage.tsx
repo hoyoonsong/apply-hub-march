@@ -48,7 +48,13 @@ export default function PublishResultsPage() {
   // Spot claiming settings
   const [claimingEnabled, setClaimingEnabled] = useState<boolean>(false);
   const [claimableDecision, setClaimableDecision] = useState<string>("");
-  const [claimDeadline, setClaimDeadline] = useState<string>("");
+
+  // Modal for deadline input when publishing
+  const [showDeadlineModal, setShowDeadlineModal] = useState<boolean>(false);
+  const [pendingPublishAction, setPendingPublishAction] = useState<
+    "all" | "selected" | null
+  >(null);
+  const [publishDeadline, setPublishDeadline] = useState<string>("");
 
   // Helper: Convert datetime-local to ISO string (preserves local time intent)
   const toISOString = (datetimeLocal: string): string | null => {
@@ -59,31 +65,19 @@ export default function PublishResultsPage() {
     return date.toISOString();
   };
 
-  // Helper: Convert ISO string to datetime-local format
-  const toDateTimeLocal = (iso: string | null | undefined): string => {
-    if (!iso) return "";
-    const date = new Date(iso);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  // All publications data for spreadsheet
+  type PublicationRow = {
+    publication_id: string;
+    application_id: string;
+    applicant_name: string;
+    published_at: string;
+    claim_deadline: string | null;
+    spot_claimed_at: string | null;
+    spot_declined_at: string | null;
   };
-
-  // Claiming status data
-  const [claimingStatus, setClaimingStatus] = useState<{
-    claimed: Array<{
-      publication_id: string;
-      applicant_name: string;
-      claimed_at: string;
-    }>;
-    declined: Array<{
-      publication_id: string;
-      applicant_name: string;
-      declined_at: string;
-    }>;
-  }>({ claimed: [], declined: [] });
+  const [allPublications, setAllPublications] = useState<PublicationRow[]>([]);
+  const [editingDeadline, setEditingDeadline] = useState<string | null>(null);
+  const [editingDeadlineValue, setEditingDeadlineValue] = useState<string>("");
 
   // Prefill from program metadata right-rail reviewer config
   useEffect(() => {
@@ -109,55 +103,37 @@ export default function PublishResultsPage() {
         const claiming = prg.metadata?.spotClaiming || {};
         setClaimingEnabled(claiming.enabled || false);
         setClaimableDecision(claiming.claimableDecision || "");
-        // Convert ISO string back to datetime-local format for the input
-        // Handle both ISO strings (new format) and datetime-local strings (legacy)
-        if (claiming.claimDeadline) {
-          const deadlineStr = claiming.claimDeadline;
-          // Check if it's an ISO string (has 'Z' or timezone offset like '+00:00' or ends with milliseconds)
-          const isISO =
-            deadlineStr.includes("Z") ||
-            deadlineStr.match(/[+-]\d{2}:\d{2}$/) ||
-            deadlineStr.includes(".");
-          if (isISO) {
-            // ISO format, convert to datetime-local
-            setClaimDeadline(toDateTimeLocal(deadlineStr));
-          } else {
-            // Already in datetime-local format, use as-is
-            setClaimDeadline(deadlineStr);
-          }
-        } else {
-          setClaimDeadline("");
-        }
       }
     })();
   }, [programId]);
 
-  // Load claiming status
-  useEffect(() => {
-    if (!programId) return;
-    (async () => {
-      const { data, error } = await supabase.rpc("get_spot_claiming_status", {
+  // Load all publications (only for claimable decision)
+  const loadPublications = async () => {
+    if (!programId || !claimableDecision) {
+      setAllPublications([]);
+      return;
+    }
+
+    // Load all publications with claimable decision only
+    const { data: pubData, error: pubError } = await supabase.rpc(
+      "get_all_publications_for_program",
+      {
         p_program_id: programId,
-      });
-      if (!error && data) {
-        const claimed = (data as any[])
-          .filter((r) => r.claimed_at)
-          .map((r) => ({
-            publication_id: r.publication_id,
-            applicant_name: r.applicant_name,
-            claimed_at: r.claimed_at,
-          }));
-        const declined = (data as any[])
-          .filter((r) => r.declined_at)
-          .map((r) => ({
-            publication_id: r.publication_id,
-            applicant_name: r.applicant_name,
-            declined_at: r.declined_at,
-          }));
-        setClaimingStatus({ claimed, declined });
+        p_claimable_decision: claimableDecision,
       }
-    })();
-  }, [programId]);
+    );
+    if (pubError) {
+      console.error("Error loading publications:", pubError);
+      // Still set empty array so UI doesn't break
+      setAllPublications([]);
+    } else if (pubData) {
+      setAllPublications(pubData as PublicationRow[]);
+    }
+  };
+
+  useEffect(() => {
+    loadPublications();
+  }, [programId, claimableDecision]);
 
   const load = async () => {
     setLoading(true);
@@ -208,12 +184,18 @@ export default function PublishResultsPage() {
   const isFiltered = useMemo(() => decisionFilter !== "all", [decisionFilter]);
 
   const publishAll = async () => {
-    await confirmPublish("all");
+    await handlePublishClick("all");
   };
 
   const publishSelected = async () => {
     if (selectedIds.length === 0) return;
-    await confirmPublish("selected");
+    await handlePublishClick("selected");
+  };
+
+  const handleDeadlineModalConfirm = async () => {
+    if (pendingPublishAction) {
+      await confirmPublish(pendingPublishAction, publishDeadline || null);
+    }
   };
 
   const saveClaimingSettings = async () => {
@@ -231,7 +213,6 @@ export default function PublishResultsPage() {
     const spotClaiming = {
       enabled: claimingEnabled,
       claimableDecision: claimableDecision,
-      claimDeadline: toISOString(claimDeadline), // Convert to ISO string for storage
       allowDecline: true, // Always allow decline responses
     };
 
@@ -252,10 +233,15 @@ export default function PublishResultsPage() {
     }
   };
 
-  const confirmPublish = async (action: "all" | "selected") => {
+  const confirmPublish = async (
+    action: "all" | "selected",
+    deadline?: string | null
+  ) => {
     setLoading(true);
 
     try {
+      const claimDeadlineISO = deadline ? toISOString(deadline) : null;
+
       if (action === "all") {
         const { data, error } = await supabase.rpc(
           "publish_all_finalized_for_program_v1",
@@ -263,6 +249,7 @@ export default function PublishResultsPage() {
             p_program_id: programId,
             p_visibility: visibility,
             p_only_unpublished: onlyUnpublished,
+            p_claim_deadline: claimDeadlineISO,
           }
         );
         if (error) throw error;
@@ -271,39 +258,102 @@ export default function PublishResultsPage() {
         const { data, error } = await supabase.rpc("publish_results_v1", {
           p_application_ids: selectedIds,
           p_visibility: visibility,
+          p_claim_deadline: claimDeadlineISO,
         });
         if (error) throw error;
         alert(`Published ${data?.length ?? 0} selected result(s).`);
       }
       load();
-      // Reload claiming status
-      const { data: statusData } = await supabase.rpc(
-        "get_spot_claiming_status",
-        {
-          p_program_id: programId,
-        }
-      );
-      if (statusData) {
-        const claimed = (statusData as any[])
-          .filter((r) => r.claimed_at)
-          .map((r) => ({
-            publication_id: r.publication_id,
-            applicant_name: r.applicant_name,
-            claimed_at: r.claimed_at,
-          }));
-        const declined = (statusData as any[])
-          .filter((r) => r.declined_at)
-          .map((r) => ({
-            publication_id: r.publication_id,
-            applicant_name: r.applicant_name,
-            declined_at: r.declined_at,
-          }));
-        setClaimingStatus({ claimed, declined });
-      }
+      // Reload publications
+      await loadPublications();
     } catch (error: any) {
       alert(error.message || "Failed to publish results");
     } finally {
       setLoading(false);
+      setShowDeadlineModal(false);
+      setPendingPublishAction(null);
+      setPublishDeadline("");
+    }
+  };
+
+  const handlePublishClick = async (action: "all" | "selected") => {
+    // Check if claiming is enabled and if any selected rows have the claimable decision
+    if (claimingEnabled && claimableDecision) {
+      let hasClaimableDecision = false;
+
+      if (action === "all") {
+        // For "all", check if any row in the filtered list has the claimable decision
+        hasClaimableDecision = rows.some(
+          (r) =>
+            (r.decision ?? "").toLowerCase() === claimableDecision.toLowerCase()
+        );
+      } else {
+        // For "selected", check if any selected row has the claimable decision
+        hasClaimableDecision = rows
+          .filter((r) => selected[r.application_id])
+          .some(
+            (r) =>
+              (r.decision ?? "").toLowerCase() ===
+              claimableDecision.toLowerCase()
+          );
+      }
+
+      if (hasClaimableDecision) {
+        // Show modal to set deadline
+        setPendingPublishAction(action);
+        setShowDeadlineModal(true);
+        return;
+      }
+    }
+
+    // No claimable decision in selection, proceed without deadline
+    await confirmPublish(action, null);
+  };
+
+  // Helper: Convert ISO string to datetime-local format
+  const toDateTimeLocal = (isoString: string | null): string => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    // Format as YYYY-MM-DDTHH:mm
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const startEditingDeadline = (
+    pubId: string,
+    currentDeadline: string | null
+  ) => {
+    setEditingDeadline(pubId);
+    setEditingDeadlineValue(toDateTimeLocal(currentDeadline));
+  };
+
+  const cancelEditingDeadline = () => {
+    setEditingDeadline(null);
+    setEditingDeadlineValue("");
+  };
+
+  const saveDeadline = async (pubId: string) => {
+    const deadlineISO = editingDeadlineValue
+      ? toISOString(editingDeadlineValue)
+      : null;
+
+    // Use RPC function (SECURITY DEFINER bypasses RLS)
+    const { error } = await supabase.rpc("update_publication_deadline", {
+      p_publication_id: pubId,
+      p_deadline: deadlineISO,
+    });
+
+    if (error) {
+      alert("Failed to update deadline: " + error.message);
+    } else {
+      // Reload publications
+      await loadPublications();
+      setEditingDeadline(null);
+      setEditingDeadlineValue("");
     }
   };
 
@@ -606,70 +656,134 @@ export default function PublishResultsPage() {
                   <span className="font-medium">Decision:</span>{" "}
                   <span className="font-semibold">{claimableDecision}</span>
                 </p>
-                {claimDeadline && (
-                  <p className="text-sm text-gray-700">
-                    <span className="font-medium">Deadline:</span>{" "}
-                    {new Date(claimDeadline).toLocaleString()}
-                    {new Date(claimDeadline) > new Date() && (
-                      <span className="ml-2 text-gray-600">
-                        (
-                        {Math.ceil(
-                          (new Date(claimDeadline).getTime() -
-                            new Date().getTime()) /
-                            (1000 * 60 * 60 * 24)
-                        )}{" "}
-                        days remaining)
-                      </span>
-                    )}
-                  </p>
-                )}
+                <p className="text-sm text-gray-700 mt-1">
+                  <span className="font-medium">Decline responses:</span>{" "}
+                  <span className="font-semibold">Allowed</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Note: Deadlines are set per publication when publishing
+                  results.
+                </p>
               </div>
 
-              {claimingStatus.claimed.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
-                    Claimed Spots ({claimingStatus.claimed.length})
-                  </h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {claimingStatus.claimed.map((item) => (
-                      <div
-                        key={item.publication_id}
-                        className="flex justify-between items-center p-2 bg-green-50 rounded text-sm"
-                      >
-                        <span className="text-gray-900">
-                          {item.applicant_name}
-                        </span>
-                        <span className="text-gray-500 text-xs">
-                          {new Date(item.claimed_at).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
+              {/* Publications Spreadsheet */}
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                  All Publications ({allPublications.length})
+                </h4>
+                {allPublications.length === 0 ? (
+                  <p className="text-sm text-gray-500">No publications yet.</p>
+                ) : (
+                  <div className="overflow-auto rounded-lg border border-gray-200 max-h-96">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Applicant
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Published
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Deadline
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {allPublications.map((pub) => (
+                          <tr
+                            key={pub.publication_id}
+                            className="hover:bg-gray-50"
+                          >
+                            <td className="px-3 py-2 text-sm text-gray-900">
+                              {pub.applicant_name}
+                            </td>
+                            <td className="px-3 py-2 text-sm text-gray-500">
+                              {pub.published_at
+                                ? new Date(pub.published_at).toLocaleString()
+                                : "—"}
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              {editingDeadline === pub.publication_id ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="datetime-local"
+                                    value={editingDeadlineValue}
+                                    onChange={(e) =>
+                                      setEditingDeadlineValue(e.target.value)
+                                    }
+                                    className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() =>
+                                      saveDeadline(pub.publication_id)
+                                    }
+                                    className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={cancelEditingDeadline}
+                                    className="text-gray-600 hover:text-gray-800 text-xs"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-900">
+                                    {pub.claim_deadline
+                                      ? new Date(
+                                          pub.claim_deadline
+                                        ).toLocaleString()
+                                      : "—"}
+                                  </span>
+                                  <button
+                                    onClick={() =>
+                                      startEditingDeadline(
+                                        pub.publication_id,
+                                        pub.claim_deadline
+                                      )
+                                    }
+                                    className="text-blue-600 hover:text-blue-800 text-xs"
+                                    title="Edit deadline"
+                                  >
+                                    ✏️
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              {pub.spot_claimed_at ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Claimed
+                                </span>
+                              ) : pub.spot_declined_at ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  Declined
+                                </span>
+                              ) : pub.claim_deadline &&
+                                new Date(pub.claim_deadline) < new Date() ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                  Missed
+                                </span>
+                              ) : (
+                                <span className="text-gray-400 text-sm">
+                                  Pending
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                </div>
-              )}
-
-              {claimingStatus.declined.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
-                    Declined Offers ({claimingStatus.declined.length})
-                  </h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {claimingStatus.declined.map((item) => (
-                      <div
-                        key={item.publication_id}
-                        className="flex justify-between items-center p-2 bg-red-50 rounded text-sm"
-                      >
-                        <span className="text-gray-900">
-                          {item.applicant_name}
-                        </span>
-                        <span className="text-gray-500 text-xs">
-                          {new Date(item.declined_at).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {spotsMode === "exact" && spotsCount !== null && (
                 <div className="mt-4 p-3 bg-gray-50 rounded-md">
@@ -785,21 +899,6 @@ export default function PublishResultsPage() {
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Claim deadline (optional)
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={claimDeadline}
-                        onChange={(e) => setClaimDeadline(e.target.value)}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Leave empty to keep claiming open until spots are full
-                      </p>
-                    </div>
-
                     <button
                       onClick={saveClaimingSettings}
                       className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -813,6 +912,53 @@ export default function PublishResultsPage() {
           </div>
         </aside>
       </div>
+
+      {/* Deadline Modal */}
+      {showDeadlineModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Set Claim Deadline
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              You're publishing results with the "{claimableDecision}" decision.
+              Set a deadline for applicants to claim their spots (optional).
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Claim deadline (optional)
+              </label>
+              <input
+                type="datetime-local"
+                value={publishDeadline}
+                onChange={(e) => setPublishDeadline(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Leave empty to keep claiming open until spots are full
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeadlineModal(false);
+                  setPendingPublishAction(null);
+                  setPublishDeadline("");
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeadlineModalConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

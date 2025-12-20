@@ -26,6 +26,7 @@ type ResultsRow = {
   };
   spot_claimed_at?: string | null;
   spot_declined_at?: string | null;
+  claim_deadline?: string | null;
 };
 
 type ApplicationRow = {
@@ -63,11 +64,10 @@ export default function MySubmissionsPage() {
   const { user } = useAuth();
   const { hasUnread } = useUnreadNotifications();
   
-  // Store program claiming configs
+  // Store program claiming configs (deadline is now per-publication, not per-program)
   const [programClaimingConfigs, setProgramClaimingConfigs] = useState<Record<string, {
     enabled: boolean;
     claimableDecision: string;
-    claimDeadline: string | null;
     allowDecline: boolean;
     spotsCount: number | null;
     spotsMode: string | null;
@@ -94,7 +94,6 @@ export default function MySubmissionsPage() {
           configs[pid] = {
             enabled: claiming.enabled || false,
             claimableDecision: claiming.claimableDecision || "",
-            claimDeadline: claiming.claimDeadline || null,
             allowDecline: claiming.allowDecline !== false,
             spotsCount: prg.spots_count,
             spotsMode: prg.spots_mode,
@@ -449,7 +448,8 @@ export default function MySubmissionsPage() {
                                      decisionMatches && 
                                      !isClaimed && 
                                      !isDeclined;
-                    const deadline = config?.claimDeadline ? new Date(config.claimDeadline) : null;
+                    // Use publication's deadline (per-publication, not program-level)
+                    const deadline = r.claim_deadline ? new Date(r.claim_deadline) : null;
                     const deadlinePassed = deadline ? new Date() > deadline : false;
                     const spotsAvailable = config?.spotsMode !== "exact" || (config?.spotsCount ?? 0) > 0;
                     const showClaimButtons = canClaim && !deadlinePassed && spotsAvailable;
