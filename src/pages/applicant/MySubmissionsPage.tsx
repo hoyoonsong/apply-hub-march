@@ -24,6 +24,8 @@ type ResultsRow = {
     score?: number | null;
     comments?: string | null;
   };
+  spot_claimed_at?: string | null;
+  spot_declined_at?: string | null;
 };
 
 type ApplicationRow = {
@@ -57,12 +59,77 @@ export default function MySubmissionsPage() {
     []
   );
   const [loading, setLoading] = useState(false);
+  const [claimingLoading, setClaimingLoading] = useState<Record<string, boolean>>({});
   const { user } = useAuth();
   const { hasUnread } = useUnreadNotifications();
+  
+  // Store program claiming configs
+  const [programClaimingConfigs, setProgramClaimingConfigs] = useState<Record<string, {
+    enabled: boolean;
+    claimableDecision: string;
+    claimDeadline: string | null;
+    allowDecline: boolean;
+    spotsCount: number | null;
+    spotsMode: string | null;
+  }>>({});
 
   const refreshResults = async () => {
     const { data, error } = await supabase.rpc("get_published_results_v1");
-    if (!error) setResultsRows((data ?? []) as ResultsRow[]);
+    if (!error && data) {
+      setResultsRows((data ?? []) as ResultsRow[]);
+      
+      // Load claiming configs for each program
+      const programIds = [...new Set((data as any[]).map(r => r.program_id))] as string[];
+      const configs: Record<string, any> = {};
+      
+      for (const pid of programIds) {
+        const { data: prg } = await supabase
+          .from("programs")
+          .select("metadata, spots_mode, spots_count")
+          .eq("id", pid)
+          .single();
+        
+        if (prg) {
+          const claiming = prg.metadata?.spotClaiming || {};
+          configs[pid] = {
+            enabled: claiming.enabled || false,
+            claimableDecision: claiming.claimableDecision || "",
+            claimDeadline: claiming.claimDeadline || null,
+            allowDecline: claiming.allowDecline !== false,
+            spotsCount: prg.spots_count,
+            spotsMode: prg.spots_mode,
+          };
+        }
+      }
+      
+      setProgramClaimingConfigs(configs);
+    }
+  };
+  
+  const handleClaimOrDecline = async (publicationId: string, action: "claim" | "decline") => {
+    setClaimingLoading((prev) => ({ ...prev, [publicationId]: true }));
+    
+    try {
+      const { data, error } = await supabase.rpc("claim_or_decline_spot", {
+        p_publication_id: publicationId,
+        p_action: action,
+      });
+      
+      if (error) throw error;
+      
+      // Refresh results to get updated status
+      await refreshResults();
+      
+      if (action === "claim") {
+        alert("✅ Your spot has been claimed!");
+      } else {
+        alert("You have declined this offer.");
+      }
+    } catch (error: any) {
+      alert(error.message || `Failed to ${action} spot`);
+    } finally {
+      setClaimingLoading((prev) => ({ ...prev, [publicationId]: false }));
+    }
   };
 
   const refreshApplications = async () => {
@@ -363,6 +430,32 @@ export default function MySubmissionsPage() {
                   .map((r) => {
                     const v = r.visibility;
                     const p = r.payload || {};
+                    const config = programClaimingConfigs[r.program_id];
+                    
+                    // Check if ANY publication for this program has been claimed/declined
+                    // This ensures all publications show the same status
+                    const programResults = resultsRows.filter(rr => rr.program_id === r.program_id);
+                    const anyClaimed = programResults.some(rr => !!rr.spot_claimed_at);
+                    const anyDeclined = programResults.some(rr => !!rr.spot_declined_at);
+                    const claimedPublication = programResults.find(rr => !!rr.spot_claimed_at);
+                    const declinedPublication = programResults.find(rr => !!rr.spot_declined_at);
+                    
+                    const isClaimed = anyClaimed;
+                    const isDeclined = anyDeclined;
+                    const decision = (p.decision || "").toLowerCase();
+                    const claimableDecision = (config?.claimableDecision || "").toLowerCase();
+                    const decisionMatches = decision === claimableDecision;
+                    const canClaim = config?.enabled && 
+                                     decisionMatches && 
+                                     !isClaimed && 
+                                     !isDeclined;
+                    const deadline = config?.claimDeadline ? new Date(config.claimDeadline) : null;
+                    const deadlinePassed = deadline ? new Date() > deadline : false;
+                    const spotsAvailable = config?.spotsMode !== "exact" || (config?.spotsCount ?? 0) > 0;
+                    const showClaimButtons = canClaim && !deadlinePassed && spotsAvailable;
+                    // Only show deadline-related messages if decision matches claimable decision
+                    const showDeadlineMessage = config?.enabled && decisionMatches && deadlinePassed && !isClaimed && !isDeclined;
+                    
                     return (
                       <div
                         key={r.publication_id}
@@ -421,6 +514,72 @@ export default function MySubmissionsPage() {
                             <div className="text-amber-700">
                               <AutoLinkText text={v.customMessage} preserveWhitespace={true} />
                             </div>
+                          </div>
+                        )}
+                        
+                        {/* Spot Claiming Section */}
+                        {config?.enabled && (
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            {isClaimed ? (
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-green-600 font-semibold">✅ Spot Claimed</span>
+                                </div>
+                                <p className="text-sm text-green-700">
+                                  Your spot was successfully claimed on {claimedPublication ? new Date(claimedPublication.spot_claimed_at!).toLocaleString() : '—'}
+                                </p>
+                              </div>
+                            ) : isDeclined ? (
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <p className="text-sm text-gray-700">
+                                  You declined this offer on {declinedPublication ? new Date(declinedPublication.spot_declined_at!).toLocaleString() : '—'}
+                                </p>
+                              </div>
+                            ) : showDeadlineMessage ? (
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <p className="text-sm text-gray-700">
+                                  ⏰ Time has run out. The deadline to claim your spot has passed.
+                                </p>
+                              </div>
+                            ) : !spotsAvailable && decisionMatches ? (
+                              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <p className="text-sm text-red-700">
+                                  ❌ No spots available. All spots have been claimed.
+                                </p>
+                              </div>
+                            ) : showClaimButtons ? (
+                              <div className="space-y-3">
+                                {deadline && (
+                                  <p className="text-xs text-gray-600">
+                                    Claim by: {deadline.toLocaleString()} 
+                                    ({Math.ceil((deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining)
+                                  </p>
+                                )}
+                                <div className="flex gap-3">
+                                  <button
+                                    onClick={() => handleClaimOrDecline(r.publication_id, "claim")}
+                                    disabled={claimingLoading[r.publication_id]}
+                                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                                  >
+                                    {claimingLoading[r.publication_id] ? "Processing..." : "Claim My Spot"}
+                                  </button>
+                                  {config.allowDecline && (
+                                    <button
+                                      onClick={() => handleClaimOrDecline(r.publication_id, "decline")}
+                                      disabled={claimingLoading[r.publication_id]}
+                                      className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                                    >
+                                      {claimingLoading[r.publication_id] ? "Processing..." : "Decline Offer"}
+                                    </button>
+                                  )}
+                                </div>
+                                {config.spotsMode === "exact" && config.spotsCount !== null && (
+                                  <p className="text-xs text-gray-500">
+                                    Remaining spots: {config.spotsCount}
+                                  </p>
+                                )}
+                              </div>
+                            ) : null}
                           </div>
                         )}
                       </div>

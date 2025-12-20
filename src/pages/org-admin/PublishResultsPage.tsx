@@ -42,23 +42,61 @@ export default function PublishResultsPage() {
   });
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [decisionFilter, setDecisionFilter] = useState<string>("all");
-  const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
-  const [pendingPublishAction, setPendingPublishAction] = useState<"selected" | "all" | null>(null);
-  const [acceptanceTag, setAcceptanceTag] = useState<string>("");
-  const [updateSpots, setUpdateSpots] = useState<boolean>(true);
   const [spotsMode, setSpotsMode] = useState<string | null>(null);
+  const [spotsCount, setSpotsCount] = useState<number | null>(null);
+
+  // Spot claiming settings
+  const [claimingEnabled, setClaimingEnabled] = useState<boolean>(false);
+  const [claimableDecision, setClaimableDecision] = useState<string>("");
+  const [claimDeadline, setClaimDeadline] = useState<string>("");
+
+  // Helper: Convert datetime-local to ISO string (preserves local time intent)
+  const toISOString = (datetimeLocal: string): string | null => {
+    if (!datetimeLocal) return null;
+    // datetime-local format: "YYYY-MM-DDTHH:mm"
+    // Create a Date object treating it as local time, then convert to ISO
+    const date = new Date(datetimeLocal);
+    return date.toISOString();
+  };
+
+  // Helper: Convert ISO string to datetime-local format
+  const toDateTimeLocal = (iso: string | null | undefined): string => {
+    if (!iso) return "";
+    const date = new Date(iso);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Claiming status data
+  const [claimingStatus, setClaimingStatus] = useState<{
+    claimed: Array<{
+      publication_id: string;
+      applicant_name: string;
+      claimed_at: string;
+    }>;
+    declined: Array<{
+      publication_id: string;
+      applicant_name: string;
+      declined_at: string;
+    }>;
+  }>({ claimed: [], declined: [] });
 
   // Prefill from program metadata right-rail reviewer config
   useEffect(() => {
     (async () => {
       const { data: prg } = await supabase
         .from("programs")
-        .select("name, metadata, spots_mode")
+        .select("name, metadata, spots_mode, spots_count")
         .eq("id", programId)
         .single();
       if (prg) {
         setProgramName(prg.name);
         setSpotsMode(prg.spots_mode);
+        setSpotsCount(prg.spots_count);
         const rf = prg.metadata?.reviewerForm || {};
         setVisibility((v) => ({
           decision: rf.decision ?? v.decision,
@@ -66,6 +104,57 @@ export default function PublishResultsPage() {
           comments: rf.comments ?? v.comments,
           customMessage: null,
         }));
+
+        // Load claiming settings
+        const claiming = prg.metadata?.spotClaiming || {};
+        setClaimingEnabled(claiming.enabled || false);
+        setClaimableDecision(claiming.claimableDecision || "");
+        // Convert ISO string back to datetime-local format for the input
+        // Handle both ISO strings (new format) and datetime-local strings (legacy)
+        if (claiming.claimDeadline) {
+          const deadlineStr = claiming.claimDeadline;
+          // Check if it's an ISO string (has 'Z' or timezone offset like '+00:00' or ends with milliseconds)
+          const isISO =
+            deadlineStr.includes("Z") ||
+            deadlineStr.match(/[+-]\d{2}:\d{2}$/) ||
+            deadlineStr.includes(".");
+          if (isISO) {
+            // ISO format, convert to datetime-local
+            setClaimDeadline(toDateTimeLocal(deadlineStr));
+          } else {
+            // Already in datetime-local format, use as-is
+            setClaimDeadline(deadlineStr);
+          }
+        } else {
+          setClaimDeadline("");
+        }
+      }
+    })();
+  }, [programId]);
+
+  // Load claiming status
+  useEffect(() => {
+    if (!programId) return;
+    (async () => {
+      const { data, error } = await supabase.rpc("get_spot_claiming_status", {
+        p_program_id: programId,
+      });
+      if (!error && data) {
+        const claimed = (data as any[])
+          .filter((r) => r.claimed_at)
+          .map((r) => ({
+            publication_id: r.publication_id,
+            applicant_name: r.applicant_name,
+            claimed_at: r.claimed_at,
+          }));
+        const declined = (data as any[])
+          .filter((r) => r.declined_at)
+          .map((r) => ({
+            publication_id: r.publication_id,
+            applicant_name: r.applicant_name,
+            declined_at: r.declined_at,
+          }));
+        setClaimingStatus({ claimed, declined });
       }
     })();
   }, [programId]);
@@ -119,100 +208,102 @@ export default function PublishResultsPage() {
   const isFiltered = useMemo(() => decisionFilter !== "all", [decisionFilter]);
 
   const publishAll = async () => {
-    // Only show modal if spots_mode is 'exact'
-    // If spotsMode is null (still loading), default to showing modal to be safe
-    if (spotsMode === "exact" || spotsMode === null) {
-      setPendingPublishAction("all");
-      setShowAcceptanceModal(true);
-    } else {
-      // Skip modal and publish directly without updating spots
-      setPendingPublishAction("all");
-      setUpdateSpots(false);
-      setAcceptanceTag("");
-      await confirmPublish();
-    }
+    await confirmPublish("all");
   };
 
   const publishSelected = async () => {
     if (selectedIds.length === 0) return;
-    // Only show modal if spots_mode is 'exact'
-    // If spotsMode is null (still loading), default to showing modal to be safe
-    if (spotsMode === "exact" || spotsMode === null) {
-      setPendingPublishAction("selected");
-      setShowAcceptanceModal(true);
+    await confirmPublish("selected");
+  };
+
+  const saveClaimingSettings = async () => {
+    if (!programId) return;
+
+    const { data: prg } = await supabase
+      .from("programs")
+      .select("metadata")
+      .eq("id", programId)
+      .single();
+
+    if (!prg) return;
+
+    const metadata = prg.metadata || {};
+    const spotClaiming = {
+      enabled: claimingEnabled,
+      claimableDecision: claimableDecision,
+      claimDeadline: toISOString(claimDeadline), // Convert to ISO string for storage
+      allowDecline: true, // Always allow decline responses
+    };
+
+    const { error } = await supabase
+      .from("programs")
+      .update({
+        metadata: {
+          ...metadata,
+          spotClaiming,
+        },
+      })
+      .eq("id", programId);
+
+    if (error) {
+      alert("Failed to save claiming settings: " + error.message);
     } else {
-      // Skip modal and publish directly without updating spots
-      setPendingPublishAction("selected");
-      setUpdateSpots(false);
-      setAcceptanceTag("");
-      await confirmPublish();
+      alert("Claiming settings saved!");
     }
   };
 
-  const confirmPublish = async () => {
-    // Only validate acceptance tag if updateSpots is checked AND spots_mode is exact
-    if (updateSpots && spotsMode === "exact" && !acceptanceTag.trim()) {
-      alert("Please specify which decision tag counts as acceptance, or uncheck 'Update spots'.");
-      return;
-    }
-    
-    // If updateSpots is checked but spots_mode is not exact, ignore updateSpots
-    if (updateSpots && spotsMode !== "exact") {
-      setUpdateSpots(false);
-    }
-
+  const confirmPublish = async (action: "all" | "selected") => {
     setLoading(true);
-    setShowAcceptanceModal(false);
 
     try {
-      const params: any = {
-        p_program_id: programId,
-        p_visibility: visibility,
-        p_only_unpublished: onlyUnpublished,
-      };
-      
-      // Only add acceptance_tag if updateSpots is checked
-      if (updateSpots && acceptanceTag.trim()) {
-        params.p_acceptance_tag = acceptanceTag.trim();
-      }
-
-      if (pendingPublishAction === "all") {
-        console.log("DEBUG: Publishing all with params:", {
-          updateSpots,
-          acceptanceTag,
-          params
-        });
+      if (action === "all") {
         const { data, error } = await supabase.rpc(
           "publish_all_finalized_for_program_v1",
-          params
+          {
+            p_program_id: programId,
+            p_visibility: visibility,
+            p_only_unpublished: onlyUnpublished,
+          }
         );
         if (error) throw error;
-        alert(`Published ${data?.length ?? 0} finalized result(s).${updateSpots ? ' Spots updated.' : ''}`);
-      } else if (pendingPublishAction === "selected") {
-        const publishParams: any = {
-      p_application_ids: selectedIds,
-      p_visibility: visibility,
-        };
-        if (updateSpots && acceptanceTag.trim()) {
-          publishParams.p_acceptance_tag = acceptanceTag.trim();
-        }
-        console.log("DEBUG: Publishing with params:", {
-          updateSpots,
-          acceptanceTag,
-          publishParams
+        alert(`Published ${data?.length ?? 0} finalized result(s).`);
+      } else if (action === "selected") {
+        const { data, error } = await supabase.rpc("publish_results_v1", {
+          p_application_ids: selectedIds,
+          p_visibility: visibility,
         });
-        const { data, error } = await supabase.rpc("publish_results_v1", publishParams);
         if (error) throw error;
-        alert(`Published ${data?.length ?? 0} selected result(s).${updateSpots ? ' Spots updated.' : ''}`);
+        alert(`Published ${data?.length ?? 0} selected result(s).`);
       }
       load();
+      // Reload claiming status
+      const { data: statusData } = await supabase.rpc(
+        "get_spot_claiming_status",
+        {
+          p_program_id: programId,
+        }
+      );
+      if (statusData) {
+        const claimed = (statusData as any[])
+          .filter((r) => r.claimed_at)
+          .map((r) => ({
+            publication_id: r.publication_id,
+            applicant_name: r.applicant_name,
+            claimed_at: r.claimed_at,
+          }));
+        const declined = (statusData as any[])
+          .filter((r) => r.declined_at)
+          .map((r) => ({
+            publication_id: r.publication_id,
+            applicant_name: r.applicant_name,
+            declined_at: r.declined_at,
+          }));
+        setClaimingStatus({ claimed, declined });
+      }
     } catch (error: any) {
       alert(error.message || "Failed to publish results");
     } finally {
-    setLoading(false);
-      setPendingPublishAction(null);
-      setAcceptanceTag("");
-      setUpdateSpots(true); // Reset to default
+      setLoading(false);
     }
   };
 
@@ -501,6 +592,95 @@ export default function PublishResultsPage() {
               </div>
             )}
           </div>
+
+          {/* Spot Claiming Status */}
+          {claimingEnabled && claimableDecision && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Spot Claiming Status
+              </h3>
+
+              {/* Claiming Configuration Info */}
+              <div className="mb-6 p-3 bg-gray-50 rounded-md">
+                <p className="text-sm text-gray-700 mb-1">
+                  <span className="font-medium">Decision:</span>{" "}
+                  <span className="font-semibold">{claimableDecision}</span>
+                </p>
+                {claimDeadline && (
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">Deadline:</span>{" "}
+                    {new Date(claimDeadline).toLocaleString()}
+                    {new Date(claimDeadline) > new Date() && (
+                      <span className="ml-2 text-gray-600">
+                        (
+                        {Math.ceil(
+                          (new Date(claimDeadline).getTime() -
+                            new Date().getTime()) /
+                            (1000 * 60 * 60 * 24)
+                        )}{" "}
+                        days remaining)
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+
+              {claimingStatus.claimed.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Claimed Spots ({claimingStatus.claimed.length})
+                  </h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {claimingStatus.claimed.map((item) => (
+                      <div
+                        key={item.publication_id}
+                        className="flex justify-between items-center p-2 bg-green-50 rounded text-sm"
+                      >
+                        <span className="text-gray-900">
+                          {item.applicant_name}
+                        </span>
+                        <span className="text-gray-500 text-xs">
+                          {new Date(item.claimed_at).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {claimingStatus.declined.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Declined Offers ({claimingStatus.declined.length})
+                  </h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {claimingStatus.declined.map((item) => (
+                      <div
+                        key={item.publication_id}
+                        className="flex justify-between items-center p-2 bg-red-50 rounded text-sm"
+                      >
+                        <span className="text-gray-900">
+                          {item.applicant_name}
+                        </span>
+                        <span className="text-gray-500 text-xs">
+                          {new Date(item.declined_at).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {spotsMode === "exact" && spotsCount !== null && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">Remaining spots:</span>{" "}
+                    {spotsCount}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <aside className="space-y-6">
@@ -571,86 +751,68 @@ export default function PublishResultsPage() {
                   This message will be included with all published results.
                 </p>
               </div>
+
+              <div className="pt-4 border-t border-gray-200">
+                <label className="flex items-center gap-2 mb-4">
+                  <input
+                    type="checkbox"
+                    checked={claimingEnabled}
+                    onChange={(e) => setClaimingEnabled(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Enable spot claiming
+                  </span>
+                </label>
+
+                {claimingEnabled && (
+                  <div className="space-y-4 pl-6 border-l-2 border-gray-200">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Which decision can claim spots?
+                      </label>
+                      <select
+                        value={claimableDecision}
+                        onChange={(e) => setClaimableDecision(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select a decision...</option>
+                        {decisionOptions.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Claim deadline (optional)
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={claimDeadline}
+                        onChange={(e) => setClaimDeadline(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Leave empty to keep claiming open until spots are full
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={saveClaimingSettings}
+                      className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      Save Claiming Settings
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </aside>
       </div>
-
-      {/* Acceptance Tag Modal */}
-      {showAcceptanceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Publish Results
-            </h2>
-            
-            <div className="mb-4">
-              <label className="flex items-center gap-2 mb-4">
-                <input
-                  type="checkbox"
-                  checked={updateSpots}
-                  onChange={(e) => setUpdateSpots(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Update available spots
-                </span>
-              </label>
-              {updateSpots && (
-                <>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Which decision tag counts as "acceptance"?
-                  </p>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Acceptance Decision Tag
-                  </label>
-                  <select
-                    value={acceptanceTag}
-                    onChange={(e) => setAcceptanceTag(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select a decision tag...</option>
-                    {decisionOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-2 text-xs text-gray-500">
-                    Only applications with this decision will decrease the available spots count.
-                  </p>
-                </>
-              )}
-              {!updateSpots && (
-                <p className="text-sm text-gray-600">
-                  Spots will not be updated when publishing these results.
-                </p>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowAcceptanceModal(false);
-                  setPendingPublishAction(null);
-                  setAcceptanceTag("");
-                  setUpdateSpots(true);
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmPublish}
-                disabled={(updateSpots && spotsMode === "exact" && !acceptanceTag.trim()) || loading}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Publishing..." : updateSpots && spotsMode === "exact" ? "Publish & Update Spots" : "Publish"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
