@@ -42,6 +42,7 @@ export default function PublishResultsPage() {
   });
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [decisionFilter, setDecisionFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [spotsMode, setSpotsMode] = useState<string | null>(null);
   const [spotsCount, setSpotsCount] = useState<number | null>(null);
 
@@ -289,8 +290,15 @@ export default function PublishResultsPage() {
         (r) => (r.decision ?? "").toLowerCase() === decisionFilter.toLowerCase()
       );
     }
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      list = list.filter((r) =>
+        (r.applicant_name ?? "").toLowerCase().includes(query)
+      );
+    }
     return list;
-  }, [allRows, onlyUnpublished, decisionFilter]);
+  }, [allRows, onlyUnpublished, decisionFilter, searchQuery]);
 
   const selectedIds = useMemo(
     () =>
@@ -594,105 +602,152 @@ export default function PublishResultsPage() {
             Manage and publish application results for your program
           </p>
         </div>
-        <Link
-          to={`/org/${orgSlug}/admin/publish-results`}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          ← Back to Gallery
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              load();
+              loadPublications();
+            }}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+            title="Refresh data"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Refresh
+          </button>
+          <Link
+            to={`/org/${orgSlug}/admin/publish-results`}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            ← Back to Gallery
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-8">
         <div className="lg:col-span-3 space-y-4 md:space-y-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6 gap-3">
-              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                <h2 className="text-lg md:text-xl font-semibold text-gray-900">
-                  Results Queue
-                </h2>
-              </div>
-              <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
-                {decisionOptions.length > 0 && (
-                  <div className="flex items-center gap-2 text-xs md:text-sm text-gray-700">
-                    <span className="hidden sm:inline text-gray-600">
-                      Decisions
-                    </span>
-                    <div className="relative">
-                      <select
-                        value={decisionFilter}
-                        onChange={(e) => {
-                          setDecisionFilter(e.target.value);
-                          setSelected({});
-                        }}
-                        className="appearance-none border border-gray-300 rounded-md pl-3 pr-8 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[150px]"
-                      >
-                        <option value="all">All decisions</option>
-                        {decisionOptions.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-                        ▾
-                      </span>
-                    </div>
-                    {decisionFilter !== "all" && (
-                      <button
-                        onClick={() => setDecisionFilter("all")}
-                        className="text-gray-500 hover:text-gray-700 rounded px-2 py-1"
-                        title="Clear filter"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
-                <div className="hidden md:block h-6 w-px bg-gray-200" />
-                <label className="flex items-center gap-2 text-xs md:text-sm text-gray-700">
+            <div className="mb-4 md:mb-6 space-y-3">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+                Results Queue
+              </h2>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="relative">
                   <input
-                    type="checkbox"
-                    checked={onlyUnpublished}
-                    onChange={(e) => {
-                      setOnlyUnpublished(e.target.checked);
-                      setSelected({});
-                    }}
-                    className="h-3 w-3 md:h-4 md:w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    type="text"
+                    placeholder="Search by applicant name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full md:w-64"
                   />
-                  Unpublished only
-                </label>
-                <div className="hidden md:block h-6 w-px bg-gray-200" />
-                {selectedIds.length > 0 || isFiltered ? (
-                  <button
-                    onClick={publishSelected}
-                    disabled={loading || selectedIds.length === 0}
-                    className="inline-flex items-center px-3 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  <svg
+                    className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    {loading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-3 w-3 md:h-4 md:w-4 border-b-2 border-white mr-1 md:mr-2"></div>
-                        Publishing...
-                      </>
-                    ) : (
-                      `Publish selected (${selectedIds.length})`
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    onClick={publishAll}
-                    disabled={loading || rows.length === 0}
-                    className="inline-flex items-center px-3 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-3 w-3 md:h-4 md:w-4 border-b-2 border-white mr-1 md:mr-2"></div>
-                        Publishing...
-                      </>
-                    ) : (
-                      "Publish all finalized"
-                    )}
-                  </button>
-                )}
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+                  {decisionOptions.length > 0 && (
+                    <div className="flex items-center gap-2 text-xs md:text-sm text-gray-700">
+                      <span className="hidden sm:inline text-gray-600">
+                        Decisions
+                      </span>
+                      <div className="relative">
+                        <select
+                          value={decisionFilter}
+                          onChange={(e) => {
+                            setDecisionFilter(e.target.value);
+                            setSelected({});
+                          }}
+                          className="appearance-none border border-gray-300 rounded-md pl-3 pr-8 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[150px]"
+                        >
+                          <option value="all">All decisions</option>
+                          {decisionOptions.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                          ▾
+                        </span>
+                      </div>
+                      {decisionFilter !== "all" && (
+                        <button
+                          onClick={() => setDecisionFilter("all")}
+                          className="text-gray-500 hover:text-gray-700 rounded px-2 py-1"
+                          title="Clear filter"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <div className="hidden md:block h-6 w-px bg-gray-200" />
+                  <label className="flex items-center gap-2 text-xs md:text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={onlyUnpublished}
+                      onChange={(e) => {
+                        setOnlyUnpublished(e.target.checked);
+                        setSelected({});
+                      }}
+                      className="h-3 w-3 md:h-4 md:w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    Unpublished only
+                  </label>
+                  <div className="hidden md:block h-6 w-px bg-gray-200" />
+                  {selectedIds.length > 0 || isFiltered ? (
+                    <button
+                      onClick={publishSelected}
+                      disabled={loading || selectedIds.length === 0}
+                      className="inline-flex items-center px-3 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 md:h-4 md:w-4 border-b-2 border-white mr-1 md:mr-2"></div>
+                          Publishing...
+                        </>
+                      ) : (
+                        `Publish selected (${selectedIds.length})`
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={publishAll}
+                      disabled={loading || rows.length === 0}
+                      className="inline-flex items-center px-3 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 md:h-4 md:w-4 border-b-2 border-white mr-1 md:mr-2"></div>
+                          Publishing...
+                        </>
+                      ) : (
+                        "Publish all finalized"
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -779,7 +834,18 @@ export default function PublishResultsPage() {
                           />
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900 max-w-[140px] truncate">
-                          {r.applicant_name ?? "—"}
+                          {r.applicant_name ? (
+                            <Link
+                              to={`/review/app/${r.application_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-900 hover:underline font-medium"
+                            >
+                              {r.applicant_name}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           {r.decision ? (

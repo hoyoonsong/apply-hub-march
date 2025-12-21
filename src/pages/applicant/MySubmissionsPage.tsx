@@ -576,66 +576,61 @@ export default function MySubmissionsPage() {
                         {/* Carousel Navigation */}
                         {hasMultiplePublications && (
                           <div className="mb-4 pb-4 border-b border-gray-200">
-                            <div className="relative flex items-center justify-center mb-3">
-                              {/* Centered navigation buttons and text */}
-                              <div className="flex items-center gap-3">
-                                <button
-                                  onClick={goToPrevious}
-                                  disabled={currentIndex === 0}
-                                  className="p-2 rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                  aria-label="Previous publication"
+                            <div className="flex items-center justify-center gap-3 mb-3">
+                              <button
+                                onClick={goToPrevious}
+                                disabled={currentIndex === 0}
+                                className="p-2 rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                aria-label="Previous publication"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
                                 >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M15 19l-7-7 7-7"
-                                    />
-                                  </svg>
-                                </button>
-                                <span className="text-sm text-gray-600 font-medium">
-                                  Publication {currentIndex + 1} of{" "}
-                                  {totalPublications}
-                                </span>
-                                <button
-                                  onClick={goToNext}
-                                  disabled={
-                                    currentIndex === totalPublications - 1
-                                  }
-                                  className="p-2 rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                  aria-label="Next publication"
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M9 5l7 7-7 7"
-                                    />
-                                  </svg>
-                                </button>
-                              </div>
-                              {/* Latest/Past result badge - positioned absolutely on the right */}
-                              <div className="absolute right-0 text-xs text-gray-500">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 19l-7-7 7-7"
+                                  />
+                                </svg>
+                              </button>
+                              {/* Latest/Past result badge - fixed width to prevent button movement */}
+                              <div className="text-sm w-20 text-center">
                                 {currentIndex === 0 ? (
                                   <span className="text-blue-600 font-medium">
                                     Latest
                                   </span>
                                 ) : (
-                                  <span>Past result</span>
+                                  <span className="text-gray-600">
+                                    Past result
+                                  </span>
                                 )}
                               </div>
+                              <button
+                                onClick={goToNext}
+                                disabled={
+                                  currentIndex === totalPublications - 1
+                                }
+                                className="p-2 rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                aria-label="Next publication"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5l7 7-7 7"
+                                  />
+                                </svg>
+                              </button>
                             </div>
                             {/* Dot indicators */}
                             <div className="flex items-center justify-center gap-2">
@@ -771,13 +766,7 @@ export default function MySubmissionsPage() {
                               <div className="space-y-3">
                                 {deadline && (
                                   <p className="text-xs text-gray-600">
-                                    Claim by: {deadline.toLocaleString()}(
-                                    {Math.ceil(
-                                      (deadline.getTime() -
-                                        new Date().getTime()) /
-                                        (1000 * 60 * 60 * 24)
-                                    )}{" "}
-                                    days remaining)
+                                    Claim by: {deadline.toLocaleString()}
                                   </p>
                                 )}
                                 <div className="flex gap-3">
