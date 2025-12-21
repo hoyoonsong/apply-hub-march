@@ -130,29 +130,34 @@ export default function MySubmissionsPage() {
         return { ...prev, ...newIndices };
       });
 
-      // Batch load claiming configs for all programs in a single query (optimization)
-      // This replaces N individual queries with 1 batched query
+      // Batch load claiming configs for all programs using cached batch function
+      // This uses caching to avoid redundant calls and batches uncached programs
       const programIds = Object.keys(byProgram);
       if (programIds.length > 0) {
-        // Batch query: fetch all program configs in one query instead of N queries
-        const { data: programsData, error: programsError } = await supabase
-          .from("programs")
-          .select("id, metadata, spots_mode, spots_count")
-          .in("id", programIds);
+        try {
+          // Use cached batch function which checks cache first, then batches uncached programs
+          const { getProgramMetadataBatch } = await import("../../lib/api");
+          const programsData = await getProgramMetadataBatch(programIds);
 
-        if (!programsError && programsData) {
           const configs: Record<string, any> = {};
-          for (const prg of programsData) {
-            const claiming = prg.metadata?.spotClaiming || {};
-            configs[prg.id] = {
-              enabled: claiming.enabled || false,
-              claimableDecision: claiming.claimableDecision || "",
-              allowDecline: claiming.allowDecline !== false,
-              spotsCount: prg.spots_count,
-              spotsMode: prg.spots_mode,
-            };
+          for (const programId of programIds) {
+            const prg = programsData[programId];
+            if (prg) {
+              const claiming = prg.metadata?.spotClaiming || {};
+              configs[programId] = {
+                enabled: claiming.enabled || false,
+                claimableDecision: claiming.claimableDecision || "",
+                allowDecline: claiming.allowDecline !== false,
+                spotsCount: prg.spots_count,
+                spotsMode: prg.spots_mode,
+              };
+            }
           }
           setProgramClaimingConfigs(configs);
+        } catch (error) {
+          console.error("Failed to load program metadata:", error);
+          // Fallback: clear configs on error
+          setProgramClaimingConfigs({});
         }
       } else {
         // No programs, clear configs

@@ -96,6 +96,16 @@ const effectiveRolesCache: Map<
 > = new Map();
 const EFFECTIVE_ROLES_CACHE_TTL = 30000; // 30 seconds cache
 
+// Export cache access for components to check before calling
+export function getCachedEffectiveRoles(userId: string) {
+  const cached = effectiveRolesCache.get(userId);
+  const now = Date.now();
+  if (cached && now - cached.timestamp < EFFECTIVE_ROLES_CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+}
+
 export async function getEffectiveRoles(userId: string) {
   // Check cache first
   const cached = effectiveRolesCache.get(userId);
@@ -118,4 +128,48 @@ export async function getEffectiveRoles(userId: string) {
   // Cache the result
   effectiveRolesCache.set(userId, { data: result, timestamp: now });
   return result;
+}
+
+// Batched version: fetch multiple user roles in ONE query using batched SQL function
+export async function getEffectiveRolesBatch(userIds: string[]) {
+  if (userIds.length === 0) return {};
+  
+  const now = Date.now();
+  const uncachedIds: string[] = [];
+  const results: Record<string, any> = {};
+  
+  // Check cache for all users first
+  userIds.forEach((userId) => {
+    const cached = effectiveRolesCache.get(userId);
+    if (cached && now - cached.timestamp < EFFECTIVE_ROLES_CACHE_TTL) {
+      results[userId] = cached.data;
+    } else {
+      uncachedIds.push(userId);
+    }
+  });
+  
+  // Fetch uncached users in ONE batched query (true batching!)
+  if (uncachedIds.length > 0) {
+    const { data, error } = await supabase.rpc("super_user_effective_roles_batch_v1", {
+      p_user_ids: uncachedIds,
+    });
+    
+    if (error) throw error;
+    
+    // Process results and cache them
+    if (data && Array.isArray(data)) {
+      data.forEach((row: any) => {
+        const result = {
+          superadmin_from_profile: row.superadmin_from_profile,
+          has_admin: row.has_admin,
+          has_reviewer: row.has_reviewer,
+          has_co_manager: row.has_co_manager,
+        };
+        effectiveRolesCache.set(row.user_id, { data: result, timestamp: now });
+        results[row.user_id] = result;
+      });
+    }
+  }
+  
+  return results;
 }

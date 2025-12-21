@@ -88,6 +88,16 @@ const reviewFormCache: Map<
 const REVIEW_FORM_CACHE_TTL = 60000; // 1 minute cache
 
 // Reviewer form configuration RPCs
+// Export cache access for components to check before calling
+export function getCachedProgramReviewForm(programId: string) {
+  const cached = reviewFormCache.get(programId);
+  const now = Date.now();
+  if (cached && now - cached.timestamp < REVIEW_FORM_CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+}
+
 export async function getProgramReviewForm(programId: string) {
   // Check cache first
   const cached = reviewFormCache.get(programId);
@@ -107,6 +117,44 @@ export async function getProgramReviewForm(programId: string) {
   // Cache the result
   reviewFormCache.set(programId, { data, timestamp: now });
   return data;
+}
+
+// Batched version: fetch multiple program review forms in ONE query
+export async function getProgramReviewFormsBatch(programIds: string[]) {
+  if (programIds.length === 0) return {};
+  
+  const now = Date.now();
+  const uncachedIds: string[] = [];
+  const results: Record<string, any> = {};
+  
+  // Check cache for all programs first
+  programIds.forEach((programId) => {
+    const cached = reviewFormCache.get(programId);
+    if (cached && now - cached.timestamp < REVIEW_FORM_CACHE_TTL) {
+      results[programId] = cached.data;
+    } else {
+      uncachedIds.push(programId);
+    }
+  });
+  
+  // Fetch uncached programs in ONE batched query (true batching!)
+  if (uncachedIds.length > 0) {
+    const { data, error } = await supabase.rpc("get_program_review_forms_batch_v1", {
+      p_program_ids: uncachedIds,
+    });
+    
+    if (error) throw error;
+    
+    // Process results and cache them
+    if (data && Array.isArray(data)) {
+      data.forEach((row: any) => {
+        reviewFormCache.set(row.program_id, { data: row.review_form, timestamp: now });
+        results[row.program_id] = row.review_form;
+      });
+    }
+  }
+  
+  return results;
 }
 
 export async function setProgramReviewForm(programId: string, form: any) {
@@ -130,5 +178,104 @@ export async function setProgramReviewForm(programId: string, form: any) {
     reviewFormCache.delete(programId);
   }
   
+  // Also invalidate program metadata cache since metadata was updated
+  invalidateProgramMetadataCache(programId);
+  
   return data;
+}
+
+// ============================================
+// PROGRAM METADATA CACHE (for spots_mode, spots_count, metadata, name)
+// ============================================
+// Cache for program metadata to avoid repeated fetches
+const programMetadataCache: Map<
+  string,
+  { data: any; timestamp: number }
+> = new Map();
+const PROGRAM_METADATA_CACHE_TTL = 120000; // 2 minute cache (longer than review forms since metadata changes less frequently)
+
+export type ProgramMetadata = {
+  id: string;
+  name: string | null;
+  metadata: any | null;
+  spots_mode: "exact" | "unlimited" | "tbd" | null;
+  spots_count: number | null;
+};
+
+// Get cached program metadata
+export function getCachedProgramMetadata(programId: string): ProgramMetadata | null {
+  const cached = programMetadataCache.get(programId);
+  const now = Date.now();
+  if (cached && now - cached.timestamp < PROGRAM_METADATA_CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+}
+
+// Fetch program metadata (single program) with caching
+export async function getProgramMetadata(programId: string): Promise<ProgramMetadata> {
+  // Check cache first
+  const cached = programMetadataCache.get(programId);
+  const now = Date.now();
+  if (cached && now - cached.timestamp < PROGRAM_METADATA_CACHE_TTL) {
+    return cached.data;
+  }
+
+  // Fetch from database
+  const { data, error } = await supabase
+    .from("programs")
+    .select("id, name, metadata, spots_mode, spots_count")
+    .eq("id", programId)
+    .single();
+  
+  if (error) throw error;
+  if (!data) throw new Error(`Program ${programId} not found`);
+  
+  // Cache the result
+  programMetadataCache.set(programId, { data, timestamp: now });
+  return data;
+}
+
+// Batched version: fetch multiple program metadata in ONE query with caching
+export async function getProgramMetadataBatch(programIds: string[]): Promise<Record<string, ProgramMetadata>> {
+  if (programIds.length === 0) return {};
+  
+  const now = Date.now();
+  const uncachedIds: string[] = [];
+  const results: Record<string, ProgramMetadata> = {};
+  
+  // Check cache for all programs first
+  programIds.forEach((programId) => {
+    const cached = programMetadataCache.get(programId);
+    if (cached && now - cached.timestamp < PROGRAM_METADATA_CACHE_TTL) {
+      results[programId] = cached.data;
+    } else {
+      uncachedIds.push(programId);
+    }
+  });
+  
+  // Fetch uncached programs in ONE batched query
+  if (uncachedIds.length > 0) {
+    const { data, error } = await supabase
+      .from("programs")
+      .select("id, name, metadata, spots_mode, spots_count")
+      .in("id", uncachedIds);
+    
+    if (error) throw error;
+    
+    // Process results and cache them
+    if (data && Array.isArray(data)) {
+      data.forEach((row: ProgramMetadata) => {
+        programMetadataCache.set(row.id, { data: row, timestamp: now });
+        results[row.id] = row;
+      });
+    }
+  }
+  
+  return results;
+}
+
+// Invalidate cache for a program (call after updates)
+export function invalidateProgramMetadataCache(programId: string) {
+  programMetadataCache.delete(programId);
 }

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useCapabilities } from "../../lib/capabilities";
-import { getProgramReviewForm } from "../../lib/api";
+import { getProgramReviewForm, getCachedProgramReviewForm, getProgramReviewFormsBatch } from "../../lib/api";
 import type { ReviewsListRow } from "../../types/reviews";
 
 export default function AllReviewsPage() {
@@ -26,33 +26,50 @@ export default function AllReviewsPage() {
     const uniqueProgramIds = [...new Set(reviews.map((r) => r.program_id))];
     const configs: Record<string, any> = {};
 
-    // Load all form configs in parallel instead of sequentially
-    const configPromises = uniqueProgramIds.map(async (programId) => {
-      try {
-        const formConfig = await getProgramReviewForm(programId);
-        return { programId, formConfig };
-      } catch (error) {
-        console.error(
-          `Failed to load form config for program ${programId}:`,
-          error
-        );
-        // Use default config if loading fails
-        return {
-          programId,
-          formConfig: {
-            show_score: true,
-            show_comments: true,
-            show_decision: false,
-            decision_options: ["accept", "waitlist", "reject"],
-          },
-        };
+    // Optimized: Check existing cache first, only fetch uncached programs
+    const uncachedProgramIds: string[] = [];
+    const cachedConfigs: Record<string, any> = {};
+
+    uniqueProgramIds.forEach((programId) => {
+      // First check component state cache
+      if (programFormConfigs[programId]) {
+        cachedConfigs[programId] = programFormConfigs[programId];
+      } else {
+        // Then check module-level cache (shared across all components)
+        const moduleCached = getCachedProgramReviewForm(programId);
+        if (moduleCached) {
+          cachedConfigs[programId] = moduleCached;
+        } else {
+          // Will need to fetch
+          uncachedProgramIds.push(programId);
+        }
       }
     });
 
-    const results = await Promise.all(configPromises);
-    results.forEach(({ programId, formConfig }) => {
-      configs[programId] = formConfig;
-    });
+    // Update configs with any we already had cached
+    Object.assign(configs, cachedConfigs);
+
+    // Only fetch for uncached programs using batched function (ONE query instead of N)
+    if (uncachedProgramIds.length > 0) {
+      try {
+        // Use batched function to fetch all uncached programs in ONE query
+        const batchedConfigs = await getProgramReviewFormsBatch(uncachedProgramIds);
+        Object.assign(configs, batchedConfigs);
+      } catch (error) {
+        console.error("Failed to batch load form configs:", error);
+        // Fallback: use defaults for failed programs
+        uncachedProgramIds.forEach((programId) => {
+          if (!configs[programId]) {
+            configs[programId] = {
+              show_score: true,
+              show_comments: true,
+              show_decision: false,
+              decision_options: ["accept", "waitlist", "reject"],
+            };
+          }
+        });
+      }
+    }
 
     setProgramFormConfigs(configs);
   }
@@ -199,13 +216,29 @@ export default function AllReviewsPage() {
   }, [mineOnly, status]); // Removed fetchList from deps to prevent circular re-renders
 
   // Realtime refresh whenever any review changes or program metadata changes
+  // Optimized: Increased debounce time and added check to prevent unnecessary refreshes
   useEffect(() => {
     let debounceTimer: NodeJS.Timeout;
+    let lastRefreshTime = 0;
+    const MIN_REFRESH_INTERVAL = 2000; // Don't refresh more than once every 2 seconds
+
     const debouncedFetch = () => {
+      const now = Date.now();
+      // Skip if we refreshed recently (prevents rapid-fire refreshes)
+      if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          lastRefreshTime = Date.now();
+          fetchList();
+        }, 1000); // Longer debounce for less critical updates
+        return;
+      }
+
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
+        lastRefreshTime = Date.now();
         fetchList();
-      }, 500); // Debounce to prevent rapid-fire calls from multiple events
+      }, 500); // Standard debounce for immediate updates
     };
 
     const ch = supabase

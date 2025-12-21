@@ -84,28 +84,35 @@ export default function PublishResultsPage() {
 
   // Prefill from program metadata right-rail reviewer config
   useEffect(() => {
-    (async () => {
-      const { data: prg } = await supabase
-        .from("programs")
-        .select("name, metadata, spots_mode, spots_count")
-        .eq("id", programId)
-        .single();
-      if (prg) {
-        setProgramName(prg.name);
-        setSpotsMode(prg.spots_mode);
-        setSpotsCount(prg.spots_count);
-        const rf = prg.metadata?.reviewerForm || {};
-        setVisibility((v) => ({
-          decision: rf.decision ?? v.decision,
-          score: rf.score ?? v.score,
-          comments: rf.comments ?? v.comments,
-          customMessage: null,
-        }));
+    if (!programId) return;
 
-        // Load claiming settings
-        const claiming = prg.metadata?.spotClaiming || {};
-        setClaimingEnabled(claiming.enabled || false);
-        setClaimableDecision(claiming.claimableDecision || "");
+    (async () => {
+      // Use cached program metadata function to avoid redundant calls
+      const { getProgramMetadata } = await import("../../lib/api");
+      try {
+        const prg = await getProgramMetadata(programId);
+        if (prg) {
+          if (prg.name !== null && prg.name !== undefined)
+            setProgramName(prg.name);
+          if (prg.spots_mode !== null && prg.spots_mode !== undefined)
+            setSpotsMode(prg.spots_mode);
+          if (prg.spots_count !== null && prg.spots_count !== undefined)
+            setSpotsCount(prg.spots_count);
+          const rf = prg.metadata?.reviewerForm || {};
+          setVisibility((v) => ({
+            decision: rf.decision ?? v.decision,
+            score: rf.score ?? v.score,
+            comments: rf.comments ?? v.comments,
+            customMessage: null,
+          }));
+
+          // Load claiming settings
+          const claiming = prg.metadata?.spotClaiming || {};
+          setClaimingEnabled(claiming.enabled || false);
+          setClaimableDecision(claiming.claimableDecision || "");
+        }
+      } catch (error) {
+        console.error("Failed to load program metadata:", error);
       }
     })();
   }, [programId]);

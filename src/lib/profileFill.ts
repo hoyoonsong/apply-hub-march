@@ -239,9 +239,9 @@ export function validateProfileSections(
 }
 
 export async function fetchProfileSnapshot(): Promise<ProfileSnapshot | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Use deduplicated getUser() to prevent concurrent auth API calls
+  const { getUserWithDeduplication } = await import("./capabilities");
+  const { user } = await getUserWithDeduplication();
   if (!user) {
     console.warn("No authenticated user");
     return null;

@@ -152,6 +152,11 @@ export async function orgUpdateProgramDraft(args: {
     p_spots_count: args.spots_count ?? null,
   });
   if (error) throw new Error(error.message);
+  
+  // Invalidate program metadata cache since we just updated it
+  const { invalidateProgramMetadataCache } = await import("./api");
+  invalidateProgramMetadataCache(args.program_id);
+  
   return data as Program;
 }
 

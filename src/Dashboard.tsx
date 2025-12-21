@@ -971,12 +971,12 @@ function SmartDashboard() {
   }, [location.pathname]);
 
   // Periodically refresh capabilities to handle demotion
-  // Using 60 seconds to balance responsiveness with bandwidth efficiency
-  // Demotions are rare (admin actions), so 60s is sufficient for detection
+  // Using 5 minutes to significantly reduce auth requests while still detecting demotions
+  // Demotions are rare (admin actions), so 5 minutes is sufficient for detection
   useEffect(() => {
     const interval = setInterval(() => {
       refreshCapabilities();
-    }, 60000); // Check every 60 seconds - reduces requests by 83% while staying responsive
+    }, 300000); // Check every 5 minutes - reduces auth requests by 83%
 
     return () => clearInterval(interval);
   }, []);

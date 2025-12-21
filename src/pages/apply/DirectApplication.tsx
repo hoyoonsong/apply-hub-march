@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../auth/AuthProvider";
 import ApplicationForm from "./ApplicationForm";
 
 export default function DirectApplication() {
   const { programId } = useParams();
+  const { user } = useAuth(); // Use AuthProvider instead of direct getUser() call
   const [appId, setAppId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,10 +22,10 @@ export default function DirectApplication() {
     (async () => {
       try {
         // Check if logged in; if not, still allow viewing but don't create app
-        const { data: auth } = await supabase.auth.getUser();
+        // Use user from AuthProvider (no API call needed)
         if (cancelled) return;
 
-        if (!auth.user) {
+        if (!user) {
           // User not logged in - allow viewing but no appId
           setLoading(false);
           return;
@@ -49,7 +51,7 @@ export default function DirectApplication() {
               .from("applications")
               .select("id")
               .eq("program_id", programId)
-              .eq("user_id", auth.user.id)
+              .eq("user_id", user.id)
               .single();
 
             if (cancelled) return;
@@ -83,7 +85,7 @@ export default function DirectApplication() {
       cancelled = true;
       loadingRef.current = false;
     };
-  }, [programId]);
+  }, [programId, user?.id]); // Add user?.id to dependencies
 
   if (loading) return <div className="p-6">Loading…</div>;
   if (error) return <div className="p-6 text-red-600">{error}</div>;

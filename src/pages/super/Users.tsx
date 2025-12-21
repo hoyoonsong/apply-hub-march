@@ -7,6 +7,8 @@ import {
   upsertCoalitionManager,
   updateUserRoleV2,
   getEffectiveRoles,
+  getEffectiveRolesBatch,
+  getCachedEffectiveRoles,
 } from "../../lib/assignments";
 import { listUsers, softDeleteUser, restoreUser } from "../../services/super";
 import ProgramPicker from "../../components/ProgramPicker";
@@ -233,24 +235,47 @@ export default function Users() {
   }, [search, showDeleted]); // Only refetch when search or showDeleted changes, not roleFilter
 
   // Load effective roles for all users when users data changes
+  // Optimized: Check both component cache AND module-level cache, then batch fetch
   useEffect(() => {
-    if (users.length > 0) {
-      // Load effective roles for all users in parallel
-      Promise.all(
-        users.map(async (user) => {
-          try {
-            const effective = await getEffectiveRoles(user.id);
-            setEffectiveCache((prev) => ({ ...prev, [user.id]: effective }));
-          } catch (error) {
-            console.error(
-              `Failed to load effective roles for user ${user.id}:`,
-              error
-            );
-          }
-        })
-      );
+    if (users.length === 0) return;
+
+    const userIds = users.map((u) => u.id);
+    
+    // Check module-level cache first (shared across all components)
+    const cachedFromModule: Record<string, any> = {};
+    const uncachedIds: string[] = [];
+    
+    userIds.forEach((userId) => {
+      // First check component state cache
+      if (effectiveCache[userId]) {
+        cachedFromModule[userId] = effectiveCache[userId];
+      } else {
+        // Then check module-level cache
+        const moduleCached = getCachedEffectiveRoles(userId);
+        if (moduleCached) {
+          cachedFromModule[userId] = moduleCached;
+        } else {
+          uncachedIds.push(userId);
+        }
+      }
+    });
+
+    // Update component cache with any cached results
+    if (Object.keys(cachedFromModule).length > 0) {
+      setEffectiveCache((prev) => ({ ...prev, ...cachedFromModule }));
     }
-  }, [users]);
+
+    // Batch fetch only uncached users
+    if (uncachedIds.length > 0) {
+      getEffectiveRolesBatch(uncachedIds)
+        .then((results) => {
+          setEffectiveCache((prev) => ({ ...prev, ...results }));
+        })
+        .catch((error) => {
+          console.error("Failed to batch load effective roles:", error);
+        });
+    }
+  }, [users]); // Note: effectiveCache intentionally not in deps to avoid loops
 
   // Filter users based on effective roles
   function filterUsersByEffectiveRole(

@@ -9,16 +9,68 @@ let userRoleCache: {
 } = { role: null, userId: null, timestamp: 0 };
 const ROLE_CACHE_TTL = 30000; // 30 seconds cache (role rarely changes)
 
+// Cache for getUser() results to avoid excessive auth API calls
+let userCache: {
+  user: any | null;
+  timestamp: number;
+} = { user: null, timestamp: 0 };
+const USER_CACHE_TTL = 60000; // 1 minute cache (user rarely changes during session)
+
+// Request deduplication: track in-flight getUser() requests
+let getUserPromise: Promise<{ user: any | null }> | null = null;
+
+// Deduplicated getUser() function - prevents concurrent calls
+// Exported so other modules can use it instead of direct supabase.auth.getUser()
+export async function getUserWithDeduplication(): Promise<{ user: any | null }> {
+  const now = Date.now();
+  
+  // If we have a valid cached user, return it immediately
+  if (userCache.user && now - userCache.timestamp < USER_CACHE_TTL) {
+    return { user: userCache.user };
+  }
+  
+  // If there's an in-flight request, reuse it
+  if (getUserPromise) {
+    return getUserPromise;
+  }
+  
+  // Create new request and cache the promise
+  getUserPromise = (async () => {
+    try {
+      const {
+        data: { user: fetchedUser },
+        error,
+      } = await supabase.auth.getUser();
+      
+      const user = error ? null : fetchedUser;
+      userCache = { user, timestamp: Date.now() };
+      return { user };
+    } catch (error) {
+      console.error("Error in getUserWithDeduplication:", error);
+      userCache = { user: null, timestamp: Date.now() };
+      return { user: null };
+    } finally {
+      // Clear the promise so future calls can make new requests if cache expires
+      getUserPromise = null;
+    }
+  })();
+  
+  return getUserPromise;
+}
+
 // Fallback function to check user role from profiles table
 export async function getUserRole(): Promise<string | null> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Use deduplicated getUser() to prevent concurrent API calls
+    const { user } = await getUserWithDeduplication();
+    
+    if (!user) return null;
+    
+    const now = Date.now();
+    
     if (!user) return null;
 
-    // Check cache first
-    const now = Date.now();
+    // Check cache first (reuse 'now' from above)
     if (
       userRoleCache.userId === user.id &&
       now - userRoleCache.timestamp < ROLE_CACHE_TTL
