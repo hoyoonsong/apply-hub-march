@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
@@ -89,7 +89,8 @@ export default function MySubmissionsPage() {
     >
   >({});
 
-  const refreshResults = async () => {
+  // Memoize refreshResults to prevent unnecessary re-renders and ensure stable reference
+  const refreshResults = useCallback(async () => {
     const { data, error } = await supabase.rpc("get_published_results_v1");
     if (!error && data) {
       const allPubs = (data ?? []) as ResultsRow[];
@@ -115,47 +116,50 @@ export default function MySubmissionsPage() {
       setResultsByProgram(byProgram);
 
       // Initialize current index to 0 (latest) for each program
-      const newIndices: Record<string, number> = {};
-      for (const programId in byProgram) {
-        if (!(programId in currentPublicationIndex)) {
-          newIndices[programId] = 0;
-        } else {
-          // Keep existing index, but clamp to valid range
-          const maxIndex = byProgram[programId].length - 1;
-          newIndices[programId] = Math.min(
-            currentPublicationIndex[programId],
-            maxIndex
-          );
+      setCurrentPublicationIndex((prev) => {
+        const newIndices: Record<string, number> = {};
+        for (const programId in byProgram) {
+          if (!(programId in prev)) {
+            newIndices[programId] = 0;
+          } else {
+            // Keep existing index, but clamp to valid range
+            const maxIndex = byProgram[programId].length - 1;
+            newIndices[programId] = Math.min(prev[programId], maxIndex);
+          }
         }
-      }
-      setCurrentPublicationIndex((prev) => ({ ...prev, ...newIndices }));
+        return { ...prev, ...newIndices };
+      });
 
-      // Load claiming configs for each program
+      // Batch load claiming configs for all programs in a single query (optimization)
+      // This replaces N individual queries with 1 batched query
       const programIds = Object.keys(byProgram);
-      const configs: Record<string, any> = {};
-
-      for (const pid of programIds) {
-        const { data: prg } = await supabase
+      if (programIds.length > 0) {
+        // Batch query: fetch all program configs in one query instead of N queries
+        const { data: programsData, error: programsError } = await supabase
           .from("programs")
-          .select("metadata, spots_mode, spots_count")
-          .eq("id", pid)
-          .single();
+          .select("id, metadata, spots_mode, spots_count")
+          .in("id", programIds);
 
-        if (prg) {
-          const claiming = prg.metadata?.spotClaiming || {};
-          configs[pid] = {
-            enabled: claiming.enabled || false,
-            claimableDecision: claiming.claimableDecision || "",
-            allowDecline: claiming.allowDecline !== false,
-            spotsCount: prg.spots_count,
-            spotsMode: prg.spots_mode,
-          };
+        if (!programsError && programsData) {
+          const configs: Record<string, any> = {};
+          for (const prg of programsData) {
+            const claiming = prg.metadata?.spotClaiming || {};
+            configs[prg.id] = {
+              enabled: claiming.enabled || false,
+              claimableDecision: claiming.claimableDecision || "",
+              allowDecline: claiming.allowDecline !== false,
+              spotsCount: prg.spots_count,
+              spotsMode: prg.spots_mode,
+            };
+          }
+          setProgramClaimingConfigs(configs);
         }
+      } else {
+        // No programs, clear configs
+        setProgramClaimingConfigs({});
       }
-
-      setProgramClaimingConfigs(configs);
     }
-  };
+  }, []); // Empty deps - function doesn't depend on any props/state that changes
 
   const handleClaimOrDecline = async (
     publicationId: string,
@@ -164,7 +168,7 @@ export default function MySubmissionsPage() {
     setClaimingLoading((prev) => ({ ...prev, [publicationId]: true }));
 
     try {
-      const { data, error } = await supabase.rpc("claim_or_decline_spot", {
+      const { error } = await supabase.rpc("claim_or_decline_spot", {
         p_publication_id: publicationId,
         p_action: action,
       });
@@ -186,7 +190,8 @@ export default function MySubmissionsPage() {
     }
   };
 
-  const refreshApplications = async () => {
+  // Memoize refreshApplications to prevent unnecessary re-renders
+  const refreshApplications = useCallback(async () => {
     if (!user?.id) return;
 
     setLoading(true);
@@ -218,7 +223,7 @@ export default function MySubmissionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
   // Load data on mount and when user changes
   useEffect(() => {
@@ -249,6 +254,10 @@ export default function MySubmissionsPage() {
   }, [user?.id, activeTab]); // Only when switching to results tab
 
   // Realtime subscription for new results (set up once)
+  // Use ref to store refreshResults to avoid dependency issues
+  const refreshResultsRef = useRef(refreshResults);
+  refreshResultsRef.current = refreshResults;
+
   useEffect(() => {
     if (!user?.id) return;
 
@@ -256,7 +265,7 @@ export default function MySubmissionsPage() {
     const debouncedRefresh = () => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        refreshResults();
+        refreshResultsRef.current();
       }, 500); // Debounce to prevent rapid-fire calls
     };
 
