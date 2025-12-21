@@ -191,10 +191,10 @@ export default function AllReviewsPage() {
         combinedRows.filter((r) => r.status === "not_started").length
       );
 
-      // Sort all rows by updated_at in descending order (most recent first)
+      // Sort all rows by submitted_at in descending order (most recent first)
       const sortedRows = combinedRows.sort((a, b) => {
-        const dateA = new Date(a.updated_at || a.submitted_at || 0).getTime();
-        const dateB = new Date(b.updated_at || b.submitted_at || 0).getTime();
+        const dateA = new Date(a.submitted_at || a.updated_at || 0).getTime();
+        const dateB = new Date(b.submitted_at || b.updated_at || 0).getTime();
         return dateB - dateA; // Descending order (newest first)
       });
 
