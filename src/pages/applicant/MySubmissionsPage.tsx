@@ -405,7 +405,7 @@ export default function MySubmissionsPage() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 md:space-y-4">
+              <div className="space-y-8 md:space-y-10">
                 {applicationsRows.map((app) => {
                   // Check if results are published for this application
                   const hasResults =
@@ -419,7 +419,7 @@ export default function MySubmissionsPage() {
                   return (
                     <div
                       key={app.id}
-                      className="group border border-gray-200 rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow duration-200"
+                      className="group border-2 border-gray-300 rounded-lg p-4 md:p-6 bg-white shadow-sm hover:shadow-lg transition-all duration-200"
                     >
                       <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-3 md:space-y-0">
                         <div className="flex-1">
@@ -492,7 +492,7 @@ export default function MySubmissionsPage() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4 md:space-y-6">
+              <div className="space-y-8 md:space-y-10">
                 {Object.entries(resultsByProgram)
                   .sort(
                     ([, pubsA], [, pubsB]) =>
@@ -571,7 +571,7 @@ export default function MySubmissionsPage() {
                     return (
                       <div
                         key={`${programId}-${currentIndex}`}
-                        className="border border-gray-200 rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow duration-200 relative"
+                        className="border-2 border-gray-300 rounded-lg p-4 md:p-6 bg-white shadow-sm hover:shadow-lg transition-all duration-200 relative"
                       >
                         {/* Carousel Navigation */}
                         {hasMultiplePublications && (
