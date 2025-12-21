@@ -56,6 +56,15 @@ export default function PublishResultsPage() {
   >(null);
   const [publishDeadline, setPublishDeadline] = useState<string>("");
 
+  // Modal for updating existing publications without deadlines
+  const [showExistingPublicationsModal, setShowExistingPublicationsModal] =
+    useState<boolean>(false);
+  const [existingPublicationsDeadline, setExistingPublicationsDeadline] =
+    useState<string>("");
+  // Track if we've already shown the modal for existing publications (per claimable decision)
+  const [hasShownExistingModal, setHasShownExistingModal] =
+    useState<string>("");
+
   // Helper: Convert datetime-local to ISO string (preserves local time intent)
   const toISOString = (datetimeLocal: string): string | null => {
     if (!datetimeLocal) return null;
@@ -309,6 +318,75 @@ export default function PublishResultsPage() {
     }
   };
 
+  const handleExistingPublicationsDeadlineConfirm = async () => {
+    if (!programId || !claimableDecision) return;
+
+    setLoading(true);
+    try {
+      const deadlineISO = existingPublicationsDeadline
+        ? toISOString(existingPublicationsDeadline)
+        : null;
+
+      // Get fresh publication data to find ones without deadlines
+      const { data: pubData } = await supabase.rpc(
+        "get_all_publications_for_program",
+        {
+          p_program_id: programId,
+          p_claimable_decision: claimableDecision,
+        }
+      );
+
+      if (!pubData) {
+        alert("Failed to load publications");
+        return;
+      }
+
+      // Find all publications for the claimable decision without deadlines
+      const publicationsToUpdate = pubData.filter(
+        (pub: PublicationRow) =>
+          (pub.decision || "").toLowerCase().trim() ===
+            claimableDecision.toLowerCase().trim() && !pub.claim_deadline
+      );
+
+      // Update each publication's deadline
+      for (const pub of publicationsToUpdate) {
+        const { error } = await supabase.rpc("update_publication_deadline", {
+          p_publication_id: pub.publication_id,
+          p_deadline: deadlineISO,
+        });
+
+        if (error) {
+          console.error(
+            `Failed to update deadline for publication ${pub.publication_id}:`,
+            error
+          );
+        }
+      }
+
+      // Reload publications to reflect the changes
+      await loadPublications();
+
+      setShowExistingPublicationsModal(false);
+      setExistingPublicationsDeadline("");
+
+      if (deadlineISO) {
+        alert(
+          `Updated deadline for ${publicationsToUpdate.length} existing publication(s).`
+        );
+      } else {
+        alert(
+          `Left ${publicationsToUpdate.length} existing publication(s) without a deadline.`
+        );
+      }
+    } catch (error: any) {
+      alert(
+        error.message || "Failed to update deadlines for existing publications"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const saveClaimingSettings = async () => {
     if (!programId) return;
 
@@ -341,6 +419,42 @@ export default function PublishResultsPage() {
       alert("Failed to save claiming settings: " + error.message);
     } else {
       alert("Claiming settings saved!");
+
+      // After saving, reload publications to check for existing ones without deadlines
+      // Only check if claiming is enabled and a decision is selected
+      if (claimingEnabled && claimableDecision) {
+        // Reload publications and then check
+        const { data: pubData } = await supabase.rpc(
+          "get_all_publications_for_program",
+          {
+            p_program_id: programId,
+            p_claimable_decision: claimableDecision,
+          }
+        );
+
+        if (pubData && pubData.length > 0) {
+          const publicationsWithoutDeadlines = pubData.filter(
+            (pub: PublicationRow) =>
+              (pub.decision || "").toLowerCase().trim() ===
+                claimableDecision.toLowerCase().trim() && !pub.claim_deadline
+          );
+
+          // Create a unique key for this decision to track if we've shown the modal
+          const modalKey = `${programId}-${claimableDecision}`;
+
+          if (
+            publicationsWithoutDeadlines.length > 0 &&
+            hasShownExistingModal !== modalKey
+          ) {
+            // Show modal to set deadline for existing publications
+            setShowExistingPublicationsModal(true);
+            setHasShownExistingModal(modalKey);
+          }
+        }
+
+        // Reload publications for the UI
+        await loadPublications();
+      }
     }
   };
 
@@ -629,9 +743,6 @@ export default function PublishResultsPage() {
                         />
                       </th>
                       <th className="px-4 py-3 text-left text-[11px] md:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Program
-                      </th>
-                      <th className="px-4 py-3 text-left text-[11px] md:text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Applicant
                       </th>
                       <th className="px-4 py-3 text-left text-[11px] md:text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -666,9 +777,6 @@ export default function PublishResultsPage() {
                             }
                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900 max-w-[160px] truncate">
-                          {r.program_name}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900 max-w-[140px] truncate">
                           {r.applicant_name ?? "—"}
@@ -1120,6 +1228,57 @@ export default function PublishResultsPage() {
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Existing Publications Deadline Modal */}
+      {showExistingPublicationsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Set Deadline for Existing Publications
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              You've enabled spot claiming for the "{claimableDecision}"
+              decision, and there are already published results without a
+              deadline. Set a deadline for these existing publications
+              (optional).
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Claim deadline (optional)
+              </label>
+              <input
+                type="datetime-local"
+                value={existingPublicationsDeadline}
+                onChange={(e) =>
+                  setExistingPublicationsDeadline(e.target.value)
+                }
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Leave empty to keep claiming open until spots are full
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowExistingPublicationsModal(false);
+                  setExistingPublicationsDeadline("");
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleExistingPublicationsDeadlineConfirm}
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Updating..." : "Set Deadline"}
               </button>
             </div>
           </div>
