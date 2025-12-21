@@ -1548,11 +1548,12 @@ export default function OrgProgramBuilder() {
           </div>
 
           {/* Sidebar - Reviewer Form Configuration */}
-          <div className="w-80 flex-shrink-0">
+          <div className="w-72 flex-shrink-0">
             {/* Spacer to match the <br /> spacing from the main content */}
             <div style={{ height: "24px" }}></div>
-            <div className="sticky" style={{ top: "24px" }}>
+            <div className="sticky space-y-4" style={{ top: "24px" }}>
               {program && <ProgramReviewerFormCard programId={program.id} />}
+              {program && <ShareLinkBox programId={program.id} />}
             </div>
           </div>
         </div>
@@ -1926,6 +1927,52 @@ export default function OrgProgramBuilder() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Share Link Box Component
+function ShareLinkBox({ programId }: { programId: string }) {
+  const [copied, setCopied] = useState(false);
+  const applicationUrl = `${window.location.origin}/programs/${programId}/apply`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(applicationUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3 shadow-sm">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-1 h-5 bg-purple-600 rounded-full"></div>
+        <h3 className="text-xs font-semibold text-gray-900">
+          Share Application Link
+        </h3>
+      </div>
+      <div className="space-y-2">
+        <div className="bg-white border border-gray-200 rounded-md p-1.5 flex items-center gap-1.5">
+          <input
+            type="text"
+            value={applicationUrl}
+            readOnly
+            className="flex-1 text-xs text-gray-600 bg-transparent border-none outline-none truncate"
+          />
+          <button
+            onClick={handleCopy}
+            className="flex-shrink-0 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded transition-colors"
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 leading-tight">
+          Share this link with applicants to let them apply to your program.
+        </p>
+      </div>
     </div>
   );
 }

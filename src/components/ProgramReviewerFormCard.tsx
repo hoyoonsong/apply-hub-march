@@ -185,15 +185,15 @@ export default function ProgramReviewerFormCard({
   }
 
   return (
-    <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-6 shadow-sm">
-      <div className="flex items-center gap-3 mb-4">
+    <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-4">
         <div className="w-1 h-6 bg-purple-500 rounded-full"></div>
-        <h2 className="text-lg font-bold text-gray-900">
+        <h2 className="text-base font-bold text-gray-900">
           Reviewer Form Configuration
         </h2>
       </div>
-      <div className="space-y-4">
-        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-purple-100 hover:bg-purple-25 transition-colors">
+      <div className="space-y-3.5">
+        <label className="flex items-center gap-2.5 p-2.5 bg-white rounded-lg border border-purple-100 hover:bg-purple-25 transition-colors">
           <input
             type="checkbox"
             className="h-4 w-4 text-purple-600"
@@ -204,10 +204,10 @@ export default function ProgramReviewerFormCard({
               formRef.current = newForm; // Update ref immediately
             }}
           />
-          <span className="font-medium text-gray-700">Score</span>
+          <span className="text-sm font-medium text-gray-700">Score</span>
         </label>
 
-        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-purple-100 hover:bg-purple-25 transition-colors">
+        <label className="flex items-center gap-2.5 p-2.5 bg-white rounded-lg border border-purple-100 hover:bg-purple-25 transition-colors">
           <input
             type="checkbox"
             className="h-4 w-4 text-purple-600"
@@ -218,10 +218,10 @@ export default function ProgramReviewerFormCard({
               formRef.current = newForm; // Update ref immediately
             }}
           />
-          <span className="font-medium text-gray-700">Comments</span>
+          <span className="text-sm font-medium text-gray-700">Comments</span>
         </label>
 
-        <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-purple-100 hover:bg-purple-25 transition-colors">
+        <label className="flex items-center gap-2.5 p-2.5 bg-white rounded-lg border border-purple-100 hover:bg-purple-25 transition-colors">
           <input
             type="checkbox"
             className="h-4 w-4 text-purple-600"
@@ -232,7 +232,7 @@ export default function ProgramReviewerFormCard({
               formRef.current = newForm; // Update ref immediately
             }}
           />
-          <span className="font-medium text-gray-700">Decision (select)</span>
+          <span className="text-sm font-medium text-gray-700">Decision (select)</span>
         </label>
 
         {form.show_decision && (
@@ -247,26 +247,26 @@ export default function ProgramReviewerFormCard({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") addOption();
                 }}
-                className="flex-1 rounded border px-3 py-2 text-sm"
+                className="flex-1 rounded border px-2.5 py-1.5 text-sm"
               />
               <button
                 type="button"
                 onClick={addOption}
-                className="px-3 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
+                className="px-2.5 py-1.5 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
               >
                 Add
               </button>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {form.decision_options.map((opt) => (
                 <div
                   key={opt}
-                  className="px-2 py-1 rounded-full border text-sm flex items-center gap-2"
+                  className="px-2 py-1 rounded-full border text-xs flex items-center gap-1"
                 >
                   <span>{opt}</span>
                   <button
                     onClick={() => removeOption(opt)}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-gray-500 hover:text-gray-700 text-xs leading-none"
                   >
                     ×
                   </button>
@@ -276,7 +276,7 @@ export default function ProgramReviewerFormCard({
           </div>
         )}
 
-        <div className="pt-4 flex items-center justify-end gap-3">
+        <div className="pt-3 flex items-center justify-end gap-2">
           {saveStatus === "saved" && (
             <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
               <svg
@@ -316,7 +316,7 @@ export default function ProgramReviewerFormCard({
           <button
             disabled={saving || saveStatus === "saving"}
             onClick={save}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+            className="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >
             {saving || saveStatus === "saving" ? (
               <span className="flex items-center gap-2">
