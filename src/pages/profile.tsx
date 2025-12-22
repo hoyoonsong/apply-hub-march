@@ -39,6 +39,55 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
 
+  const isNonEmpty = (v: any) =>
+    v !== null &&
+    v !== undefined &&
+    !(typeof v === "string" && v.trim() === "");
+
+  const isSectionComplete = (id: string) => {
+    switch (id) {
+      case "personal": {
+        return (
+          isNonEmpty(form.full_name) &&
+          isNonEmpty(form.date_of_birth) &&
+          isNonEmpty(form.phone_number) &&
+          isNonEmpty(form.address_line1) &&
+          isNonEmpty(form.address_city) &&
+          isNonEmpty(form.address_state) &&
+          isNonEmpty(form.address_postal_code) &&
+          isNonEmpty(form.address_country)
+        );
+      }
+      case "family": {
+        const hasParentInfo =
+          isNonEmpty(form.parent_guardian_name) &&
+          isNonEmpty(form.parent_guardian_email) &&
+          isNonEmpty(form.parent_guardian_phone);
+
+        const emergencyIsParent = form.emergency_contact_is_parent === true;
+
+        if (emergencyIsParent) {
+          return hasParentInfo;
+        }
+
+        const hasEmergencyInfo =
+          isNonEmpty(form.emergency_contact_name) &&
+          isNonEmpty(form.emergency_contact_email) &&
+          isNonEmpty(form.emergency_contact_phone);
+
+        return hasParentInfo && hasEmergencyInfo;
+      }
+      case "writing": {
+        return isNonEmpty(form.personal_statement);
+      }
+      case "experience": {
+        return !!form.resume_file;
+      }
+      default:
+        return false;
+    }
+  };
+
   useEffect(() => {
     (async () => {
       const {
@@ -127,7 +176,10 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Name
+                <span>
+                  Name
+                  <span className="text-red-500 ml-0.5">*</span>
+                </span>
               </div>
               <div className="bg-gray-50 rounded-lg p-4 space-y-4">
                 <input
@@ -157,7 +209,10 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Birth Date
+                <span>
+                  Birth Date
+                  <span className="text-red-500 ml-0.5">*</span>
+                </span>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <input
@@ -173,7 +228,10 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Phone Number
+                <span>
+                  Phone Number
+                  <span className="text-red-500 ml-0.5">*</span>
+                </span>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <input
@@ -190,7 +248,10 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Address
+                <span>
+                  Address
+                  <span className="text-red-500 ml-0.5">*</span>
+                </span>
               </div>
               <div className="bg-gray-50 rounded-lg p-4 space-y-4">
                 <input
@@ -249,7 +310,10 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Parent/Guardian Information
+                <span>
+                  Parent/Guardian Information
+                  <span className="text-red-500 ml-0.5">*</span>
+                </span>
               </div>
               <div className="bg-gray-50 rounded-lg p-4 space-y-4">
                 <input
@@ -279,7 +343,10 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Emergency Contact
+                <span>
+                  Emergency Contact
+                  <span className="text-red-500 ml-0.5">*</span>
+                </span>
               </div>
               <div className="bg-gray-50 rounded-lg p-4 space-y-4">
                 <div className="flex items-center space-x-3">
@@ -342,7 +409,10 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Personal Statement
+                <span>
+                  Personal Statement
+                  <span className="text-red-500 ml-0.5">*</span>
+                </span>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="space-y-2">
@@ -379,7 +449,10 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Resume
+                <span>
+                  Resume
+                  <span className="text-red-500 ml-0.5">*</span>
+                </span>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <ResumeUpload
@@ -443,14 +516,29 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <span className="text-lg">{section.icon}</span>
                   <div>
-                    <div className="font-medium text-sm">{section.title}</div>
-                    <div className="text-xs text-gray-500">
-                      {index === currentSection
-                        ? "Current"
-                        : index < currentSection
-                        ? "Complete"
-                        : "Upcoming"}
+                    <div className="font-medium text-sm flex items-center gap-2">
+                      <span>{section.title}</span>
+                      {isSectionComplete(section.id) && (
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-100 text-green-700 text-[10px] border border-green-300">
+                          ✓
+                        </span>
+                      )}
                     </div>
+                    {!isSectionComplete(section.id) && (
+                      <div className="text-xs text-gray-500 flex items-center gap-1">
+                        {index === currentSection ? (
+                          <>
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                            <span>In progress</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            <span>Missing required info</span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </button>
