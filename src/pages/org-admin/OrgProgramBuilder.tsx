@@ -329,13 +329,32 @@ export default function OrgProgramBuilder() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("organizations")
-        .select("id,slug,name")
-        .eq("slug", orgSlug)
-        .single();
-      if (error || !data) return navigate("/unauthorized");
-      setOrg(data);
+      // Use cached organization query (optimization)
+      try {
+        const { getOrgBySlug } = await import("../../lib/orgs");
+        const orgData = await getOrgBySlug(orgSlug || "");
+        if (orgData) {
+          setOrg(orgData);
+        } else {
+          // Fallback to direct query if cache fails (preserves existing behavior)
+          const { data, error } = await supabase
+            .from("organizations")
+            .select("id,slug,name")
+            .eq("slug", orgSlug)
+            .single();
+          if (error || !data) return navigate("/unauthorized");
+          setOrg(data);
+        }
+      } catch (err) {
+        // Fallback to direct query on error (preserves existing behavior)
+        const { data, error } = await supabase
+          .from("organizations")
+          .select("id,slug,name")
+          .eq("slug", orgSlug)
+          .single();
+        if (error || !data) return navigate("/unauthorized");
+        setOrg(data);
+      }
     })();
   }, [orgSlug, navigate, isSuperAdmin]);
 
@@ -442,6 +461,8 @@ export default function OrgProgramBuilder() {
           setIncludeExperienceInfo(profileSections.experience !== false); // Default to true
 
           // For super admin, load org data from program
+          // Note: This query is by ID (not slug), so we can't use the slug-based cache
+          // This is less frequent (only for super admins) so direct query is acceptable
           if (isSuperAdmin && !org) {
             const { data: orgData, error: orgError } = await supabase
               .from("organizations")
@@ -1969,9 +1990,6 @@ function ShareLinkBox({ programId }: { programId: string }) {
             {copied ? "Copied!" : "Copy"}
           </button>
         </div>
-        <p className="text-xs text-gray-500 leading-tight">
-          Share this link with applicants to let them apply to your program.
-        </p>
       </div>
     </div>
   );

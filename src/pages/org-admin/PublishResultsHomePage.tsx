@@ -1,8 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import { getProgramPublicationCount } from "../../lib/publicationQueries";
-import AutoLinkText from "../../components/AutoLinkText";
 
 type Program = {
   id: string;
@@ -53,35 +51,53 @@ export default function PublishResultsHomePage() {
           return;
         }
 
-        // For each program, get finalized and published counts in parallel
-        const programsWithCounts = await Promise.all(
-          (data || []).map(async (program) => {
-            // Parallelize both count queries for each program
-            const [finalizedResult, publishedResult] = await Promise.allSettled([
-              supabase.rpc("get_finalized_publish_queue_v1", {
-                p_program_id: program.id,
-              }),
-              getProgramPublicationCount(supabase, program.id),
-            ]);
+        // Batch fetch counts for all programs in one call (optimization)
+        const programIds = (data || []).map((p) => p.id);
+        let countsMap = new Map<
+          string,
+          { finalized_count: number; published_count: number }
+        >();
 
-            const finalized_count =
-              finalizedResult.status === "fulfilled" &&
-              finalizedResult.value.data
-                ? (finalizedResult.value.data as any[])?.length || 0
-                : 0;
+        if (programIds.length > 0) {
+          try {
+            // Use batch RPC function to get all counts at once
+            const { data: countsData, error: countsError } = await supabase.rpc(
+              "get_program_counts_batch_v1",
+              {
+                p_program_ids: programIds,
+              }
+            );
 
-            const published_count =
-              publishedResult.status === "fulfilled"
-                ? publishedResult.value
-                : 0;
+            if (!countsError && countsData) {
+              // Create a map for quick lookup
+              countsMap = new Map(
+                countsData.map((row: any) => [
+                  row.program_id,
+                  {
+                    finalized_count: Number(row.finalized_count) || 0,
+                    published_count: Number(row.published_count) || 0,
+                  },
+                ])
+              );
+            }
+          } catch (error) {
+            console.error("Error fetching batch counts:", error);
+            // Fallback: set all counts to 0 if batch fails
+          }
+        }
 
-            return {
-              ...program,
-              finalized_count,
-              published_count,
-            };
-          })
-        );
+        // Map programs with their counts
+        const programsWithCounts = (data || []).map((program) => {
+          const counts = countsMap.get(program.id) || {
+            finalized_count: 0,
+            published_count: 0,
+          };
+          return {
+            ...program,
+            finalized_count: counts.finalized_count,
+            published_count: counts.published_count,
+          };
+        });
 
         setPrograms(programsWithCounts);
       } catch (error) {

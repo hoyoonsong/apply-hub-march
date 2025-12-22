@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { getCachedProfile } from "./profileCache";
+import { deduplicateRequest, createRpcKey } from "./requestDeduplication";
 
 // Cache for user role to avoid repeated queries
 let userRoleCache: {
@@ -68,8 +70,6 @@ export async function getUserRole(): Promise<string | null> {
     
     const now = Date.now();
     
-    if (!user) return null;
-
     // Check cache first (reuse 'now' from above)
     if (
       userRoleCache.userId === user.id &&
@@ -78,11 +78,8 @@ export async function getUserRole(): Promise<string | null> {
       return userRoleCache.role;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, deleted_at")
-      .eq("id", user.id)
-      .single();
+    // Use cached profile query (5-minute TTL, more comprehensive than local cache)
+    const profile = await getCachedProfile(user.id);
 
     // If user is deleted, return null to deny access
     if (profile?.deleted_at) {
@@ -112,7 +109,11 @@ export type ProgramMini = {
 };
 
 export async function fetchAdminOrgs(): Promise<OrgMini[]> {
-  const { data, error } = await supabase.rpc("my_admin_orgs_v1");
+  // Use deduplication to prevent duplicate calls from React StrictMode
+  const { data, error } = await deduplicateRequest(
+    createRpcKey("my_admin_orgs_v1"),
+    () => supabase.rpc("my_admin_orgs_v1")
+  );
   console.log("fetchAdminOrgs result:", { data, error });
   if (error) {
     console.warn("my_admin_orgs_v1 RPC not available:", error.message);
@@ -122,7 +123,11 @@ export async function fetchAdminOrgs(): Promise<OrgMini[]> {
 }
 
 export async function fetchCoalitions(): Promise<CoalitionMini[]> {
-  const { data, error } = await supabase.rpc("my_coalitions_v1");
+  // Use deduplication to prevent duplicate calls from React StrictMode
+  const { data, error } = await deduplicateRequest(
+    createRpcKey("my_coalitions_v1"),
+    () => supabase.rpc("my_coalitions_v1")
+  );
   console.log("fetchCoalitions result:", { data, error });
   if (error) {
     console.warn("my_coalitions_v1 RPC not available:", error.message);
@@ -132,7 +137,11 @@ export async function fetchCoalitions(): Promise<CoalitionMini[]> {
 }
 
 export async function fetchReviewerPrograms(): Promise<ProgramMini[]> {
-  const { data, error } = await supabase.rpc("my_reviewer_programs_v2");
+  // Use deduplication to prevent duplicate calls from React StrictMode
+  const { data, error } = await deduplicateRequest(
+    createRpcKey("my_reviewer_programs_v2"),
+    () => supabase.rpc("my_reviewer_programs_v2")
+  );
   console.log("fetchReviewerPrograms result:", { data, error });
   if (error) {
     console.warn("my_reviewer_programs_v2 RPC not available:", error.message);

@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { ReviewsListRow } from "../../types/reviews";
 import { getProgramReviewForm } from "../../lib/api";
+import { deduplicateRequest, createRpcKey } from "../../lib/requestDeduplication";
 
 export default function ReviewQueue() {
   const { programId } = useParams<{ programId: string }>();
@@ -55,15 +56,29 @@ export default function ReviewQueue() {
       }
 
       // Parallelize reviews and applications queries
+      // Use deduplication to prevent duplicate calls from React StrictMode
       const [reviewsResult, appsResult] = await Promise.allSettled([
-        supabase.rpc("reviews_list_v1", {
-          p_mine_only: false,
-          p_status: null,
-          p_program_id: programId,
-          p_org_id: null,
-          p_limit: 1000,
-          p_offset: 0,
-        }),
+        deduplicateRequest(
+          createRpcKey("reviews_list_v1", {
+            p_mine_only: false,
+            p_status: null,
+            p_program_id: programId,
+            p_org_id: null,
+            p_limit: 1000,
+            p_offset: 0,
+          }),
+          async () => {
+            const result = await supabase.rpc("reviews_list_v1", {
+              p_mine_only: false,
+              p_status: null,
+              p_program_id: programId,
+              p_org_id: null,
+              p_limit: 1000,
+              p_offset: 0,
+            });
+            return result;
+          }
+        ),
         supabase
           .from("applications")
           .select(
@@ -91,7 +106,8 @@ export default function ReviewQueue() {
         return;
       }
 
-      const reviewsError = reviewsResult.value.error;
+      const reviewsResponse = reviewsResult.value as { data: any; error: any };
+      const reviewsError = reviewsResponse?.error;
       if (reviewsError) {
         console.error("Error fetching reviews:", reviewsError);
         setErr(reviewsError.message);
@@ -100,7 +116,7 @@ export default function ReviewQueue() {
         return;
       }
 
-      const existingReviews = (reviewsResult.value.data ?? []) as ReviewsListRow[];
+      const existingReviews = (reviewsResponse?.data ?? []) as ReviewsListRow[];
 
       // Handle applications result
       if (appsResult.status === "rejected") {

@@ -5,6 +5,7 @@ import { assignOrgAdminAsReviewer } from "../lib/orgAdminReviewers";
 import { supabase } from "../lib/supabase";
 import { getOrgBySlug } from "../lib/orgs";
 import AdvertiseFormModal from "../components/AdvertiseFormModal";
+import { deduplicateRequest, createRpcKey } from "../lib/requestDeduplication";
 
 export default function OrgAdminHome() {
   const { orgSlug } = useParams<{ orgSlug: string }>();
@@ -31,7 +32,14 @@ export default function OrgAdminHome() {
         if (!user || !org) return;
 
         // Assign current user as reviewer for all programs in this org
-        await assignOrgAdminAsReviewer(org.id, user.id);
+        // Use deduplication to prevent duplicate calls from React StrictMode
+        await deduplicateRequest(
+          createRpcKey("assign_org_admin_as_reviewer", {
+            p_org_id: org.id,
+            p_user_id: user.id,
+          }),
+          () => assignOrgAdminAsReviewer(org.id, user.id)
+        );
       } catch (error) {
         console.error("Failed to sync org admin reviewers:", error);
         // Don't show error to user, just log it

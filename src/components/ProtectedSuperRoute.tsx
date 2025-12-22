@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { getCachedProfile } from "../lib/profileCache";
 
 export default function ProtectedSuperRoute({
   children,
@@ -22,18 +23,32 @@ export default function ProtectedSuperRoute({
           return;
         }
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, deleted_at")
-          .eq("id", session.user.id)
-          .single();
+        // First try cached profile (role + deleted_at)
+        const cached = await getCachedProfile(session.user.id);
+
+        let role: string | null = null;
+        let deletedAt: string | null = null;
+
+        if (cached) {
+          role = cached.role;
+          deletedAt = cached.deleted_at;
+        } else {
+          // Fallback to direct query (preserves existing behavior)
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role, deleted_at")
+            .eq("id", session.user.id)
+            .single();
+          role = (profile as any)?.role ?? null;
+          deletedAt = (profile as any)?.deleted_at ?? null;
+        }
 
         // Check if user is deleted or not superadmin
-        if (profile?.deleted_at) {
+        if (deletedAt) {
           console.log("User is soft deleted, denying super admin access");
           setIsSuperAdmin(false);
         } else {
-          setIsSuperAdmin(profile?.role === "superadmin");
+          setIsSuperAdmin(role === "superadmin");
         }
       } catch (error) {
         console.error("Error checking super admin status:", error);

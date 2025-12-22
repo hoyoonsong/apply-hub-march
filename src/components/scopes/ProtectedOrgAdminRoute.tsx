@@ -1,6 +1,7 @@
 import { Navigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { deduplicateRequest, createRpcKey } from "../../lib/requestDeduplication";
 
 export default function ProtectedOrgAdminRoute({
   children,
@@ -12,7 +13,11 @@ export default function ProtectedOrgAdminRoute({
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.rpc("my_admin_orgs_v1");
+      // Use deduplication to prevent duplicate calls from React StrictMode
+      const { data, error } = await deduplicateRequest(
+        createRpcKey("my_admin_orgs_v1"),
+        () => supabase.rpc("my_admin_orgs_v1")
+      );
       if (error) return setOk(false);
       const allowed = (data ?? []).some((o: any) => o.slug === orgSlug);
       setOk(allowed);

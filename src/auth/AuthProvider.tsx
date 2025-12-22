@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { supabase } from "../lib/supabase";
+import { getCachedProfile } from "../lib/profileCache";
 
 type Auth = {
   loading: boolean;
@@ -35,11 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkUserStatus = async () => {
       if (!isMounted) return;
       try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("deleted_at")
-          .eq("id", user.id)
-          .single();
+        // Use cached profile query to avoid repeated API calls
+        const profile = await getCachedProfile(user.id);
 
         if (isMounted && profile?.deleted_at) {
           console.log("User is soft deleted, signing out");

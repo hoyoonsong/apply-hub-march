@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useCapabilities } from "../../lib/capabilities";
 import { getProgramReviewForm, getCachedProgramReviewForm, getProgramReviewFormsBatch } from "../../lib/api";
+import { deduplicateRequest, createRpcKey } from "../../lib/requestDeduplication";
 import type { ReviewsListRow } from "../../types/reviews";
 
 export default function AllReviewsPage() {
@@ -80,15 +81,29 @@ export default function AllReviewsPage() {
 
     try {
       // Parallelize reviews and applications queries
+      // Use deduplication to prevent duplicate calls from React StrictMode
       const [reviewsResult, appsResult] = await Promise.allSettled([
-        supabase.rpc("reviews_list_v1", {
-          p_mine_only: mineOnly,
-          p_status: null, // Get all statuses
-          p_program_id: null,
-          p_org_id: null,
-          p_limit: 1000,
-          p_offset: 0,
-        }),
+        deduplicateRequest(
+          createRpcKey("reviews_list_v1", {
+            p_mine_only: mineOnly,
+            p_status: null,
+            p_program_id: null,
+            p_org_id: null,
+            p_limit: 1000,
+            p_offset: 0,
+          }),
+          async () => {
+            const result = await supabase.rpc("reviews_list_v1", {
+              p_mine_only: mineOnly,
+              p_status: null, // Get all statuses
+              p_program_id: null,
+              p_org_id: null,
+              p_limit: 1000,
+              p_offset: 0,
+            });
+            return result;
+          }
+        ),
         supabase
           .from("applications")
           .select(
@@ -114,7 +129,8 @@ export default function AllReviewsPage() {
         return;
       }
 
-      const reviewsError = reviewsResult.value.error;
+      const reviewsResponse = reviewsResult.value as { data: any; error: any };
+      const reviewsError = reviewsResponse?.error;
       if (reviewsError) {
         console.error("Error fetching reviews:", reviewsError);
         setError(reviewsError.message);
@@ -123,7 +139,7 @@ export default function AllReviewsPage() {
         return;
       }
 
-      const existingReviews = (reviewsResult.value.data ?? []) as ReviewsListRow[];
+      const existingReviews = (reviewsResponse?.data ?? []) as ReviewsListRow[];
 
       // Handle applications result
       if (appsResult.status === "rejected") {
