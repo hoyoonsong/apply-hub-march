@@ -3,7 +3,10 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
 import { findUserByEmail } from "../../lib/programAssignments";
-import { deduplicateRequest, createRpcKey } from "../../lib/requestDeduplication";
+import {
+  deduplicateRequest,
+  createRpcKey,
+} from "../../lib/requestDeduplication";
 
 interface TeamMember {
   id: string;
@@ -90,11 +93,17 @@ export default function OrgMyTeams() {
       // Load organization-level admins using RPC function (bypasses RLS)
       // Use deduplication to prevent duplicate calls from React StrictMode
       let orgAdmins: any[] = [];
-      
-      const { data: orgAdminsData, error: adminsError } = await deduplicateRequest(
-        createRpcKey("org_list_org_admins", { p_org_id: org.id }),
-        () => supabase.rpc("org_list_org_admins", { p_org_id: org.id })
-      );
+
+      const { data: orgAdminsData, error: adminsError } =
+        await deduplicateRequest(
+          createRpcKey("org_list_org_admins", { p_org_id: org.id }),
+          async () => {
+            const result = await supabase.rpc("org_list_org_admins", {
+              p_org_id: org.id,
+            });
+            return result;
+          }
+        );
 
       if (adminsError) {
         console.error("Error calling org_list_org_admins:", adminsError);
@@ -104,7 +113,7 @@ export default function OrgMyTeams() {
         orgAdmins = [];
       } else {
         // Convert RPC result to expected format
-        orgAdmins = Array.isArray(orgAdminsData) 
+        orgAdmins = Array.isArray(orgAdminsData)
           ? orgAdminsData.map((admin: any) => ({
               user_id: admin.user_id,
               status: admin.status,
@@ -118,18 +127,24 @@ export default function OrgMyTeams() {
       // Get all programs for this organization using RPC function (bypasses RLS)
       // Use deduplication to prevent duplicate calls from React StrictMode
       let programs: any[] = [];
-      
-      const { data: programsData, error: programsError } = await deduplicateRequest(
-        createRpcKey("org_list_org_programs", { p_org_id: org.id }),
-        () => supabase.rpc("org_list_org_programs", { p_org_id: org.id })
-      );
+
+      const { data: programsData, error: programsError } =
+        await deduplicateRequest(
+          createRpcKey("org_list_org_programs", { p_org_id: org.id }),
+          async () => {
+            const result = await supabase.rpc("org_list_org_programs", {
+              p_org_id: org.id,
+            });
+            return result;
+          }
+        );
 
       if (programsError) {
         console.error("Error calling org_list_org_programs:", programsError);
         // If RPC function doesn't exist or fails, we can't load team members properly
         throw new Error(`Failed to load programs: ${programsError.message}`);
       }
-      
+
       // Convert RPC result to expected format
       programs = Array.isArray(programsData)
         ? programsData.map((p: any) => ({
@@ -137,7 +152,7 @@ export default function OrgMyTeams() {
             name: p.name,
           }))
         : [];
-      
+
       setPrograms(programs);
 
       // Get all reviewers for all programs in this organization
@@ -163,14 +178,22 @@ export default function OrgMyTeams() {
       // Load org-level reviewers (reviewers assigned to the org, not specific programs)
       // Use deduplication to prevent duplicate calls from React StrictMode
       try {
-        const { data: orgReviewersData, error: orgReviewersError } = await deduplicateRequest(
-          createRpcKey("org_list_org_reviewers", { p_org_id: org.id }),
-          () => supabase.rpc("org_list_org_reviewers", { p_org_id: org.id })
-        );
+        const { data: orgReviewersData, error: orgReviewersError } =
+          await deduplicateRequest(
+            createRpcKey("org_list_org_reviewers", { p_org_id: org.id }),
+            async () => {
+              const result = await supabase.rpc("org_list_org_reviewers", {
+                p_org_id: org.id,
+              });
+              return result;
+            }
+          );
 
         if (!orgReviewersError && orgReviewersData) {
-          const orgReviewers = Array.isArray(orgReviewersData) ? orgReviewersData : [];
-          
+          const orgReviewers = Array.isArray(orgReviewersData)
+            ? orgReviewersData
+            : [];
+
           orgReviewers.forEach((reviewer: any) => {
             if (!allReviewers.has(reviewer.user_id)) {
               allReviewers.set(reviewer.user_id, {
@@ -202,56 +225,91 @@ export default function OrgMyTeams() {
       const programIds = programs.map((p) => p.id);
       if (programIds.length > 0) {
         try {
-          console.log(`[Optimization] Attempting batch fetch for ${programIds.length} programs`);
-          const { data: batchAssignments, error: batchError } = await deduplicateRequest(
-            createRpcKey("org_list_program_assignments_batch_v1", { p_program_ids: programIds }),
-            () => supabase.rpc("org_list_program_assignments_batch_v1", {
-              p_program_ids: programIds,
-            })
+          console.log(
+            `[Optimization] Attempting batch fetch for ${programIds.length} programs`
           );
+          const { data: batchAssignments, error: batchError } =
+            await deduplicateRequest(
+              createRpcKey("org_list_program_assignments_batch_v1", {
+                p_program_ids: programIds,
+              }),
+              async () => {
+                const result = await supabase.rpc(
+                  "org_list_program_assignments_batch_v1",
+                  {
+                    p_program_ids: programIds,
+                  }
+                );
+                return result;
+              }
+            );
 
           if (batchError) {
-            console.warn("[Optimization] Batch function failed, falling back to individual calls:", batchError);
+            console.warn(
+              "[Optimization] Batch function failed, falling back to individual calls:",
+              batchError
+            );
             // Fallback to individual calls if batch fails
             for (const program of programs) {
               try {
-                const { data: assignments, error: assignmentsError } = await supabase.rpc(
-                  "org_list_program_assignments",
-                  {
+                const { data: assignments, error: assignmentsError } =
+                  await supabase.rpc("org_list_program_assignments", {
                     p_program_id: program.id,
-                  }
-                );
+                  });
                 if (!assignmentsError && assignments) {
-                  processAssignments(program.id, assignments, orgAdmins, allReviewers);
+                  processAssignments(
+                    program.id,
+                    assignments,
+                    orgAdmins,
+                    allReviewers
+                  );
                 }
               } catch (err) {
-                console.warn(`Error loading assignments for program ${program.id}:`, err);
+                console.warn(
+                  `Error loading assignments for program ${program.id}:`,
+                  err
+                );
               }
             }
           } else if (batchAssignments) {
-            console.log(`[Optimization] Batch fetch successful! Got ${batchAssignments.length} program assignments in one call`);
+            console.log(
+              `[Optimization] Batch fetch successful! Got ${batchAssignments.length} program assignments in one call`
+            );
             // Process batch results
             for (const row of batchAssignments) {
               if (row.assignments) {
-                processAssignments(row.program_id, row.assignments, orgAdmins, allReviewers);
+                processAssignments(
+                  row.program_id,
+                  row.assignments,
+                  orgAdmins,
+                  allReviewers
+                );
               }
             }
           } else {
-            console.warn("[Optimization] Batch function returned no data, falling back to individual calls");
+            console.warn(
+              "[Optimization] Batch function returned no data, falling back to individual calls"
+            );
             // Fallback if no data returned
             for (const program of programs) {
               try {
-                const { data: assignments, error: assignmentsError } = await supabase.rpc(
-                  "org_list_program_assignments",
-                  {
+                const { data: assignments, error: assignmentsError } =
+                  await supabase.rpc("org_list_program_assignments", {
                     p_program_id: program.id,
-                  }
-                );
+                  });
                 if (!assignmentsError && assignments) {
-                  processAssignments(program.id, assignments, orgAdmins, allReviewers);
+                  processAssignments(
+                    program.id,
+                    assignments,
+                    orgAdmins,
+                    allReviewers
+                  );
                 }
               } catch (err) {
-                console.warn(`Error loading assignments for program ${program.id}:`, err);
+                console.warn(
+                  `Error loading assignments for program ${program.id}:`,
+                  err
+                );
               }
             }
           }
@@ -260,17 +318,23 @@ export default function OrgMyTeams() {
           // Fallback to individual calls
           for (const program of programs) {
             try {
-              const { data: assignments, error: assignmentsError } = await supabase.rpc(
-                "org_list_program_assignments",
-                {
+              const { data: assignments, error: assignmentsError } =
+                await supabase.rpc("org_list_program_assignments", {
                   p_program_id: program.id,
-                }
-              );
+                });
               if (!assignmentsError && assignments) {
-                processAssignments(program.id, assignments, orgAdmins, allReviewers);
+                processAssignments(
+                  program.id,
+                  assignments,
+                  orgAdmins,
+                  allReviewers
+                );
               }
             } catch (err) {
-              console.warn(`Error loading assignments for program ${program.id}:`, err);
+              console.warn(
+                `Error loading assignments for program ${program.id}:`,
+                err
+              );
             }
           }
         }
@@ -358,24 +422,34 @@ export default function OrgMyTeams() {
 
       // Filter: show members who are active in at least one program/org
       // Also check if they have any program assignments (active reviewers/admins)
-      const teamMembersArray = Array.from(allReviewers.values())
-        .filter((member) => {
+      const teamMembersArray = Array.from(allReviewers.values()).filter(
+        (member) => {
           // Show if status is active
           if (member.status === "active") return true;
           // Also show if they have program assignments (they might be active in some programs)
           if (member.assignments.reviewer_programs.length > 0) return true;
           // Show org admins and org reviewers
-          if (member.assignments.org_admin || member.assignments.reviewer_org) return true;
+          if (member.assignments.org_admin || member.assignments.reviewer_org)
+            return true;
           return false;
-        });
-      
+        }
+      );
+
       console.log(
         "All reviewers before filtering:",
-        Array.from(allReviewers.values()).map(m => ({ id: m.id, email: m.email, status: m.status }))
+        Array.from(allReviewers.values()).map((m) => ({
+          id: m.id,
+          email: m.email,
+          status: m.status,
+        }))
       );
       console.log(
         "Final team members array:",
-        teamMembersArray.map(m => ({ id: m.id, email: m.email, status: m.status })),
+        teamMembersArray.map((m) => ({
+          id: m.id,
+          email: m.email,
+          status: m.status,
+        })),
         "at",
         new Date().toISOString()
       );
@@ -444,34 +518,48 @@ export default function OrgMyTeams() {
 
         // Batch add as program admin to ALL programs in the organization (optimization)
         if (programIds.length > 0) {
-          const { data: adminBatchResult, error: adminBatchError } = await supabase.rpc(
-            "org_add_program_assignments_batch_v1",
-            {
+          const { data: adminBatchResult, error: adminBatchError } =
+            await supabase.rpc("org_add_program_assignments_batch_v1", {
               p_program_ids: programIds,
               p_user_email: user.email,
               p_user_name: user.full_name || null,
               p_assignment_type: "admin",
-            }
-          );
+            });
           if (adminBatchError) {
-            console.warn("Batch admin assignment failed, falling back to individual calls:", adminBatchError);
+            console.warn(
+              "Batch admin assignment failed, falling back to individual calls:",
+              adminBatchError
+            );
             // Fallback to individual calls if batch fails
             for (const program of programs) {
               try {
-                const { data: result, error } = await supabase.rpc("org_add_program_admin", {
-                  p_program_id: program.id,
-                  p_user_email: user.email,
-                  p_user_name: user.full_name || null,
-                });
+                const { data: result, error } = await supabase.rpc(
+                  "org_add_program_admin",
+                  {
+                    p_program_id: program.id,
+                    p_user_email: user.email,
+                    p_user_name: user.full_name || null,
+                  }
+                );
                 if (error) {
-                  console.warn(`Failed to add admin to program ${program.id}:`, error);
+                  console.warn(
+                    `Failed to add admin to program ${program.id}:`,
+                    error
+                  );
                 }
               } catch (err) {
-                console.warn(`Error adding admin to program ${program.id}:`, err);
+                console.warn(
+                  `Error adding admin to program ${program.id}:`,
+                  err
+                );
               }
             }
           } else if (adminBatchResult) {
-            console.log(`Batch added admin to ${adminBatchResult.added_count || 0} programs`);
+            console.log(
+              `Batch added admin to ${
+                adminBatchResult.added_count || 0
+              } programs`
+            );
           }
         }
       }
@@ -480,34 +568,48 @@ export default function OrgMyTeams() {
       // Note: Admins are also added as reviewers so they can review applications
       // This is now optimized to use a single batch call instead of N calls
       if (programIds.length > 0) {
-        const { data: reviewerBatchResult, error: reviewerBatchError } = await supabase.rpc(
-          "org_add_program_assignments_batch_v1",
-          {
+        const { data: reviewerBatchResult, error: reviewerBatchError } =
+          await supabase.rpc("org_add_program_assignments_batch_v1", {
             p_program_ids: programIds,
             p_user_email: user.email,
             p_user_name: user.full_name || null,
             p_assignment_type: "reviewer",
-          }
-        );
+          });
         if (reviewerBatchError) {
-          console.warn("Batch reviewer assignment failed, falling back to individual calls:", reviewerBatchError);
+          console.warn(
+            "Batch reviewer assignment failed, falling back to individual calls:",
+            reviewerBatchError
+          );
           // Fallback to individual calls if batch fails
           for (const program of programs) {
             try {
-              const { data: result, error } = await supabase.rpc("org_add_program_reviewer", {
-                p_program_id: program.id,
-                p_user_email: user.email,
-                p_user_name: user.full_name || null,
-              });
+              const { data: result, error } = await supabase.rpc(
+                "org_add_program_reviewer",
+                {
+                  p_program_id: program.id,
+                  p_user_email: user.email,
+                  p_user_name: user.full_name || null,
+                }
+              );
               if (error) {
-                console.warn(`Failed to add reviewer to program ${program.id}:`, error);
+                console.warn(
+                  `Failed to add reviewer to program ${program.id}:`,
+                  error
+                );
               }
             } catch (err) {
-              console.warn(`Error adding reviewer to program ${program.id}:`, err);
+              console.warn(
+                `Error adding reviewer to program ${program.id}:`,
+                err
+              );
             }
           }
         } else if (reviewerBatchResult) {
-          console.log(`Batch added reviewer to ${reviewerBatchResult.added_count || 0} programs`);
+          console.log(
+            `Batch added reviewer to ${
+              reviewerBatchResult.added_count || 0
+            } programs`
+          );
         }
       }
 
@@ -529,17 +631,24 @@ export default function OrgMyTeams() {
 
       setTeamMembers((prevMembers) => {
         // Check if member already exists (shouldn't, but be safe)
-        const existingIndex = prevMembers.findIndex((m) => m.id === user.user_id);
+        const existingIndex = prevMembers.findIndex(
+          (m) => m.id === user.user_id
+        );
         if (existingIndex >= 0) {
           // Update existing member
           const updated = [...prevMembers];
           updated[existingIndex] = {
             ...updated[existingIndex],
-            role: newMemberRole === "admin" ? "admin" : updated[existingIndex].role,
+            role:
+              newMemberRole === "admin" ? "admin" : updated[existingIndex].role,
             assignments: {
-              org_admin: newMemberRole === "admin" || updated[existingIndex].assignments.org_admin,
+              org_admin:
+                newMemberRole === "admin" ||
+                updated[existingIndex].assignments.org_admin,
               reviewer_programs: programIds,
-              reviewer_org: newMemberRole === "admin" || updated[existingIndex].assignments.reviewer_org,
+              reviewer_org:
+                newMemberRole === "admin" ||
+                updated[existingIndex].assignments.reviewer_org,
             },
           };
           return updated;
@@ -598,7 +707,10 @@ export default function OrgMyTeams() {
                 ...m,
                 assignments: {
                   ...m.assignments,
-                  reviewer_programs: [...m.assignments.reviewer_programs, programId],
+                  reviewer_programs: [
+                    ...m.assignments.reviewer_programs,
+                    programId,
+                  ],
                 },
               };
             }
@@ -697,32 +809,46 @@ export default function OrgMyTeams() {
 
         // Batch remove as program admin from all programs (optimization)
         if (programIds.length > 0) {
-          const { data: adminBatchResult, error: adminBatchError } = await supabase.rpc(
-            "org_remove_program_assignments_batch_v1",
-            {
+          const { data: adminBatchResult, error: adminBatchError } =
+            await supabase.rpc("org_remove_program_assignments_batch_v1", {
               p_program_ids: programIds,
               p_user_email: user.email,
               p_assignment_type: "admin",
-            }
-          );
+            });
           if (adminBatchError) {
-            console.warn("Batch admin removal failed, falling back to individual calls:", adminBatchError);
+            console.warn(
+              "Batch admin removal failed, falling back to individual calls:",
+              adminBatchError
+            );
             // Fallback to individual calls if batch fails
             for (const programId of programIds) {
               try {
-                const { error } = await supabase.rpc("org_remove_program_admin", {
-                  p_program_id: programId,
-                  p_user_email: user.email,
-                });
+                const { error } = await supabase.rpc(
+                  "org_remove_program_admin",
+                  {
+                    p_program_id: programId,
+                    p_user_email: user.email,
+                  }
+                );
                 if (error) {
-                  console.warn(`Failed to remove admin from program ${programId}:`, error);
+                  console.warn(
+                    `Failed to remove admin from program ${programId}:`,
+                    error
+                  );
                 }
               } catch (err) {
-                console.warn(`Error removing admin from program ${programId}:`, err);
+                console.warn(
+                  `Error removing admin from program ${programId}:`,
+                  err
+                );
               }
             }
           } else if (adminBatchResult) {
-            console.log(`Batch removed admin from ${adminBatchResult.removed_count || 0} programs`);
+            console.log(
+              `Batch removed admin from ${
+                adminBatchResult.removed_count || 0
+              } programs`
+            );
           }
         }
       }
@@ -730,32 +856,46 @@ export default function OrgMyTeams() {
       // Batch remove as reviewer from ALL programs in the organization (both admins and reviewers)
       // This is now optimized to use a single batch call instead of N calls
       if (programIds.length > 0) {
-        const { data: reviewerBatchResult, error: reviewerBatchError } = await supabase.rpc(
-          "org_remove_program_assignments_batch_v1",
-          {
+        const { data: reviewerBatchResult, error: reviewerBatchError } =
+          await supabase.rpc("org_remove_program_assignments_batch_v1", {
             p_program_ids: programIds,
             p_user_email: user.email,
             p_assignment_type: "reviewer",
-          }
-        );
+          });
         if (reviewerBatchError) {
-          console.warn("Batch reviewer removal failed, falling back to individual calls:", reviewerBatchError);
+          console.warn(
+            "Batch reviewer removal failed, falling back to individual calls:",
+            reviewerBatchError
+          );
           // Fallback to individual calls if batch fails
           for (const programId of programIds) {
             try {
-              const { error } = await supabase.rpc("org_remove_program_reviewer", {
-                p_program_id: programId,
-                p_user_email: user.email,
-              });
+              const { error } = await supabase.rpc(
+                "org_remove_program_reviewer",
+                {
+                  p_program_id: programId,
+                  p_user_email: user.email,
+                }
+              );
               if (error) {
-                console.warn(`Failed to remove reviewer from program ${programId}:`, error);
+                console.warn(
+                  `Failed to remove reviewer from program ${programId}:`,
+                  error
+                );
               }
             } catch (err) {
-              console.warn(`Error removing reviewer from program ${programId}:`, err);
+              console.warn(
+                `Error removing reviewer from program ${programId}:`,
+                err
+              );
             }
           }
         } else if (reviewerBatchResult) {
-          console.log(`Batch removed reviewer from ${reviewerBatchResult.removed_count || 0} programs`);
+          console.log(
+            `Batch removed reviewer from ${
+              reviewerBatchResult.removed_count || 0
+            } programs`
+          );
         }
       }
 

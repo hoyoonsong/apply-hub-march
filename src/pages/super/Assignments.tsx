@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import { deduplicateRequest, createRpcKey } from "../../lib/requestDeduplication";
+import {
+  deduplicateRequest,
+  createRpcKey,
+} from "../../lib/requestDeduplication";
 
 type Tab = "org-admins" | "coalition-managers" | "reviewers";
 
@@ -44,15 +47,32 @@ export default function Assignments() {
         [
           deduplicateRequest(
             createRpcKey("super_list_orgs_v1", { include_deleted: false }),
-            () => supabase.rpc("super_list_orgs_v1", { include_deleted: false })
+            async () => {
+              const result = await supabase.rpc("super_list_orgs_v1", {
+                include_deleted: false,
+              });
+              return result;
+            }
           ),
           deduplicateRequest(
-            createRpcKey("super_list_coalitions_v1", { include_deleted: false }),
-            () => supabase.rpc("super_list_coalitions_v1", { include_deleted: false })
+            createRpcKey("super_list_coalitions_v1", {
+              include_deleted: false,
+            }),
+            async () => {
+              const result = await supabase.rpc("super_list_coalitions_v1", {
+                include_deleted: false,
+              });
+              return result;
+            }
           ),
           deduplicateRequest(
             createRpcKey("super_list_programs_v1", { include_deleted: false }),
-            () => supabase.rpc("super_list_programs_v1", { include_deleted: false })
+            async () => {
+              const result = await supabase.rpc("super_list_programs_v1", {
+                include_deleted: false,
+              });
+              return result;
+            }
           ),
           deduplicateRequest(
             createRpcKey("super_list_users_v1", {
@@ -61,13 +81,15 @@ export default function Assignments() {
               p_limit: 1000,
               p_offset: 0,
             }),
-            () =>
-              supabase.rpc("super_list_users_v1", {
+            async () => {
+              const result = await supabase.rpc("super_list_users_v1", {
                 p_search: null,
                 p_role_filter: null,
                 p_limit: 1000,
                 p_offset: 0,
-              })
+              });
+              return result;
+            }
           ),
         ]
       );
