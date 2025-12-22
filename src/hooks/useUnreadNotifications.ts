@@ -63,12 +63,18 @@ export function useUnreadNotifications() {
       }, 500); // Wait 500ms before checking
     };
 
-    const immediateCheck = () => {
+    // Debounced immediate check - waits a short time to handle batch updates
+    // This ensures that when multiple notifications are marked as read at once,
+    // we only check once after all updates have been processed
+    const debouncedImmediateCheck = () => {
       if (checkTimeoutRef.current) {
         clearTimeout(checkTimeoutRef.current);
-        checkTimeoutRef.current = null;
       }
-      checkUnread();
+      // Use a short delay (100ms) to allow batch updates to complete
+      // This prevents race conditions when multiple notifications are updated at once
+      checkTimeoutRef.current = setTimeout(() => {
+        checkUnread();
+      }, 100);
     };
 
     // Subscribe to new notifications (realtime - no database queries)
@@ -104,8 +110,12 @@ export function useUnreadNotifications() {
           const wasMarkedAsRead = !payload.old?.read_at && payload.new?.read_at;
           
           if (wasMarkedAsRead) {
-            // Re-check actual unread count to ensure accuracy (handles batch updates)
-            immediateCheck();
+            // Use debounced check to handle batch updates properly
+            // When multiple notifications are marked as read at once, this ensures
+            // we only check once after all updates have been processed
+            // The 100ms delay allows the database transaction to complete and
+            // prevents race conditions from rapid-fire UPDATE events
+            debouncedImmediateCheck();
           } else {
             // For other updates, check if we need to update the dot
             // If a notification became unread (unlikely but handle it)
