@@ -1036,8 +1036,8 @@ export default function OrgProgramBuilder() {
                 <div className="text-sm">
                   Your changes are saved as a draft.{" "}
                   {program?.published
-                    ? "Click ‘Update Live Page’ to push them live."
-                    : "Click ‘Publish Program’ to make them live."}
+                    ? "Click 'Update Live Page' to push them live."
+                    : "Click 'Publish Program' to make them live."}
                 </div>
               </div>
             </div>
@@ -1091,10 +1091,10 @@ export default function OrgProgramBuilder() {
 
             {/* Program Description */}
             {program && (
-              <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 shadow-sm mb-4">
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-6 shadow-sm mb-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-1 h-6 bg-gray-500 rounded-full"></div>
+                    <div className="w-1 h-6 bg-amber-500 rounded-full"></div>
                     <h2 className="text-lg font-bold text-gray-900">
                       Description / Instructions
                     </h2>
@@ -1105,7 +1105,7 @@ export default function OrgProgramBuilder() {
                         setEditingDescription(program?.description || "");
                         setIsEditingDescription(true);
                       }}
-                      className="px-3 py-1.5 text-sm font-medium text-indigo-600 bg-white border border-indigo-300 rounded-lg hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
+                      className="px-3 py-1.5 text-sm font-medium text-amber-600 bg-white border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors flex items-center gap-1.5"
                     >
                       <svg
                         className="w-4 h-4"
@@ -1128,7 +1128,7 @@ export default function OrgProgramBuilder() {
                   {isEditingDescription ? (
                     <div className="space-y-3">
                       <textarea
-                        className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
+                        className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 resize-none"
                         rows={6}
                         value={editingDescription}
                         onChange={(e) => setEditingDescription(e.target.value)}
@@ -1182,7 +1182,7 @@ export default function OrgProgramBuilder() {
                             }
                           }}
                           disabled={savingDescription}
-                          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           {savingDescription ? "Saving..." : "Save"}
                         </button>
@@ -1968,15 +1968,15 @@ function ShareLinkBox({ programId }: { programId: string }) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3 shadow-sm">
+    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-600 rounded-lg p-3 shadow-sm">
       <div className="flex items-center gap-2 mb-2">
-        <div className="w-1 h-5 bg-purple-600 rounded-full"></div>
+        <div className="w-1 h-5 bg-green-700 rounded-full"></div>
         <h3 className="text-xs font-semibold text-gray-900">
           Share Application Link
         </h3>
       </div>
       <div className="space-y-2">
-        <div className="bg-white border border-gray-200 rounded-md p-1.5 flex items-center gap-1.5">
+        <div className="bg-white border border-green-400 rounded-md p-1.5 flex items-center gap-1.5">
           <input
             type="text"
             value={applicationUrl}
@@ -1985,7 +1985,7 @@ function ShareLinkBox({ programId }: { programId: string }) {
           />
           <button
             onClick={handleCopy}
-            className="flex-shrink-0 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded transition-colors"
+            className="flex-shrink-0 px-2 py-1 text-xs font-medium text-white bg-green-700 hover:bg-green-800 rounded transition-colors"
           >
             {copied ? "Copied!" : "Copy"}
           </button>

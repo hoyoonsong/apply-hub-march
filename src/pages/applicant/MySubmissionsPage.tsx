@@ -693,7 +693,7 @@ export default function MySubmissionsPage() {
                               <div className="text-sm font-medium text-gray-800 mb-2">
                                 Reviewer Comments:
                               </div>
-                              <div className="text-gray-700 leading-relaxed">
+                              <div className="text-gray-700 leading-relaxed break-words">
                                 <AutoLinkText
                                   text={p.comments}
                                   preserveWhitespace={true}
@@ -708,7 +708,7 @@ export default function MySubmissionsPage() {
                             <div className="text-sm font-medium text-amber-800 mb-1">
                               Additional Message
                             </div>
-                            <div className="text-amber-700">
+                            <div className="text-amber-700 break-words">
                               <AutoLinkText
                                 text={v.customMessage}
                                 preserveWhitespace={true}

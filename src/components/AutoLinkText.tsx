@@ -30,7 +30,7 @@ export default function AutoLinkText({
 
   return (
     <span
-      className={className}
+      className={`${className} break-words`}
       style={preserveWhitespace ? { whiteSpace: "pre-line" } : undefined}
     >
       {parts.map((part, index) => {
@@ -41,7 +41,8 @@ export default function AutoLinkText({
               href={part.href}
               target={target}
               rel={target === "_blank" ? "noopener noreferrer" : undefined}
-              className={linkClassName}
+              className={`${linkClassName} break-all`}
+              style={{ wordBreak: "break-all" }}
             >
               {part.content}
             </a>

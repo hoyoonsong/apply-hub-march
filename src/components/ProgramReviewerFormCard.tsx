@@ -82,9 +82,9 @@ export default function ProgramReviewerFormCard({
       clearTimeout(saveTimeoutRef.current);
     }
     
-    // Use the current form state directly (not refs) to ensure we have the latest
-    const currentForm = form;
-    const currentSnapshot = loadedFormSnapshot;
+    // Use refs to get the latest state values (avoid stale closures)
+    const currentForm = formRef.current;
+    const currentSnapshot = snapshotRef.current;
     
     // Normalize the current form state
     const normalizedCurrent: ReviewForm = {
