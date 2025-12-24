@@ -719,11 +719,11 @@ export default function OrgAdminPrograms() {
                                   status === "submitted"
                                     ? "bg-blue-100 text-blue-800"
                                     : status === "pending_changes"
-                                    ? "bg-orange-100 text-orange-800"
+                                    ? "bg-purple-100 text-purple-800"
                                     : status === "changes_requested"
                                     ? "bg-yellow-100 text-yellow-800"
                                     : status === "published"
-                                    ? "bg-green-100 text-green-800"
+                                    ? "bg-green-50 text-green-600"
                                     : status === "unpublished"
                                     ? "bg-purple-100 text-purple-800"
                                     : "bg-gray-100 text-gray-800"
@@ -748,7 +748,7 @@ export default function OrgAdminPrograms() {
                                               true);
                                         return isPrivate;
                                       })()
-                                      ? "bg-purple-100 text-purple-800"
+                                      ? "bg-orange-100 text-orange-800"
                                       : "bg-blue-100 text-blue-800"
                                     : "bg-gray-100 text-gray-800"
                                 }`}
@@ -883,23 +883,10 @@ export default function OrgAdminPrograms() {
                   <button
                     type="button"
                     onClick={() => setShowAdvertiseModal(true)}
-                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-teal-600 to-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg hover:from-teal-700 hover:to-teal-800 hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={!orgId}
                   >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 6v12m6-6H6"
-                      />
-                    </svg>
-                    Advertise
+                    Advertise your programs!
                   </button>
                 </div>
               </div>
@@ -970,21 +957,13 @@ export default function OrgAdminPrograms() {
                             </button>
                           </td>
                           <td className="px-6 py-5 text-sm text-gray-900 text-center">
-                            {p.published ? (
-                              <Link
-                                to={`/programs/${p.id}/apply`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-indigo-600 hover:text-indigo-800 font-semibold hover:underline transition-colors duration-150"
-                                title="View published program"
-                              >
-                                {p.name}
-                              </Link>
-                            ) : (
-                              <span className="text-gray-900 font-semibold">
-                                {p.name}
-                              </span>
-                            )}
+                            <Link
+                              to={`/org/${orgSlug}/admin/programs/${p.id}/builder`}
+                              className="text-indigo-600 hover:text-indigo-800 font-semibold hover:underline transition-colors duration-150"
+                              title="Edit program"
+                            >
+                              {p.name}
+                            </Link>
                           </td>
                           <td className="px-6 py-5 text-center">
                             {(() => {
@@ -995,11 +974,11 @@ export default function OrgAdminPrograms() {
                                     status === "submitted"
                                       ? "bg-blue-100 text-blue-800 border border-blue-200"
                                       : status === "pending_changes"
-                                      ? "bg-orange-100 text-orange-800 border border-orange-200"
+                                      ? "bg-purple-100 text-purple-800 border border-purple-200"
                                       : status === "changes_requested"
                                       ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
                                       : status === "published"
-                                      ? "bg-green-100 text-green-800 border border-green-200"
+                                      ? "bg-green-50 text-green-600 border border-green-100"
                                       : status === "unpublished"
                                       ? "bg-purple-100 text-purple-800 border border-purple-200"
                                       : "bg-gray-100 text-gray-800 border border-gray-200"
@@ -1028,7 +1007,7 @@ export default function OrgAdminPrograms() {
                                   className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
                                     p.published
                                       ? isPrivate
-                                        ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                        ? "bg-orange-100 text-orange-800 border border-orange-200"
                                         : "bg-blue-100 text-blue-800 border border-blue-200"
                                       : "bg-gray-100 text-gray-800 border border-gray-200"
                                   }`}
@@ -1063,6 +1042,26 @@ export default function OrgAdminPrograms() {
                                   />
                                 </svg>
                                 Edit
+                              </Link>
+                              <Link
+                                to={`/review/${p.id}`}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-100 text-green-800 hover:bg-green-200 transition-colors duration-150"
+                                title="Review applications"
+                              >
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                  />
+                                </svg>
+                                Review
                               </Link>
                               <button
                                 onClick={() => onDelete(p.id)}
@@ -1162,25 +1161,6 @@ export default function OrgAdminPrograms() {
 
                                 {/* Action Buttons Row - Bottom Right */}
                                 <div className="flex items-center justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
-                                  <Link
-                                    to={`/review/${p.id}`}
-                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150"
-                                  >
-                                    <svg
-                                      className="w-4 h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                      />
-                                    </svg>
-                                    View Applications
-                                  </Link>
                                   <button
                                     onClick={() => openEditDetailsModal(p)}
                                     className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors duration-150"
