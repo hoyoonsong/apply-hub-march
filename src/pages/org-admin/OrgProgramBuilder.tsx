@@ -833,7 +833,7 @@ export default function OrgProgramBuilder() {
         if (isSuperAdmin) {
           navigate("/super/programs");
         } else {
-          navigate(`/org/${org?.slug}/admin/programs`);
+          navigate(`/org/${org?.slug}/admin`);
         }
       }, 1500);
     } catch (e: any) {
@@ -982,9 +982,7 @@ export default function OrgProgramBuilder() {
               </button>
               <Link
                 to={
-                  isSuperAdmin
-                    ? "/super/programs"
-                    : `/org/${org?.slug}/admin/programs`
+                  isSuperAdmin ? "/super/programs" : `/org/${org?.slug}/admin`
                 }
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
               >

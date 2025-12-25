@@ -188,7 +188,7 @@ export default function OrgManageReviewers() {
                   You need to create programs before you can assign reviewers.
                 </p>
                 <Link
-                  to={`/org/${orgSlug}/admin/programs`}
+                  to={`/org/${orgSlug}/admin`}
                   className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105"
                 >
                   <svg
@@ -256,7 +256,9 @@ export default function OrgManageReviewers() {
                                 {program.name}
                               </h3>
                               <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                                <AutoLinkText text={program.description || "No description"} />
+                                <AutoLinkText
+                                  text={program.description || "No description"}
+                                />
                               </p>
                               <div className="flex items-center gap-3">
                                 <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
