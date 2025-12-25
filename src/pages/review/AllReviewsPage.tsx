@@ -1,10 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useCapabilities } from "../../lib/capabilities";
-import OrgAdminSidebar from "../../components/OrgAdminSidebar";
 import {
-  getProgramReviewForm,
   getCachedProgramReviewForm,
   getProgramReviewFormsBatch,
 } from "../../lib/api";
@@ -28,11 +26,7 @@ export default function AllReviewsPage() {
     Record<string, any>
   >({});
 
-  const { reviewerPrograms, isOrgAdmin, adminOrgs } = useCapabilities();
-  const location = useLocation();
-
-  // Get the first org slug if user is an org admin
-  const orgSlug = isOrgAdmin && adminOrgs.length > 0 ? adminOrgs[0].slug : null;
+  const { reviewerPrograms } = useCapabilities();
 
   // Load form configurations for all unique programs
   async function loadProgramFormConfigs(reviews: ReviewsListRow[]) {
@@ -391,354 +385,337 @@ export default function AllReviewsPage() {
   }, [allRows, reviewerPrograms, selectedProgramId, searchTerm, status]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {isOrgAdmin && orgSlug && (
-        <OrgAdminSidebar
-          currentPath={location.pathname}
-          orgId={adminOrgs.length > 0 ? adminOrgs[0].id : null}
-        />
-      )}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  All Reviews
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  Manage and review all applications across your assigned
-                  programs
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {reviewerPrograms.length > 0 && (
-                  <Link
-                    to={`/org/${reviewerPrograms[0].organization_slug}/admin/publish-results`}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                  >
-                    Publish Results
-                  </Link>
-                )}
-                {!isOrgAdmin && (
-                  <Link
-                    to="/dashboard"
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    ← Back to Dashboard
-                  </Link>
-                )}
-              </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                All Reviews
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Manage and review all applications across your assigned programs
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {reviewerPrograms.length > 0 && (
+                <Link
+                  to={`/org/${reviewerPrograms[0].organization_slug}/admin/publish-results`}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  Publish Results
+                </Link>
+              )}
+              <Link
+                to="/dashboard"
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                ← Back to Dashboard
+              </Link>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-8 py-12">
-            {/* Reviews Table */}
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
-              <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-6 bg-gradient-to-b from-gray-600 to-gray-700 rounded-full"></div>
-                  <h2 className="text-xl font-bold text-gray-900">Reviews</h2>
-                </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Reviews Table */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
+          <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-6 bg-gradient-to-b from-gray-600 to-gray-700 rounded-full"></div>
+              <h2 className="text-xl font-bold text-gray-900">Reviews</h2>
+            </div>
+          </div>
+
+          {/* Search and Filter Controls */}
+          <div className="px-8 py-6 border-b border-gray-200 bg-white">
+            <div className="space-y-4">
+              {/* Search Bar */}
+              <div>
+                <input
+                  type="text"
+                  placeholder="Search by program name, applicant name, or reviewer..."
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
 
-              {/* Search and Filter Controls */}
-              <div className="px-8 py-6 border-b border-gray-200 bg-white">
-                <div className="space-y-4">
-                  {/* Search Bar */}
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Search by program name, applicant name, or reviewer..."
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
+              {/* Filter Controls */}
+              <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    checked={mineOnly}
+                    onChange={(e) => setMineOnly(e.target.checked)}
+                  />
+                  <label className="text-sm font-medium text-gray-700">
+                    My reviews only
+                  </label>
+                </div>
 
-                  {/* Filter Controls */}
-                  <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                        checked={mineOnly}
-                        onChange={(e) => setMineOnly(e.target.checked)}
-                      />
-                      <label className="text-sm font-medium text-gray-700">
-                        My reviews only
-                      </label>
-                    </div>
+                <div className="h-6 w-px bg-gray-300 hidden md:block" />
 
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-gray-800">
+                    Status
+                  </label>
+                  <select
+                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as any)}
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="not_started">Not Started</option>
+                    <option value="draft">Commented</option>
+                    <option value="submitted">Finalized</option>
+                  </select>
+                </div>
+
+                {reviewerPrograms.length > 0 && (
+                  <>
                     <div className="h-6 w-px bg-gray-300 hidden md:block" />
-
                     <div className="flex items-center gap-2">
                       <label className="text-sm font-semibold text-gray-800">
-                        Status
+                        Program
                       </label>
                       <select
                         className="rounded-lg border border-gray-300 px-4 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value as any)}
+                        value={selectedProgramId}
+                        onChange={(e) => setSelectedProgramId(e.target.value)}
                       >
-                        <option value="">All Statuses</option>
-                        <option value="not_started">Not Started</option>
-                        <option value="draft">Commented</option>
-                        <option value="submitted">Finalized</option>
+                        <option value="">All Programs</option>
+                        {reviewerPrograms.map((program) => (
+                          <option key={program.id} value={program.id}>
+                            {program.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
-
-                    {reviewerPrograms.length > 0 && (
-                      <>
-                        <div className="h-6 w-px bg-gray-300 hidden md:block" />
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm font-semibold text-gray-800">
-                            Program
-                          </label>
-                          <select
-                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                            value={selectedProgramId}
-                            onChange={(e) =>
-                              setSelectedProgramId(e.target.value)
-                            }
-                          >
-                            <option value="">All Programs</option>
-                            {reviewerPrograms.map((program) => (
-                              <option key={program.id} value={program.id}>
-                                {program.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="text-left p-4 font-semibold text-gray-900">
-                        Updated
-                      </th>
-                      <th className="text-left p-4 font-semibold text-gray-900">
-                        Program
-                      </th>
-                      <th className="text-left p-4 font-semibold text-gray-900">
-                        Applicant
-                      </th>
-                      <th className="text-left p-4 font-semibold text-gray-900">
-                        Last Edited By
-                      </th>
-                      <th className="text-left p-4 font-semibold text-gray-900">
-                        Review Status
-                      </th>
-                      <th className="text-left p-4 font-semibold text-gray-900">
-                        Score
-                      </th>
-                      <th className="text-left p-4 font-semibold text-gray-900">
-                        Decision
-                      </th>
-                      <th className="text-left p-4 font-semibold text-gray-900">
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading && (
-                      <tr>
-                        <td colSpan={8} className="p-8 text-center">
-                          <div className="flex items-center justify-center gap-3">
-                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-indigo-600 border-t-transparent"></div>
-                            <span className="text-gray-600 font-medium">
-                              Loading reviews...
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                    {!loading && filteredRows.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="p-8 text-center">
-                          <div className="flex flex-col items-center gap-3">
-                            <svg
-                              className="w-12 h-12 text-gray-400"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.5}
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                              />
-                            </svg>
-                            <div className="text-gray-600">
-                              <p className="font-semibold text-lg">
-                                No reviews found
-                              </p>
-                              <p className="text-sm">
-                                {searchTerm || selectedProgramId
-                                  ? "No reviews match your current filters."
-                                  : "No reviews have been created yet."}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                    {!loading &&
-                      filteredRows.map((r) => (
-                        <tr
-                          key={r.review_id}
-                          className="border-t border-gray-100 hover:bg-gray-50 transition-colors"
-                        >
-                          <td className="p-4 text-xs text-gray-700">
-                            {r.updated_at
-                              ? new Date(r.updated_at).toLocaleString()
-                              : "—"}
-                          </td>
-                          <td className="p-4 font-medium text-gray-900">
-                            {r.program_name}
-                          </td>
-                          <td className="p-4 text-sm text-gray-700">
-                            {r.applicant_name ?? r.applicant_id}
-                          </td>
-                          <td
-                            className="p-4 text-sm text-gray-700"
-                            title={r.reviewer_id ?? ""}
-                          >
-                            {r.reviewer_name ?? "Unknown User"}
-                          </td>
-                          <td className="p-4">
-                            {r.status === "submitted" ? (
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
-                                Finalized
-                              </span>
-                            ) : r.status === "not_started" ? (
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200">
-                                Not Started
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200">
-                                Commented
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-4 text-gray-700 font-medium">
-                            {r.score ?? "—"}
-                          </td>
-                          <td className="p-4">
-                            {programFormConfigs[r.program_id]?.show_decision ? (
-                              r.ratings?.decision ? (
-                                (() => {
-                                  const colors = getDecisionColor(
-                                    r.ratings.decision
-                                  );
-                                  return (
-                                    <span
-                                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${colors.bg} ${colors.text}`}
-                                    >
-                                      {r.ratings.decision}
-                                    </span>
-                                  );
-                                })()
-                              ) : (
-                                "—"
-                              )
-                            ) : (
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
-                                Disabled
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-4">
-                            <Link
-                              to={`/review/app/${r.application_id}`}
-                              className="inline-flex items-center justify-center px-3 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105"
-                              title="Open review"
-                            >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                />
-                              </svg>
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Results Count */}
-              <div className="px-8 py-4 bg-gray-50 border-t border-gray-200">
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                      />
-                    </svg>
-                    <span className="font-medium">
-                      {loading
-                        ? "Loading..."
-                        : `Showing ${filteredRows.length} of ${allRows.length} reviews`}
-                    </span>
-                  </div>
-                  {reviewerPrograms.length > 0 && (
-                    <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                      Filtered to your assigned programs only
-                    </div>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             </div>
+          </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                <div className="flex items-center gap-2">
-                  <svg
-                    className="w-5 h-5 text-red-500"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span className="text-red-700 font-medium">
-                    Error: {error}
-                  </span>
-                </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left p-4 font-semibold text-gray-900">
+                    Updated
+                  </th>
+                  <th className="text-left p-4 font-semibold text-gray-900">
+                    Program
+                  </th>
+                  <th className="text-left p-4 font-semibold text-gray-900">
+                    Applicant
+                  </th>
+                  <th className="text-left p-4 font-semibold text-gray-900">
+                    Last Edited By
+                  </th>
+                  <th className="text-left p-4 font-semibold text-gray-900">
+                    Review Status
+                  </th>
+                  <th className="text-left p-4 font-semibold text-gray-900">
+                    Score
+                  </th>
+                  <th className="text-left p-4 font-semibold text-gray-900">
+                    Decision
+                  </th>
+                  <th className="text-left p-4 font-semibold text-gray-900">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center">
+                      <div className="flex items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-indigo-600 border-t-transparent"></div>
+                        <span className="text-gray-600 font-medium">
+                          Loading reviews...
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {!loading && filteredRows.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <svg
+                          className="w-12 h-12 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                        <div className="text-gray-600">
+                          <p className="font-semibold text-lg">
+                            No reviews found
+                          </p>
+                          <p className="text-sm">
+                            {searchTerm || selectedProgramId
+                              ? "No reviews match your current filters."
+                              : "No reviews have been created yet."}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {!loading &&
+                  filteredRows.map((r) => (
+                    <tr
+                      key={r.review_id}
+                      className="border-t border-gray-100 hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="p-4 text-xs text-gray-700">
+                        {r.updated_at
+                          ? new Date(r.updated_at).toLocaleString()
+                          : "—"}
+                      </td>
+                      <td className="p-4 font-medium text-gray-900">
+                        {r.program_name}
+                      </td>
+                      <td className="p-4 text-sm text-gray-700">
+                        {r.applicant_name ?? r.applicant_id}
+                      </td>
+                      <td
+                        className="p-4 text-sm text-gray-700"
+                        title={r.reviewer_id ?? ""}
+                      >
+                        {r.reviewer_name ?? "Unknown User"}
+                      </td>
+                      <td className="p-4">
+                        {r.status === "submitted" ? (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                            Finalized
+                          </span>
+                        ) : r.status === "not_started" ? (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200">
+                            Not Started
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200">
+                            Commented
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4 text-gray-700 font-medium">
+                        {r.score ?? "—"}
+                      </td>
+                      <td className="p-4">
+                        {programFormConfigs[r.program_id]?.show_decision ? (
+                          r.ratings?.decision ? (
+                            (() => {
+                              const colors = getDecisionColor(
+                                r.ratings.decision
+                              );
+                              return (
+                                <span
+                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${colors.bg} ${colors.text}`}
+                                >
+                                  {r.ratings.decision}
+                                </span>
+                              );
+                            })()
+                          ) : (
+                            "—"
+                          )
+                        ) : (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
+                            Disabled
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <Link
+                          to={`/review/app/${r.application_id}`}
+                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105"
+                          title="Open review"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Results Count */}
+          <div className="px-8 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                <span className="font-medium">
+                  {loading
+                    ? "Loading..."
+                    : `Showing ${filteredRows.length} of ${allRows.length} reviews`}
+                </span>
               </div>
-            )}
+              {reviewerPrograms.length > 0 && (
+                <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                  Filtered to your assigned programs only
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-red-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="text-red-700 font-medium">Error: {error}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
