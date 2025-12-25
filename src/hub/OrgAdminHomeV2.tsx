@@ -431,7 +431,7 @@ export default function OrgAdminHomeV2() {
           <div className="bg-white border-b border-gray-200 px-8 py-6">
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">
-                All Programs
+                {orgName ? `${orgName} - Programs` : "Programs"}
               </h1>
               <p className="mt-1 text-sm text-gray-500">
                 Create, edit, and manage programs for this organization.
@@ -473,7 +473,7 @@ export default function OrgAdminHomeV2() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">
-                {orgName || "Organization"}
+                {orgName ? `${orgName} - Programs` : "Programs"}
               </h1>
               <p className="mt-1 text-sm text-gray-500">Admin Dashboard</p>
             </div>
