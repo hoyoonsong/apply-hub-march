@@ -30,7 +30,7 @@ import ProtectedOrgAdminRoute from "./components/scopes/ProtectedOrgAdminRoute";
 import ProtectedCoalitionRoute from "./components/scopes/ProtectedCoalitionRoute";
 import ProtectedReviewerRoute from "./components/scopes/ProtectedReviewerRoute";
 import CoalitionManagerHome from "./hub/CoalitionManagerHome";
-import OrgAdminHome from "./hub/OrgAdminHome";
+import OrgAdminHomeV2 from "./hub/OrgAdminHomeV2";
 import OrgAdminPrograms from "./pages/org-admin/OrgAdminPrograms";
 import OrgProgramBuilder from "./pages/org-admin/OrgProgramBuilder";
 import CoalitionProgramBuilder from "./pages/coalition-manager/CoalitionProgramBuilder";
@@ -42,7 +42,7 @@ import QueuePage from "./pages/review/QueuePage";
 import ReviewHome from "./pages/review/ReviewHome";
 import ReviewAppPage from "./pages/review/ReviewAppPage";
 import AllReviewsPage from "./pages/review/AllReviewsPage";
-import OrgReviewsPage from "./pages/org/admin/OrgReviewsPage";
+import OrgApplicationsInbox from "./pages/org-admin/OrgApplicationsInbox";
 import OrgManageReviewers from "./pages/org-admin/OrgManageReviewers";
 import OrgMyTeams from "./pages/org-admin/OrgMyTeams";
 import PublishResultsPage from "./pages/org-admin/PublishResultsPage";
@@ -167,7 +167,7 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <ProtectedOrgAdminRoute>
-                    <OrgAdminHome />
+                    <OrgAdminHomeV2 />
                   </ProtectedOrgAdminRoute>
                 </ProtectedRoute>
               }
@@ -213,11 +213,11 @@ export default function App() {
               }
             />
             <Route
-              path="/org/:orgSlug/admin/reviews"
+              path="/org/:orgSlug/admin/applications-inbox"
               element={
                 <ProtectedRoute>
                   <ProtectedOrgAdminRoute>
-                    <OrgReviewsPage />
+                    <OrgApplicationsInbox />
                   </ProtectedOrgAdminRoute>
                 </ProtectedRoute>
               }

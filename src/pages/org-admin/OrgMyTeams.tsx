@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
 import { findUserByEmail } from "../../lib/programAssignments";
+import OrgAdminSidebar from "../../components/OrgAdminSidebar";
 import {
   deduplicateRequest,
   createRpcKey,
@@ -913,11 +914,36 @@ export default function OrgMyTeams() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            <span className="ml-3 text-gray-600">Loading team members...</span>
+      <div className="min-h-screen bg-gray-50 flex">
+        <OrgAdminSidebar
+          currentPath={location.pathname}
+          orgId={org?.id || null}
+        />
+        <div className="flex-1 flex flex-col">
+          <div className="bg-white border-b border-gray-200">
+            <div className="px-8 py-6">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  My Teams
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  Build your team of reviewers and admins for {org?.name}. Add
+                  people here so you can easily assign them to programs.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-7xl mx-auto px-8 py-12">
+              <div className="flex items-center justify-center">
+                <div className="flex items-center gap-3 px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-indigo-600 border-t-transparent"></div>
+                  <span className="text-gray-600 font-medium">
+                    Loading team members...
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -925,11 +951,15 @@ export default function OrgMyTeams() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 flex">
+      <OrgAdminSidebar
+        currentPath={location.pathname}
+        orgId={org?.id || null}
+      />
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-8 py-6">
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">My Teams</h1>
               <p className="mt-1 text-sm text-gray-500">
@@ -937,601 +967,608 @@ export default function OrgMyTeams() {
                 people here so you can easily assign them to programs.
               </p>
             </div>
-            <Link
-              to={`/org/${orgSlug}/admin`}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              ← Back to Org Admin
-            </Link>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Success/Error Messages */}
-        {success && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4">
-            <div className="flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-green-500"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span className="text-green-700 font-medium">{success}</span>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-red-500"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span className="text-red-700 font-medium">{error}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Add Team Member Section */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden mb-8">
-          <div className="px-8 py-6 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-200">
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-6 bg-gradient-to-b from-indigo-500 to-indigo-600 rounded-full shadow-sm"></div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Add Team Member
-              </h2>
-            </div>
-          </div>
-
-          <div className="p-8">
-            {!showAddForm ? (
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                Add Team Member
-              </button>
-            ) : (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                      placeholder="user@example.com"
-                      value={newMemberEmail}
-                      onChange={(e) => setNewMemberEmail(e.target.value)}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-8 py-8">
+            {/* Success/Error Messages */}
+            {success && (
+              <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-center gap-2">
+                  <svg
+                    className="w-5 h-5 text-green-500"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      Role
-                    </label>
-                    <select
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                      value={newMemberRole}
-                      onChange={(e) =>
-                        setNewMemberRole(e.target.value as "admin" | "reviewer")
-                      }
-                    >
-                      <option value="reviewer">Reviewer</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                </div>
-
-                {foundUser && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-semibold text-sm">
-                          {foundUser.full_name?.charAt(0) ||
-                            foundUser.email.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-blue-900">
-                          {foundUser.full_name || "No name provided"}
-                        </p>
-                        <p className="text-sm text-blue-700">
-                          {foundUser.email}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={handleAddMember}
-                    disabled={!newMemberEmail.trim() || isAdding}
-                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
-                  >
-                    {isAdding ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        Adding...
-                      </>
-                    ) : (
-                      <>
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        Add to Team
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowAddForm(false);
-                      setNewMemberEmail("");
-                      setNewMemberName("");
-                      setFoundUser(null);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
-                  >
-                    Cancel
-                  </button>
+                  </svg>
+                  <span className="text-green-700 font-medium">{success}</span>
                 </div>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Team Members List */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
-          <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-6 bg-gradient-to-b from-gray-600 to-gray-700 rounded-full"></div>
-              <h2 className="text-xl font-bold text-gray-900">Team Members</h2>
-            </div>
-          </div>
-
-          {teamMembers.length === 0 ? (
-            <div className="p-8 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-8 h-8 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
+            {error && (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
+                <div className="flex items-center gap-2">
+                  <svg
+                    className="w-5 h-5 text-red-500"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span className="text-red-700 font-medium">{error}</span>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No team members yet
-              </h3>
-              <p className="text-gray-500 mb-4">
-                Add team members to get started with managing your organization.
-              </p>
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                Add First Member
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="text-left p-4 font-semibold text-gray-900">
-                      Member
-                    </th>
-                    <th className="text-left p-4 font-semibold text-gray-900">
-                      Role
-                    </th>
-                    <th className="text-left p-4 font-semibold text-gray-900">
-                      Assignments
-                    </th>
-                    <th className="text-left p-4 font-semibold text-gray-900">
-                      Status
-                    </th>
-                    <th className="text-left p-4 font-semibold text-gray-900">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {teamMembers.map((member) => (
-                    <>
-                      <tr
-                        key={member.id}
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => toggleExpanded(member.id)}
+            )}
+
+            {/* Add Team Member Section */}
+            <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden mb-8">
+              <div className="px-8 py-6 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-6 bg-gradient-to-b from-indigo-500 to-indigo-600 rounded-full shadow-sm"></div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Add Team Member
+                  </h2>
+                </div>
+              </div>
+
+              <div className="p-8">
+                {!showAddForm ? (
+                  <button
+                    onClick={() => setShowAddForm(true)}
+                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Add Team Member
+                  </button>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-800 mb-2">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                          placeholder="user@example.com"
+                          value={newMemberEmail}
+                          onChange={(e) => setNewMemberEmail(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-800 mb-2">
+                          Role
+                        </label>
+                        <select
+                          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                          value={newMemberRole}
+                          onChange={(e) =>
+                            setNewMemberRole(
+                              e.target.value as "admin" | "reviewer"
+                            )
+                          }
+                        >
+                          <option value="reviewer">Reviewer</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {foundUser && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-semibold text-sm">
+                              {foundUser.full_name?.charAt(0) ||
+                                foundUser.email.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-900">
+                              {foundUser.full_name || "No name provided"}
+                            </p>
+                            <p className="text-sm text-blue-700">
+                              {foundUser.email}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={handleAddMember}
+                        disabled={!newMemberEmail.trim() || isAdding}
+                        className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
                       >
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <button
-                              className="text-gray-400 hover:text-gray-600 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleExpanded(member.id);
-                              }}
+                        {isAdding ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
-                              <svg
-                                className={`w-4 h-4 transition-transform ${
-                                  expandedMembers.has(member.id)
-                                    ? "rotate-90"
-                                    : ""
-                                }`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 5l7 7-7 7"
-                                />
-                              </svg>
-                            </button>
-                            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                              <span className="text-indigo-600 font-semibold text-sm">
-                                {member.full_name?.charAt(0) ||
-                                  member.email.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                {member.full_name || "No name provided"}
-                              </p>
-                              <p className="text-gray-500 text-sm">
-                                {member.email}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                              member.role === "admin"
-                                ? "bg-purple-100 text-purple-800 border border-purple-200"
-                                : "bg-blue-100 text-blue-800 border border-blue-200"
-                            }`}
-                          >
-                            {member.role === "admin" ? "Admin" : "Reviewer"}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-50 text-green-700">
-                            {member.assignments.reviewer_programs.length}{" "}
-                            Program
-                            {member.assignments.reviewer_programs.length !== 1
-                              ? "s"
-                              : ""}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                              member.status === "active"
-                                ? "bg-green-100 text-green-800 border border-green-200"
-                                : "bg-red-100 text-red-800 border border-red-200"
-                            }`}
-                          >
-                            {member.status === "active" ? "Active" : "Revoked"}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            {member.id !== user?.id && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeTeamMember(member.id, member.role);
-                                }}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors duration-150"
-                              >
-                                <svg
-                                  className="w-3 h-3"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                            Add to Team
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowAddForm(false);
+                          setNewMemberEmail("");
+                          setNewMemberName("");
+                          setFoundUser(null);
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Team Members List */}
+            <div className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
+              <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-6 bg-gradient-to-b from-gray-600 to-gray-700 rounded-full"></div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Team Members
+                  </h2>
+                </div>
+              </div>
+
+              {teamMembers.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg
+                      className="w-8 h-8 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    No team members yet
+                  </h3>
+                  <p className="text-gray-500 mb-4">
+                    Add team members to get started with managing your
+                    organization.
+                  </p>
+                  <button
+                    onClick={() => setShowAddForm(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Add First Member
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left p-4 font-semibold text-gray-900">
+                          Member
+                        </th>
+                        <th className="text-left p-4 font-semibold text-gray-900">
+                          Role
+                        </th>
+                        <th className="text-left p-4 font-semibold text-gray-900">
+                          Assignments
+                        </th>
+                        <th className="text-left p-4 font-semibold text-gray-900">
+                          Status
+                        </th>
+                        <th className="text-left p-4 font-semibold text-gray-900">
+                          Actions
+                        </th>
                       </tr>
-                      {expandedMembers.has(member.id) && (
-                        <tr>
-                          <td colSpan={5} className="p-0">
-                            <div className="bg-gray-50 border-t border-gray-200">
-                              <div className="p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  {/* Current Program Assignments */}
-                                  <div>
-                                    <div className="flex items-center justify-between mb-4">
-                                      <h4 className="text-sm font-semibold text-gray-900">
-                                        Current Program Assignments
-                                      </h4>
-                                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                                        {
-                                          member.assignments.reviewer_programs
-                                            .length
-                                        }{" "}
-                                        programs
-                                      </span>
-                                    </div>
-                                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                                      {member.assignments.reviewer_programs
-                                        .length > 0 ? (
-                                        member.assignments.reviewer_programs.map(
-                                          (programId) => {
-                                            const program = programs.find(
-                                              (p) => p.id === programId
-                                            );
-                                            return program ? (
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {teamMembers.map((member) => (
+                        <>
+                          <tr
+                            key={member.id}
+                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                            onClick={() => toggleExpanded(member.id)}
+                          >
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <button
+                                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleExpanded(member.id);
+                                  }}
+                                >
+                                  <svg
+                                    className={`w-4 h-4 transition-transform ${
+                                      expandedMembers.has(member.id)
+                                        ? "rotate-90"
+                                        : ""
+                                    }`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 5l7 7-7 7"
+                                    />
+                                  </svg>
+                                </button>
+                                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                  <span className="text-indigo-600 font-semibold text-sm">
+                                    {member.full_name?.charAt(0) ||
+                                      member.email.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">
+                                    {member.full_name || "No name provided"}
+                                  </p>
+                                  <p className="text-gray-500 text-sm">
+                                    {member.email}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <span
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                  member.role === "admin"
+                                    ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                    : "bg-blue-100 text-blue-800 border border-blue-200"
+                                }`}
+                              >
+                                {member.role === "admin" ? "Admin" : "Reviewer"}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-50 text-green-700">
+                                {member.assignments.reviewer_programs.length}{" "}
+                                Program
+                                {member.assignments.reviewer_programs.length !==
+                                1
+                                  ? "s"
+                                  : ""}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <span
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                  member.status === "active"
+                                    ? "bg-green-100 text-green-800 border border-green-200"
+                                    : "bg-red-100 text-red-800 border border-red-200"
+                                }`}
+                              >
+                                {member.status === "active"
+                                  ? "Active"
+                                  : "Revoked"}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                {member.id !== user?.id && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeTeamMember(member.id, member.role);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors duration-150"
+                                  >
+                                    <svg
+                                      className="w-3 h-3"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                      />
+                                    </svg>
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                          {expandedMembers.has(member.id) && (
+                            <tr>
+                              <td colSpan={5} className="p-0">
+                                <div className="bg-gray-50 border-t border-gray-200">
+                                  <div className="p-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                      {/* Current Program Assignments */}
+                                      <div>
+                                        <div className="flex items-center justify-between mb-4">
+                                          <h4 className="text-sm font-semibold text-gray-900">
+                                            Current Program Assignments
+                                          </h4>
+                                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                            {
+                                              member.assignments
+                                                .reviewer_programs.length
+                                            }{" "}
+                                            programs
+                                          </span>
+                                        </div>
+                                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                                          {member.assignments.reviewer_programs
+                                            .length > 0 ? (
+                                            member.assignments.reviewer_programs.map(
+                                              (programId) => {
+                                                const program = programs.find(
+                                                  (p) => p.id === programId
+                                                );
+                                                return program ? (
+                                                  <div
+                                                    key={programId}
+                                                    className="group flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-red-300 hover:shadow-sm transition-all duration-200"
+                                                  >
+                                                    <div className="flex items-center gap-3">
+                                                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                      <div>
+                                                        <p className="text-sm font-medium text-gray-900">
+                                                          {program.name}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">
+                                                          Active assignment
+                                                        </p>
+                                                      </div>
+                                                    </div>
+                                                    <button
+                                                      onClick={() =>
+                                                        removeMemberFromProgram(
+                                                          member.id,
+                                                          programId
+                                                        )
+                                                      }
+                                                      className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded text-xs font-medium transition-all duration-200"
+                                                    >
+                                                      Remove
+                                                    </button>
+                                                  </div>
+                                                ) : null;
+                                              }
+                                            )
+                                          ) : (
+                                            <div className="text-center py-8">
+                                              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                <svg
+                                                  className="w-6 h-6 text-gray-400"
+                                                  fill="none"
+                                                  stroke="currentColor"
+                                                  viewBox="0 0 24 24"
+                                                >
+                                                  <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                  />
+                                                </svg>
+                                              </div>
+                                              <p className="text-sm text-gray-500">
+                                                No program assignments
+                                              </p>
+                                              <p className="text-xs text-gray-400 mt-1">
+                                                Add programs from the right
+                                                panel
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Add to Programs */}
+                                      <div>
+                                        <div className="flex items-center justify-between mb-4">
+                                          <h4 className="text-sm font-semibold text-gray-900">
+                                            Add to Programs
+                                          </h4>
+                                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                            {
+                                              programs.filter(
+                                                (p) =>
+                                                  !member.assignments.reviewer_programs.includes(
+                                                    p.id
+                                                  )
+                                              ).length
+                                            }{" "}
+                                            available
+                                          </span>
+                                        </div>
+                                        <div className="mb-4">
+                                          <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                              <svg
+                                                className="h-4 w-4 text-gray-400"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  strokeWidth={2}
+                                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                                />
+                                              </svg>
+                                            </div>
+                                            <input
+                                              type="text"
+                                              placeholder="Search programs..."
+                                              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                              value={programSearchTerm}
+                                              onChange={(e) =>
+                                                setProgramSearchTerm(
+                                                  e.target.value
+                                                )
+                                              }
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                                          {programs
+                                            .filter(
+                                              (program) =>
+                                                !member.assignments.reviewer_programs.includes(
+                                                  program.id
+                                                ) &&
+                                                program.name
+                                                  .toLowerCase()
+                                                  .includes(
+                                                    programSearchTerm.toLowerCase()
+                                                  )
+                                            )
+                                            .map((program) => (
                                               <div
-                                                key={programId}
-                                                className="group flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-red-300 hover:shadow-sm transition-all duration-200"
+                                                key={program.id}
+                                                className="group flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all duration-200"
                                               >
                                                 <div className="flex items-center gap-3">
-                                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
                                                   <div>
                                                     <p className="text-sm font-medium text-gray-900">
                                                       {program.name}
                                                     </p>
                                                     <p className="text-xs text-gray-500">
-                                                      Active assignment
+                                                      Available to assign
                                                     </p>
                                                   </div>
                                                 </div>
                                                 <button
                                                   onClick={() =>
-                                                    removeMemberFromProgram(
+                                                    addMemberToProgram(
                                                       member.id,
-                                                      programId
+                                                      program.id
                                                     )
                                                   }
-                                                  className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded text-xs font-medium transition-all duration-200"
+                                                  className="opacity-0 group-hover:opacity-100 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-1 rounded text-xs font-medium transition-all duration-200"
                                                 >
-                                                  Remove
+                                                  Add
                                                 </button>
                                               </div>
-                                            ) : null;
-                                          }
-                                        )
-                                      ) : (
-                                        <div className="text-center py-8">
-                                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                            <svg
-                                              className="w-6 h-6 text-gray-400"
-                                              fill="none"
-                                              stroke="currentColor"
-                                              viewBox="0 0 24 24"
-                                            >
-                                              <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                              />
-                                            </svg>
-                                          </div>
-                                          <p className="text-sm text-gray-500">
-                                            No program assignments
-                                          </p>
-                                          <p className="text-xs text-gray-400 mt-1">
-                                            Add programs from the right panel
-                                          </p>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Add to Programs */}
-                                  <div>
-                                    <div className="flex items-center justify-between mb-4">
-                                      <h4 className="text-sm font-semibold text-gray-900">
-                                        Add to Programs
-                                      </h4>
-                                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                                        {
-                                          programs.filter(
-                                            (p) =>
+                                            ))}
+                                          {programs.filter(
+                                            (program) =>
                                               !member.assignments.reviewer_programs.includes(
-                                                p.id
-                                              )
-                                          ).length
-                                        }{" "}
-                                        available
-                                      </span>
-                                    </div>
-                                    <div className="mb-4">
-                                      <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                          <svg
-                                            className="h-4 w-4 text-gray-400"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                          >
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              strokeWidth={2}
-                                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                                            />
-                                          </svg>
-                                        </div>
-                                        <input
-                                          type="text"
-                                          placeholder="Search programs..."
-                                          className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                                          value={programSearchTerm}
-                                          onChange={(e) =>
-                                            setProgramSearchTerm(e.target.value)
-                                          }
-                                        />
-                                      </div>
-                                    </div>
-                                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                                      {programs
-                                        .filter(
-                                          (program) =>
-                                            !member.assignments.reviewer_programs.includes(
-                                              program.id
-                                            ) &&
-                                            program.name
-                                              .toLowerCase()
-                                              .includes(
-                                                programSearchTerm.toLowerCase()
-                                              )
-                                        )
-                                        .map((program) => (
-                                          <div
-                                            key={program.id}
-                                            className="group flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all duration-200"
-                                          >
-                                            <div className="flex items-center gap-3">
-                                              <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                                              <div>
-                                                <p className="text-sm font-medium text-gray-900">
-                                                  {program.name}
-                                                </p>
-                                                <p className="text-xs text-gray-500">
-                                                  Available to assign
-                                                </p>
-                                              </div>
-                                            </div>
-                                            <button
-                                              onClick={() =>
-                                                addMemberToProgram(
-                                                  member.id,
-                                                  program.id
+                                                program.id
+                                              ) &&
+                                              program.name
+                                                .toLowerCase()
+                                                .includes(
+                                                  programSearchTerm.toLowerCase()
                                                 )
-                                              }
-                                              className="opacity-0 group-hover:opacity-100 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-1 rounded text-xs font-medium transition-all duration-200"
-                                            >
-                                              Add
-                                            </button>
-                                          </div>
-                                        ))}
-                                      {programs.filter(
-                                        (program) =>
-                                          !member.assignments.reviewer_programs.includes(
-                                            program.id
-                                          ) &&
-                                          program.name
-                                            .toLowerCase()
-                                            .includes(
-                                              programSearchTerm.toLowerCase()
-                                            )
-                                      ).length === 0 && (
-                                        <div className="text-center py-8">
-                                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                            <svg
-                                              className="w-6 h-6 text-gray-400"
-                                              fill="none"
-                                              stroke="currentColor"
-                                              viewBox="0 0 24 24"
-                                            >
-                                              <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                              />
-                                            </svg>
-                                          </div>
-                                          <p className="text-sm text-gray-500">
-                                            {programSearchTerm
-                                              ? "No programs match your search"
-                                              : "Member is assigned to all programs"}
-                                          </p>
-                                          {programSearchTerm && (
-                                            <p className="text-xs text-gray-400 mt-1">
-                                              Try a different search term
-                                            </p>
+                                          ).length === 0 && (
+                                            <div className="text-center py-8">
+                                              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                <svg
+                                                  className="w-6 h-6 text-gray-400"
+                                                  fill="none"
+                                                  stroke="currentColor"
+                                                  viewBox="0 0 24 24"
+                                                >
+                                                  <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                  />
+                                                </svg>
+                                              </div>
+                                              <p className="text-sm text-gray-500">
+                                                {programSearchTerm
+                                                  ? "No programs match your search"
+                                                  : "Member is assigned to all programs"}
+                                              </p>
+                                              {programSearchTerm && (
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                  Try a different search term
+                                                </p>
+                                              )}
+                                            </div>
                                           )}
                                         </div>
-                                      )}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  ))}
-                </tbody>
-              </table>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

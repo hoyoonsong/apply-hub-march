@@ -1,10 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useParams, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import { useCapabilities } from "../../lib/capabilities";
 import OrgAdminSidebar from "../../components/OrgAdminSidebar";
 import {
-  getProgramReviewForm,
   getCachedProgramReviewForm,
   getProgramReviewFormsBatch,
 } from "../../lib/api";
@@ -13,8 +11,12 @@ import {
   createRpcKey,
 } from "../../lib/requestDeduplication";
 import type { ReviewsListRow } from "../../types/reviews";
+import { getOrgBySlug } from "../../lib/orgs";
 
-export default function AllReviewsPage() {
+export default function OrgApplicationsInbox() {
+  const { orgSlug } = useParams<{ orgSlug: string }>();
+  const location = useLocation();
+  const [orgId, setOrgId] = useState<string | null>(null);
   const [allRows, setAllRows] = useState<ReviewsListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,52 +29,73 @@ export default function AllReviewsPage() {
   const [programFormConfigs, setProgramFormConfigs] = useState<
     Record<string, any>
   >({});
+  const [programs, setPrograms] = useState<any[]>([]);
 
-  const { reviewerPrograms, isOrgAdmin, adminOrgs } = useCapabilities();
-  const location = useLocation();
+  // Load organization
+  useEffect(() => {
+    (async () => {
+      if (!orgSlug) return;
+      try {
+        const org = await getOrgBySlug(orgSlug);
+        if (org) {
+          setOrgId(org.id);
+        }
+      } catch (error) {
+        console.error("Error loading organization:", error);
+        setError("Failed to load organization");
+      }
+    })();
+  }, [orgSlug]);
 
-  // Get the first org slug if user is an org admin
-  const orgSlug = isOrgAdmin && adminOrgs.length > 0 ? adminOrgs[0].slug : null;
+  // Load programs for this org
+  useEffect(() => {
+    (async () => {
+      if (!orgId) return;
+      try {
+        const { data, error } = await supabase
+          .from("programs")
+          .select("id, name")
+          .eq("organization_id", orgId)
+          .is("deleted_at", null)
+          .order("name");
+        if (error) throw error;
+        setPrograms(data || []);
+      } catch (error) {
+        console.error("Error loading programs:", error);
+      }
+    })();
+  }, [orgId]);
 
   // Load form configurations for all unique programs
   async function loadProgramFormConfigs(reviews: ReviewsListRow[]) {
     const uniqueProgramIds = [...new Set(reviews.map((r) => r.program_id))];
     const configs: Record<string, any> = {};
-
-    // Optimized: Check existing cache first, only fetch uncached programs
     const uncachedProgramIds: string[] = [];
     const cachedConfigs: Record<string, any> = {};
 
     uniqueProgramIds.forEach((programId) => {
-      // First check component state cache
       if (programFormConfigs[programId]) {
         cachedConfigs[programId] = programFormConfigs[programId];
       } else {
-        // Then check module-level cache (shared across all components)
         const moduleCached = getCachedProgramReviewForm(programId);
         if (moduleCached) {
           cachedConfigs[programId] = moduleCached;
         } else {
-          // Will need to fetch
           uncachedProgramIds.push(programId);
         }
       }
     });
 
-    // Update configs with any we already had cached
     Object.assign(configs, cachedConfigs);
 
-    // Only fetch for uncached programs using batched function (ONE query instead of N)
     if (uncachedProgramIds.length > 0) {
       try {
-        // Use batched function to fetch all uncached programs in ONE query
         const batchedConfigs = await getProgramReviewFormsBatch(
           uncachedProgramIds
         );
         Object.assign(configs, batchedConfigs);
       } catch (error) {
         console.error("Failed to batch load form configs:", error);
-        // Fallback: use defaults for failed programs
         uncachedProgramIds.forEach((programId) => {
           if (!configs[programId]) {
             configs[programId] = {
@@ -90,28 +113,27 @@ export default function AllReviewsPage() {
   }
 
   const fetchList = useCallback(async () => {
+    if (!orgId) return;
     setLoading(true);
     setError(null);
 
     try {
-      // Parallelize reviews and applications queries
-      // Use deduplication to prevent duplicate calls from React StrictMode
       const [reviewsResult, appsResult] = await Promise.allSettled([
         deduplicateRequest(
           createRpcKey("reviews_list_v1", {
             p_mine_only: mineOnly,
             p_status: null,
             p_program_id: null,
-            p_org_id: null,
+            p_org_id: orgId,
             p_limit: 1000,
             p_offset: 0,
           }),
           async () => {
             const result = await supabase.rpc("reviews_list_v1", {
               p_mine_only: mineOnly,
-              p_status: null, // Get all statuses
+              p_status: null,
               p_program_id: null,
-              p_org_id: null,
+              p_org_id: orgId,
               p_limit: 1000,
               p_offset: 0,
             });
@@ -131,10 +153,10 @@ export default function AllReviewsPage() {
             programs!inner(name, organization_id, organizations(name))
           `
           )
-          .eq("status", "submitted"),
+          .eq("status", "submitted")
+          .eq("programs.organization_id", orgId),
       ]);
 
-      // Handle reviews result
       if (reviewsResult.status === "rejected") {
         console.error("Error fetching reviews:", reviewsResult.reason);
         setError("Failed to load reviews");
@@ -155,7 +177,6 @@ export default function AllReviewsPage() {
 
       const existingReviews = (reviewsResponse?.data ?? []) as ReviewsListRow[];
 
-      // Handle applications result
       if (appsResult.status === "rejected") {
         console.error("Error fetching applications:", appsResult.reason);
         setError("Failed to load applications");
@@ -175,25 +196,16 @@ export default function AllReviewsPage() {
 
       const submittedApps = appsResult.value.data;
 
-      console.log("Submitted applications:", submittedApps?.length || 0);
-      console.log("Existing reviews:", existingReviews.length);
-
-      // Create a map of existing reviews by application_id
       const reviewsMap = new Map<string, ReviewsListRow>();
       existingReviews.forEach((review) => {
         reviewsMap.set(review.application_id, review);
       });
 
-      // Combine existing reviews with submitted applications that don't have reviews yet
       const combinedRows: ReviewsListRow[] = [...existingReviews];
 
-      // Add submitted applications without reviews as "not_started"
-      // BUT: Skip this when mineOnly is true, because "My reviews only" should only show
-      // reviews the user has actually started, not unassigned applications
       if (!mineOnly) {
         submittedApps?.forEach((app) => {
           if (!reviewsMap.has(app.id)) {
-            // Create a "not_started" review entry
             const notStartedReview: ReviewsListRow = {
               review_id: `not_started_${app.id}`,
               application_id: app.id,
@@ -206,7 +218,7 @@ export default function AllReviewsPage() {
               reviewer_id: null,
               reviewer_name: "Not assigned",
               applicant_id: app.user_id,
-              applicant_name: "—", // Placeholder text instead of UUID
+              applicant_name: "—",
               program_id: app.program_id,
               program_name: (app.programs as any)?.name || "Unknown Program",
               org_id: (app.programs as any)?.organization_id || "",
@@ -219,21 +231,13 @@ export default function AllReviewsPage() {
         });
       }
 
-      console.log("Total combined rows:", combinedRows.length);
-      console.log(
-        "Not started applications:",
-        combinedRows.filter((r) => r.status === "not_started").length
-      );
-
-      // Sort all rows by submitted_at in descending order (most recent first)
       const sortedRows = combinedRows.sort((a, b) => {
         const dateA = new Date(a.submitted_at || a.updated_at || 0).getTime();
         const dateB = new Date(b.submitted_at || b.updated_at || 0).getTime();
-        return dateB - dateA; // Descending order (newest first)
+        return dateB - dateA;
       });
 
       setAllRows(sortedRows);
-      // Load form configurations for all programs
       await loadProgramFormConfigs(sortedRows);
     } catch (error) {
       console.error("Error in fetchList:", error);
@@ -242,29 +246,26 @@ export default function AllReviewsPage() {
     }
 
     setLoading(false);
-  }, [mineOnly, status]);
+  }, [orgId, mineOnly, status]);
 
   useEffect(() => {
     fetchList();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mineOnly, status]); // Removed fetchList from deps to prevent circular re-renders
+  }, [fetchList]);
 
-  // Realtime refresh whenever any review changes or program metadata changes
-  // Optimized: Increased debounce time and added check to prevent unnecessary refreshes
+  // Realtime refresh
   useEffect(() => {
     let debounceTimer: NodeJS.Timeout;
     let lastRefreshTime = 0;
-    const MIN_REFRESH_INTERVAL = 2000; // Don't refresh more than once every 2 seconds
+    const MIN_REFRESH_INTERVAL = 2000;
 
     const debouncedFetch = () => {
       const now = Date.now();
-      // Skip if we refreshed recently (prevents rapid-fire refreshes)
       if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
           lastRefreshTime = Date.now();
           fetchList();
-        }, 1000); // Longer debounce for less critical updates
+        }, 1000);
         return;
       }
 
@@ -272,11 +273,11 @@ export default function AllReviewsPage() {
       debounceTimer = setTimeout(() => {
         lastRefreshTime = Date.now();
         fetchList();
-      }, 500); // Standard debounce for immediate updates
+      }, 500);
     };
 
     const ch = supabase
-      .channel("reviews:all")
+      .channel("reviews:org")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "application_reviews" },
@@ -285,25 +286,20 @@ export default function AllReviewsPage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "programs" },
-        debouncedFetch // Refresh when program metadata changes (including form config)
+        debouncedFetch
       )
       .subscribe();
     return () => {
       clearTimeout(debounceTimer);
       supabase.removeChannel(ch);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only set up once, fetchList is stable
+  }, []);
 
-  // Color mapping for decision options
   const getDecisionColor = (decision: string) => {
     const colorMap: Record<string, { bg: string; text: string }> = {
-      // Standard decisions with specific colors
       accept: { bg: "bg-green-100", text: "text-green-800" },
       waitlist: { bg: "bg-yellow-100", text: "text-yellow-800" },
       reject: { bg: "bg-red-100", text: "text-red-800" },
-
-      // Additional common decisions
       approved: { bg: "bg-emerald-100", text: "text-emerald-800" },
       denied: { bg: "bg-rose-100", text: "text-rose-800" },
       pending: { bg: "bg-blue-100", text: "text-blue-800" },
@@ -313,12 +309,10 @@ export default function AllReviewsPage() {
       withdrawn: { bg: "bg-gray-100", text: "text-gray-600" },
     };
 
-    // If we have a predefined color, use it
     if (colorMap[decision.toLowerCase()]) {
       return colorMap[decision.toLowerCase()];
     }
 
-    // For custom decisions, generate a consistent color based on the string
     const colors = [
       { bg: "bg-cyan-100", text: "text-cyan-800" },
       { bg: "bg-teal-100", text: "text-teal-800" },
@@ -332,48 +326,28 @@ export default function AllReviewsPage() {
       { bg: "bg-fuchsia-100", text: "text-fuchsia-800" },
     ];
 
-    // Simple hash function to get consistent color for same decision
     let hash = 0;
     for (let i = 0; i < decision.length; i++) {
       const char = decision.charCodeAt(i);
       hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      hash = hash & hash;
     }
 
     const colorIndex = Math.abs(hash) % colors.length;
     return colors[colorIndex];
   };
 
-  // Filter rows based on search term, program selection, and user's assigned programs
   const filteredRows = useMemo(() => {
     let filtered = allRows;
 
-    console.log("Starting with allRows:", allRows.length);
-    console.log("Reviewer programs:", reviewerPrograms.length);
-
-    // Filter by assigned programs only
-    if (reviewerPrograms.length > 0) {
-      const assignedProgramIds = reviewerPrograms.map((p) => p.id);
-      console.log("Assigned program IDs:", assignedProgramIds);
-      filtered = filtered.filter((row) =>
-        assignedProgramIds.includes(row.program_id)
-      );
-      console.log("After program filter:", filtered.length);
-    }
-
-    // Filter by selected program
     if (selectedProgramId) {
       filtered = filtered.filter((row) => row.program_id === selectedProgramId);
     }
 
-    // Filter by status
     if (status) {
-      console.log("Filtering by status:", status);
       filtered = filtered.filter((row) => row.status === status);
-      console.log("After status filter:", filtered.length);
     }
 
-    // Filter by search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -386,50 +360,51 @@ export default function AllReviewsPage() {
       );
     }
 
-    console.log("Final filtered rows:", filtered.length);
     return filtered;
-  }, [allRows, reviewerPrograms, selectedProgramId, searchTerm, status]);
+  }, [allRows, selectedProgramId, searchTerm, status]);
+
+  if (loading && !orgId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex">
+        <OrgAdminSidebar currentPath={location.pathname} orgId={orgId} />
+        <div className="flex-1 flex flex-col">
+          <div className="bg-white border-b border-gray-200">
+            <div className="px-8 py-6">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  Applications Inbox
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  Review and manage submitted applications for this organization
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex items-center gap-3 px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-indigo-600 border-t-transparent"></div>
+              <span className="text-gray-600 font-medium">Loading…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {isOrgAdmin && orgSlug && (
-        <OrgAdminSidebar
-          currentPath={location.pathname}
-          orgId={adminOrgs.length > 0 ? adminOrgs[0].id : null}
-        />
-      )}
+      <OrgAdminSidebar currentPath={location.pathname} orgId={orgId} />
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
           <div className="px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  All Reviews
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  Manage and review all applications across your assigned
-                  programs
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {reviewerPrograms.length > 0 && (
-                  <Link
-                    to={`/org/${reviewerPrograms[0].organization_slug}/admin/publish-results`}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                  >
-                    Publish Results
-                  </Link>
-                )}
-                {!isOrgAdmin && (
-                  <Link
-                    to="/dashboard"
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    ← Back to Dashboard
-                  </Link>
-                )}
-              </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                Applications Inbox
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Review and manage submitted applications for this organization
+              </p>
             </div>
           </div>
         </div>
@@ -491,7 +466,7 @@ export default function AllReviewsPage() {
                       </select>
                     </div>
 
-                    {reviewerPrograms.length > 0 && (
+                    {programs.length > 0 && (
                       <>
                         <div className="h-6 w-px bg-gray-300 hidden md:block" />
                         <div className="flex items-center gap-2">
@@ -506,7 +481,7 @@ export default function AllReviewsPage() {
                             }
                           >
                             <option value="">All Programs</option>
-                            {reviewerPrograms.map((program) => (
+                            {programs.map((program) => (
                               <option key={program.id} value={program.id}>
                                 {program.name}
                               </option>
@@ -708,11 +683,6 @@ export default function AllReviewsPage() {
                         : `Showing ${filteredRows.length} of ${allRows.length} reviews`}
                     </span>
                   </div>
-                  {reviewerPrograms.length > 0 && (
-                    <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                      Filtered to your assigned programs only
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -743,3 +713,4 @@ export default function AllReviewsPage() {
     </div>
   );
 }
+
