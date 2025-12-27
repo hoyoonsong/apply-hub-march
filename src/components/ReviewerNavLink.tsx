@@ -1,29 +1,9 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  loadCapabilities,
-  hasReviewerAssignments,
-  type Capabilities,
-} from "../lib/capabilities";
+import { hasReviewerAssignments } from "../lib/capabilities";
+import { useCapabilitiesContext } from "../providers/CapabilitiesProvider";
 
 export default function ReviewerNavLink() {
-  const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadCaps = async () => {
-      try {
-        const caps = await loadCapabilities();
-        setCapabilities(caps);
-      } catch (error) {
-        console.error("Failed to load capabilities:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCaps();
-  }, []);
+  const { capabilities, loading } = useCapabilitiesContext();
 
   if (loading) return null;
   if (!hasReviewerAssignments(capabilities)) return null;

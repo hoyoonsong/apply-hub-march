@@ -161,6 +161,7 @@ export default function OrgAdminHomeV2() {
   };
 
   // Auto-sync org admin reviewers when component mounts
+  // Use session storage to only run once per session per org
   useEffect(() => {
     let mounted = true;
     const syncReviewers = async () => {
@@ -178,6 +179,15 @@ export default function OrgAdminHomeV2() {
         } = await supabase.auth.getUser();
         if (!user || !org) return;
 
+        // Check if we've already synced this org for this user in this session
+        const sessionKey = `org_admin_synced_${org.id}_${user.id}`;
+        const alreadySynced = sessionStorage.getItem(sessionKey);
+
+        if (alreadySynced) {
+          // Already synced in this session, skip
+          return;
+        }
+
         // Assign current user as reviewer for all programs in this org
         // Use deduplication to prevent duplicate calls from React StrictMode
         await deduplicateRequest(
@@ -187,6 +197,9 @@ export default function OrgAdminHomeV2() {
           }),
           () => assignOrgAdminAsReviewer(org.id, user.id)
         );
+
+        // Mark as synced for this session
+        sessionStorage.setItem(sessionKey, "true");
       } catch (error) {
         console.error("Failed to sync org admin reviewers:", error);
         // Don't show error to user, just log it

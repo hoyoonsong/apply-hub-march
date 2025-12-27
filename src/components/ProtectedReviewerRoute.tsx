@@ -1,25 +1,14 @@
-import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { loadCapabilities } from "../lib/capabilities";
+import { useCapabilitiesContext } from "../providers/CapabilitiesProvider";
 
 export default function ProtectedReviewerRoute({
   children,
 }: {
   children: JSX.Element;
 }) {
-  const [ok, setOk] = useState<boolean | null>(null);
+  const { capabilities, loading } = useCapabilitiesContext();
 
-  useEffect(() => {
-    loadCapabilities()
-      .then((caps) => {
-        const hasReviewerPrograms = caps.reviewerPrograms.length > 0;
-        const isSuper = localStorage.getItem("isSuper") === "1";
-        setOk(hasReviewerPrograms || isSuper);
-      })
-      .catch(() => setOk(false));
-  }, []);
-
-  if (ok === null) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -29,6 +18,10 @@ export default function ProtectedReviewerRoute({
       </div>
     );
   }
+
+  const hasReviewerPrograms = (capabilities?.reviewerPrograms?.length ?? 0) > 0;
+  const isSuper = localStorage.getItem("isSuper") === "1";
+  const ok = hasReviewerPrograms || isSuper;
 
   return ok ? children : <Navigate to="/" replace />;
 }

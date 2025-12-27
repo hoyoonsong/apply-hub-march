@@ -1,40 +1,24 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { loadCapabilities, type Capabilities } from "../lib/capabilities";
+import { useCapabilitiesContext } from "../providers/CapabilitiesProvider";
+import type { Capabilities } from "../lib/capabilities";
 
 type CapabilityHubProps = {
-  // Optional: if capabilities are passed as props, use them instead of fetching
+  // Optional: if capabilities are passed as props, use them instead of context
+  // (for backward compatibility, but context is preferred)
   initialCapabilities?: Capabilities | null;
 };
 
 export default function CapabilityHub({
   initialCapabilities,
 }: CapabilityHubProps = {} as CapabilityHubProps) {
-  const [capabilities, setCapabilities] = useState<Capabilities | null>(
-    initialCapabilities ?? null
-  );
-  const [loading, setLoading] = useState(initialCapabilities === undefined);
+  // Use context (preferred) or fall back to props if provided
+  const context = useCapabilitiesContext();
+  const capabilities = initialCapabilities ?? context.capabilities;
+  const loading = initialCapabilities === undefined ? context.loading : false;
+  
   const [showAllAdmins, setShowAllAdmins] = useState(false);
   const [showAllReviewers, setShowAllReviewers] = useState(false);
-
-  const refreshCapabilities = async () => {
-    setLoading(true);
-    try {
-      const caps = await loadCapabilities();
-      setCapabilities(caps);
-    } catch (error) {
-      console.error("Failed to refresh capabilities:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Only fetch if capabilities weren't passed as props
-  useEffect(() => {
-    if (initialCapabilities === undefined) {
-      refreshCapabilities();
-    }
-  }, [initialCapabilities]);
 
   if (loading) {
     return (

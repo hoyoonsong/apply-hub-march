@@ -26,7 +26,7 @@ export default function AllReviewsPage() {
     Record<string, any>
   >({});
 
-  const { reviewerPrograms } = useCapabilities();
+  const { reviewerPrograms, isOrgAdmin, adminOrgs } = useCapabilities();
 
   // Load form configurations for all unique programs
   async function loadProgramFormConfigs(reviews: ReviewsListRow[]) {
@@ -399,14 +399,16 @@ export default function AllReviewsPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {reviewerPrograms.length > 0 && (
-                <Link
-                  to={`/org/${reviewerPrograms[0].organization_slug}/admin/publish-results`}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                >
-                  Publish Results
-                </Link>
-              )}
+              {isOrgAdmin &&
+                adminOrgs.length > 0 &&
+                reviewerPrograms.length > 0 && (
+                  <Link
+                    to={`/org/${adminOrgs[0].slug}/admin/publish-results`}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  >
+                    Publish Results
+                  </Link>
+                )}
               <Link
                 to="/dashboard"
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"

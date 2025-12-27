@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { ReviewsListRow } from "../../types/reviews";
 import { getProgramReviewForm } from "../../lib/api";
+import { useCapabilities } from "../../lib/capabilities";
 import {
   deduplicateRequest,
   createRpcKey,
@@ -16,6 +17,7 @@ export default function ReviewQueuePage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [programFormConfig, setProgramFormConfig] = useState<any>(null);
+  const { isOrgAdmin } = useCapabilities();
 
   const fetchList = useCallback(async () => {
     if (!programId) return;
@@ -282,7 +284,7 @@ export default function ReviewQueuePage() {
     <div className="mx-auto max-w-6xl p-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold">Review Queue - {programName}</h1>
-        {orgSlug && programId && (
+        {isOrgAdmin && orgSlug && programId && (
           <Link
             to={`/org/${orgSlug}/admin/programs/${programId}/publish`}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"

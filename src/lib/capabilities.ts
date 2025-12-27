@@ -9,7 +9,7 @@ let userRoleCache: {
   userId: string | null;
   timestamp: number;
 } = { role: null, userId: null, timestamp: 0 };
-const ROLE_CACHE_TTL = 30000; // 30 seconds cache (role rarely changes)
+const ROLE_CACHE_TTL = 300000; // 5 minutes cache (role rarely changes during session)
 
 // Cache for getUser() results to avoid excessive auth API calls
 let userCache: {
@@ -184,44 +184,39 @@ export function isAdmin(caps: Capabilities | null | undefined) {
   return (caps.adminOrgs?.length ?? 0) > 0;
 }
 
+// Hook that uses CapabilitiesProvider context
+// Since we wrap the app with CapabilitiesProvider, this uses the shared context
+// This prevents duplicate fetches - capabilities are fetched once at app level
+// Note: Circular dependency is safe here because:
+// - CapabilitiesProvider imports loadCapabilities (function) from this file
+// - This hook imports useCapabilitiesContext (hook) from CapabilitiesProvider
+// These are different exports used at different times, so no circular initialization issue
+import { useCapabilitiesContext } from "../providers/CapabilitiesProvider";
+
 export function useCapabilities() {
-  const [adminOrgs, setAdminOrgs] = useState<OrgMini[]>([]);
-  const [reviewerPrograms, setReviewerPrograms] = useState<ProgramMini[]>([]);
-  const [coalitions, setCoalitions] = useState<CoalitionMini[]>([]);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadCaps = async () => {
-      try {
-        const caps = await loadCapabilities();
-        setAdminOrgs(caps.adminOrgs);
-        setReviewerPrograms(caps.reviewerPrograms);
-        setCoalitions(caps.coalitions);
-        setUserRole(caps.userRole);
-      } catch (error) {
-        console.error("Failed to load capabilities:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCaps();
-  }, []);
-
-  const hasReviewerAssignments = (reviewerPrograms?.length ?? 0) > 0;
-  const isOrgAdmin = (adminOrgs?.length ?? 0) > 0;
-  const isSuperAdmin = userRole === "admin" || userRole === "superadmin";
+  const context = useCapabilitiesContext();
+  
+  // Use context data
+  const caps = context.capabilities || {
+    adminOrgs: [],
+    reviewerPrograms: [],
+    coalitions: [],
+    userRole: null,
+  };
+  
+  const hasReviewerAssignments = (caps.reviewerPrograms?.length ?? 0) > 0;
+  const isOrgAdmin = (caps.adminOrgs?.length ?? 0) > 0;
+  const isSuperAdmin = caps.userRole === "admin" || caps.userRole === "superadmin";
 
   return {
-    adminOrgs,
-    reviewerPrograms,
-    coalitions,
-    userRole,
+    adminOrgs: caps.adminOrgs,
+    reviewerPrograms: caps.reviewerPrograms,
+    coalitions: caps.coalitions,
+    userRole: caps.userRole,
     hasReviewerAssignments,
     isOrgAdmin,
     isSuperAdmin,
-    loading,
+    loading: context.loading,
   };
 }
 
@@ -230,7 +225,7 @@ let capabilitiesCache: {
   promise: Promise<Capabilities> | null;
   timestamp: number;
 } = { promise: null, timestamp: 0 };
-const CACHE_TTL = 5000; // 5 seconds cache
+const CACHE_TTL = 30000; // 30 seconds cache (increased from 5s to reduce DB calls)
 
 export async function loadCapabilities(): Promise<Capabilities> {
   const now = Date.now();

@@ -3,7 +3,7 @@ import { useLocation, Navigate, useNavigate } from "react-router-dom";
 import DashboardHeader from "./components/DashboardHeader.tsx";
 import DashboardNavigation from "./components/DashboardNavigation.tsx";
 import CapabilityHub from "./components/CapabilityHub.tsx";
-import { loadCapabilities } from "./lib/capabilities";
+import { useCapabilitiesContext } from "./providers/CapabilitiesProvider";
 import { supabase } from "./lib/supabase";
 import { isBeforeOpenDate, isPastDeadline } from "./lib/deadlineUtils";
 // import { startOrGetApplication } from "./lib/rpc";
@@ -945,54 +945,30 @@ function Dashboard() {
 }
 
 function SmartDashboard() {
-  const [capabilities, setCapabilities] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { capabilities, loading, refresh } = useCapabilitiesContext();
   const location = useLocation();
 
-  const refreshCapabilities = async () => {
-    try {
-      const caps = await loadCapabilities();
-      console.log("SmartDashboard - loaded capabilities:", caps);
-      setCapabilities(caps);
-    } catch (error) {
-      console.error("Failed to load capabilities:", error);
-    }
-  };
-
-  useEffect(() => {
-    refreshCapabilities().finally(() => setLoading(false));
-  }, []);
-
-  // Only refresh when navigating TO dashboard from another page (not on initial mount)
+  // Refresh capabilities when navigating TO dashboard from another page (not on initial mount)
+  // This ensures we check the database each time the user visits the dashboard
   useEffect(() => {
     if (location.pathname === "/dashboard" && capabilities !== null) {
-      refreshCapabilities();
+      refresh();
     }
-  }, [location.pathname]);
+  }, [location.pathname, capabilities, refresh]);
 
-  // Periodically refresh capabilities to handle demotion
-  // Using 5 minutes to significantly reduce auth requests while still detecting demotions
-  // Demotions are rare (admin actions), so 5 minutes is sufficient for detection
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refreshCapabilities();
-    }, 300000); // Check every 5 minutes - reduces auth requests by 83%
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Also refresh when the page becomes visible (user switches back to tab)
+  // Refresh when the page becomes visible (user switches back to tab)
+  // This catches changes when user returns to the tab after being away
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        refreshCapabilities();
+      if (!document.hidden && location.pathname === "/dashboard") {
+        refresh();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () =>
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
+  }, [location.pathname, refresh]);
 
   if (loading) {
     return (
