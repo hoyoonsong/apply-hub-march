@@ -65,7 +65,7 @@ export default function WordLimitedTextarea({
       {label && (
         <label className="block text-xs md:text-sm font-medium text-gray-700">
           <AutoLinkText text={label} />
-          {required && " *"}
+          {required && <span className="text-red-500"> *</span>}
         </label>
       )}
       <textarea

@@ -17,21 +17,25 @@ This document lists files that are currently not being used or hooked up to the 
 
 7. **OrgReviewsPage.tsx** - Not imported anywhere. Replaced by OrgApplicationsInbox.tsx
 
+## Org Admin Pages (unused/pages/org-admin/)
+
+8. **OrgAdminPrograms.tsx** - Removed from routing. Replaced by OrgAdminHomeV2.tsx (routed at `/org/:orgSlug/admin`)
+
 ## Hub Pages (unused/hub/)
 
-8. **OrgAdminHome.tsx** - Not imported anywhere. Replaced by OrgAdminHomeV2.tsx
-9. **ReviewerHome.tsx** - Not imported anywhere. Different from pages/reviewer/ReviewerHome.tsx which IS used
+9. **OrgAdminHome.tsx** - Not imported anywhere. Replaced by OrgAdminHomeV2.tsx
+10. **ReviewerHome.tsx** - Not imported anywhere. Different from pages/reviewer/ReviewerHome.tsx which IS used
 
 ## Reviewer Pages (unused/pages/reviewer/)
 
-10. **index.tsx** - Not imported anywhere
-11. **applications/[applicationId].tsx** - Not imported anywhere
-12. **programs/queue.tsx** - Not imported anywhere
-13. **ReviewerScopePicker.tsx** - Not imported anywhere
+11. **index.tsx** - Not imported anywhere
+12. **applications/[applicationId].tsx** - Not imported anywhere
+13. **programs/queue.tsx** - Not imported anywhere
+14. **ReviewerScopePicker.tsx** - Not imported anywhere
 
 ## Other Pages (unused/pages/programs/)
 
-14. **ApplyProgramPage.tsx** - Not imported anywhere
+15. **ApplyProgramPage.tsx** - Not imported anywhere
 
 ---
 
@@ -39,7 +43,7 @@ This document lists files that are currently not being used or hooked up to the 
 
 - **ReviewHome.tsx** (pages/review/) - IS routed at `/review`
 - **OrgManageReviewers.tsx** - IS routed at `/org/:orgSlug/admin/reviewers`
-- **OrgAdminPrograms.tsx** - IS routed at `/org/:orgSlug/admin/programs`
+- **OrgAdminHomeV2.tsx** - IS routed at `/org/:orgSlug/admin` (replaces OrgAdminPrograms)
 - **ReviewerHome.tsx** (pages/reviewer/) - IS routed at `/org/:orgSlug/reviewer`
 - **QueuePage.tsx** - IS routed at `/review/:programId`
 - **ReviewAppPage.tsx** - IS routed at `/review/app/:applicationId`

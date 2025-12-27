@@ -31,7 +31,6 @@ import ProtectedCoalitionRoute from "./components/scopes/ProtectedCoalitionRoute
 import ProtectedReviewerRoute from "./components/scopes/ProtectedReviewerRoute";
 import CoalitionManagerHome from "./hub/CoalitionManagerHome";
 import OrgAdminHomeV2 from "./hub/OrgAdminHomeV2";
-import OrgAdminPrograms from "./pages/org-admin/OrgAdminPrograms";
 import OrgProgramBuilder from "./pages/org-admin/OrgProgramBuilder";
 import CoalitionProgramBuilder from "./pages/coalition-manager/CoalitionProgramBuilder";
 import ApplicationForm from "./pages/apply/ApplicationForm";
@@ -168,16 +167,6 @@ export default function App() {
                 <ProtectedRoute>
                   <ProtectedOrgAdminRoute>
                     <OrgAdminHomeV2 />
-                  </ProtectedOrgAdminRoute>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/org/:orgSlug/admin/programs"
-              element={
-                <ProtectedRoute>
-                  <ProtectedOrgAdminRoute>
-                    <OrgAdminPrograms />
                   </ProtectedOrgAdminRoute>
                 </ProtectedRoute>
               }

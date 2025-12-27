@@ -637,7 +637,9 @@ export default function ApplicationForm({
                                 >
                                   <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                     <AutoLinkText text={item.label} />
-                                    {item.required && " *"}
+                                    {item.required && (
+                                      <span className="text-red-500"> *</span>
+                                    )}
                                   </label>
                                   <input
                                     className={`w-full rounded-md border border-gray-300 px-3 py-2 md:px-4 md:py-3 text-sm md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
@@ -702,7 +704,9 @@ export default function ApplicationForm({
                                     />
                                     <label className="text-xs md:text-sm font-medium text-gray-700">
                                       <AutoLinkText text={item.label} />
-                                      {item.required && " *"}
+                                      {item.required && (
+                                        <span className="text-red-500"> *</span>
+                                      )}
                                     </label>
                                   </div>
                                 </div>
@@ -715,7 +719,9 @@ export default function ApplicationForm({
                                 >
                                   <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                     <AutoLinkText text={item.label} />
-                                    {item.required && " *"}
+                                    {item.required && (
+                                      <span className="text-red-500"> *</span>
+                                    )}
                                   </label>
                                   <input
                                     type="date"
@@ -746,7 +752,9 @@ export default function ApplicationForm({
                                 >
                                   <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                     <AutoLinkText text={item.label} />
-                                    {item.required && " *"}
+                                    {item.required && (
+                                      <span className="text-red-500"> *</span>
+                                    )}
                                   </label>
                                   <select
                                     className={`w-full rounded-md border border-gray-300 px-3 py-2 md:px-4 md:py-3 text-sm md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
@@ -815,7 +823,9 @@ export default function ApplicationForm({
                                 >
                                   <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">
                                     <AutoLinkText text={item.label} />
-                                    {item.required && " *"}
+                                    {item.required && (
+                                      <span className="text-red-500"> *</span>
+                                    )}
                                   </label>
                                   <SimpleFileUpload
                                     applicationId={applicationId || ""}

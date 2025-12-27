@@ -590,7 +590,7 @@ export default function ApplicationPreview({
           <div className="bg-white border rounded-lg p-6 space-y-3">
             <label className="block text-sm font-medium text-gray-700">
               <AutoLinkText text={field.label} />
-              {field.required && " *"}
+              {field.required && <span className="text-red-500"> *</span>}
             </label>
             <input
               className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -618,7 +618,7 @@ export default function ApplicationPreview({
           <div className="bg-white border rounded-lg p-6 space-y-3">
             <label className="block text-sm font-medium text-gray-700">
               <AutoLinkText text={field.label} />
-              {field.required && " *"}
+              {field.required && <span className="text-red-500"> *</span>}
             </label>
             <input
               className="rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -633,7 +633,7 @@ export default function ApplicationPreview({
           <div className="bg-white border rounded-lg p-6 space-y-3">
             <label className="block text-sm font-medium text-gray-700">
               <AutoLinkText text={field.label} />
-              {field.required && " *"}
+              {field.required && <span className="text-red-500"> *</span>}
             </label>
             <select
               className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -661,7 +661,7 @@ export default function ApplicationPreview({
               />
               <label className="text-sm font-medium text-gray-700">
                 <AutoLinkText text={field.label} />
-                {field.required && " *"}
+                {field.required && <span className="text-red-500"> *</span>}
               </label>
             </div>
           </div>
@@ -671,7 +671,7 @@ export default function ApplicationPreview({
           <div className="bg-white border rounded-lg p-6 space-y-3">
             <label className="block text-sm font-medium text-gray-700">
               <AutoLinkText text={field.label} />
-              {field.required && " *"}
+              {field.required && <span className="text-red-500"> *</span>}
             </label>
             <SimpleFileUpload
               applicationId="preview"
