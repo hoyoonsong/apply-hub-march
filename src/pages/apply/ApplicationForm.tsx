@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   getApplication,
   submitApplication,
   saveApplication,
 } from "../../lib/rpc";
-import { loadApplicationSchemaById } from "../../lib/schemaLoader";
+import {
+  loadApplicationSchemaById,
+  loadApplicationSchema,
+} from "../../lib/schemaLoader";
 import { useApplicationAutosave } from "../../components/useApplicationAutosave";
 import { SimpleFileUpload } from "../../components/attachments/SimpleFileUpload";
 import ProfileCard from "../../components/profile/ProfileCard";
@@ -80,13 +83,25 @@ export default function ApplicationForm({
   const [programDetails, setProgramDetails] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
 
+  // Prevent duplicate calls from React StrictMode
+  const loadingRef = useRef<string | null>(null);
+
   // Load application data if we have an applicationId (user is logged in)
   useEffect(() => {
     if (!isUUID(applicationId)) return;
 
+    // Prevent duplicate calls (handles React StrictMode double-invocation)
+    const key = `app-${applicationId}`;
+    if (loadingRef.current === key) return;
+    loadingRef.current = key;
+
+    let cancelled = false;
+
     (async () => {
       try {
         const app = await getApplication(applicationId!);
+
+        if (cancelled) return;
 
         if (!app || !app.program_id) {
           navigate("/unauthorized");
@@ -98,72 +113,78 @@ export default function ApplicationForm({
         // Load schema and program details (shared logic)
         await loadProgramData(app.program_id, app);
 
+        if (cancelled) return;
+
         // Set editing mode: draft apps are editable, submitted apps are read-only by default
         setIsEditing(app.status === "draft");
       } catch (e: any) {
-        console.error("Error loading application:", e);
-        navigate("/unauthorized");
+        if (!cancelled) {
+          console.error("Error loading application:", e);
+          navigate("/unauthorized");
+        }
+      } finally {
+        if (!cancelled) {
+          loadingRef.current = null;
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+      loadingRef.current = null;
+    };
   }, [applicationId, navigate]);
 
   // Load program data when we have programId but no applicationId (user not logged in)
   useEffect(() => {
     if (isUUID(applicationId) || !programId) return;
 
+    // Prevent duplicate calls (handles React StrictMode double-invocation)
+    const key = `program-${programId}`;
+    if (loadingRef.current === key) return;
+    loadingRef.current = key;
+
+    let cancelled = false;
+
     (async () => {
       try {
         await loadProgramData(programId, null);
       } catch (e: any) {
-        console.error("Error loading program:", e);
+        if (!cancelled) {
+          console.error("Error loading program:", e);
+        }
+      } finally {
+        if (!cancelled) {
+          loadingRef.current = null;
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+      loadingRef.current = null;
+    };
   }, [programId, applicationId, user]);
+
+  // Track ongoing loads to prevent duplicate concurrent calls
+  const programDataLoadingRef = useRef<Set<string>>(new Set());
 
   // Shared function to load program data
   const loadProgramData = async (progId: string, app: AppRow | null) => {
-    // Load schema using centralized loader
-    const loadedSchema = await loadApplicationSchemaById(progId);
-    console.log("🔍 ApplicationForm - Loaded schema:", loadedSchema);
-    // Convert fields to items format (matching ApplicationPage structure)
-    const items = (loadedSchema.fields || []).map((f: any) => ({
-      key: f.key || f.id || `q_${Math.random()}`,
-      type: f.type?.toLowerCase() || f.type,
-      label: f.label || f.name || "",
-      required: f.required,
-      maxLength: f.maxLength,
-      maxWords: f.maxWords,
-      options: f.options,
-    }));
-    setSchema({ items });
-
-    // Get program details for deadline info - check if program is published
-    const { data: progData, error: progError } = await supabase
-      .from("programs_public")
-      .select("open_at, close_at, published")
-      .eq("id", progId)
-      .single();
-
-    if (progError || !progData) {
-      if (isUUID(applicationId)) {
-        navigate("/unauthorized");
+    // Prevent duplicate concurrent loads for the same program
+    if (programDataLoadingRef.current.has(progId)) {
+      // Wait for the existing load to complete
+      while (programDataLoadingRef.current.has(progId)) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
       return;
     }
 
-    // Check if program is published
-    if (!progData.published) {
-      if (isUUID(applicationId)) {
-        navigate("/unauthorized");
-      }
-      return;
-    }
+    programDataLoadingRef.current.add(progId);
 
-    setProgramDeadline(progData?.close_at || null);
-    setProgramOpenDate(progData?.open_at || null);
-
-    // Load full program details first, then parallelize dependent queries
     try {
+      // Get program details first - this gives us everything we need
+      // We'll use this data for both schema loading and program details
       const { data: programData, error: programError } = await supabase
         .from("programs")
         .select(
@@ -172,55 +193,158 @@ export default function ApplicationForm({
         .eq("id", progId)
         .single();
 
-      if (!programError && programData) {
-        setProgramDetails(programData);
-
-        // Load profile snapshot and organization in parallel (after we have programData)
-        const profilePromise = (async () => {
-          const currentUser = user;
-          if (currentUser && app) {
-            const program = {
-              id: programData.id,
-              name: programData.name,
-              metadata: programData.metadata,
-            };
-
-            if (programUsesProfile(program)) {
-              if (app.status === "submitted" && app.answers?.profile) {
-                return app.answers.profile;
-              } else {
-                return await fetchProfileSnapshot();
-              }
-            }
-          }
-          return null;
-        })();
-
-        const orgPromise = supabase
-          .from("organizations")
-          .select("id, name")
-          .eq("id", programData.organization_id)
+      if (programError || !programData) {
+        // Fallback: try programs_public for published programs
+        const { data: progData, error: progError } = await supabase
+          .from("programs_public")
+          .select("open_at, close_at, published, application_schema")
+          .eq("id", progId)
           .single();
 
-        const [profileData, orgDataResult] = await Promise.allSettled([
+        if (progError || !progData || !progData.published) {
+          if (isUUID(applicationId)) {
+            navigate("/unauthorized");
+          }
+          return;
+        }
+
+        setProgramDeadline(progData?.close_at || null);
+        setProgramOpenDate(progData?.open_at || null);
+
+        // Load schema from programs_public if available
+        if (progData.application_schema) {
+          const items = (progData.application_schema.fields || []).map(
+            (f: any) => ({
+              key: f.key || f.id || `q_${Math.random()}`,
+              type: f.type?.toLowerCase() || f.type,
+              label: f.label || f.name || "",
+              required: f.required,
+              maxLength: f.maxLength,
+              maxWords: f.maxWords,
+              options: f.options,
+            })
+          );
+          setSchema({ items });
+        } else {
+          // Fallback to schema loader
+          const loadedSchema = await loadApplicationSchemaById(progId);
+          const items = (loadedSchema.fields || []).map((f: any) => ({
+            key: f.key || f.id || `q_${Math.random()}`,
+            type: f.type?.toLowerCase() || f.type,
+            label: f.label || f.name || "",
+            required: f.required,
+            maxLength: f.maxLength,
+            maxWords: f.maxWords,
+            options: f.options,
+          }));
+          setSchema({ items });
+        }
+
+        // Set minimal program details from programs_public
+        setProgramDetails({
+          id: progId,
+          name: null,
+          description: null,
+          organization_id: null,
+          metadata: null,
+          open_at: progData.open_at,
+          close_at: progData.close_at,
+          spots_mode: null,
+          spots_count: null,
+        });
+        return;
+      }
+
+      // We have programData from programs table - use it for everything
+      setProgramDetails(programData);
+      setProgramDeadline(programData?.close_at || null);
+      setProgramOpenDate(programData?.open_at || null);
+
+      // Load schema using the program data we already have (avoids duplicate query)
+      const loadedSchema = await loadApplicationSchema(programData);
+      console.log("🔍 ApplicationForm - Loaded schema:", loadedSchema);
+      // Convert fields to items format (matching ApplicationPage structure)
+      const items = (loadedSchema.fields || []).map((f: any) => ({
+        key: f.key || f.id || `q_${Math.random()}`,
+        type: f.type?.toLowerCase() || f.type,
+        label: f.label || f.name || "",
+        required: f.required,
+        maxLength: f.maxLength,
+        maxWords: f.maxWords,
+        options: f.options,
+      }));
+      setSchema({ items });
+
+      // Check if program is published and load profile/organization in parallel
+      const publishedCheckPromise = supabase
+        .from("programs_public")
+        .select("published")
+        .eq("id", progId)
+        .single();
+
+      const profilePromise = (async () => {
+        const currentUser = user;
+        if (currentUser && app) {
+          const program = {
+            id: programData.id,
+            name: programData.name,
+            metadata: programData.metadata,
+          };
+
+          if (programUsesProfile(program)) {
+            if (app.status === "submitted" && app.answers?.profile) {
+              return app.answers.profile;
+            } else {
+              return await fetchProfileSnapshot();
+            }
+          }
+        }
+        return null;
+      })();
+
+      const orgPromise = supabase
+        .from("organizations")
+        .select("id, name")
+        .eq("id", programData.organization_id)
+        .single();
+
+      // Execute all three queries in parallel
+      const [publishedResult, profileData, orgDataResult] =
+        await Promise.allSettled([
+          publishedCheckPromise,
           profilePromise,
           orgPromise,
         ]);
 
-        if (profileData.status === "fulfilled" && profileData.value) {
-          setProfileSnap(profileData.value);
+      // Check published status first (security check)
+      if (
+        publishedResult.status === "fulfilled" &&
+        !publishedResult.value.error &&
+        publishedResult.value.data?.published
+      ) {
+        // Program is published, continue
+      } else {
+        if (isUUID(applicationId)) {
+          navigate("/unauthorized");
         }
+        return;
+      }
 
-        if (
-          orgDataResult.status === "fulfilled" &&
-          !orgDataResult.value.error &&
-          orgDataResult.value.data
-        ) {
-          setOrganization(orgDataResult.value.data);
-        }
+      if (profileData.status === "fulfilled" && profileData.value) {
+        setProfileSnap(profileData.value);
+      }
+
+      if (
+        orgDataResult.status === "fulfilled" &&
+        !orgDataResult.value.error &&
+        orgDataResult.value.data
+      ) {
+        setOrganization(orgDataResult.value.data);
       }
     } catch (e) {
       console.error("Failed to load program details:", e);
+    } finally {
+      programDataLoadingRef.current.delete(progId);
     }
   };
 

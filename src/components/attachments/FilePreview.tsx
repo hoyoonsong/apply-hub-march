@@ -11,14 +11,43 @@ type FileInfo = {
   uploadedBy: string;
 };
 
+// Cache for signed URLs to avoid duplicate API calls for the same file
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+const CACHE_BUFFER_SECONDS = 60; // Refresh 1 minute before expiry
+
+function getCachedSignedUrl(filePath: string): string | null {
+  const cached = signedUrlCache.get(filePath);
+  if (cached && Date.now() < cached.expiresAt - CACHE_BUFFER_SECONDS * 1000) {
+    return cached.url;
+  }
+  return null;
+}
+
+function setCachedSignedUrl(filePath: string, url: string, expiresInSeconds: number) {
+  signedUrlCache.set(filePath, {
+    url,
+    expiresAt: Date.now() + expiresInSeconds * 1000,
+  });
+}
+
 export function FilePreview({ fileInfo }: { fileInfo: FileInfo }) {
   console.log("[file-preview] FilePreview mounted with fileInfo:", fileInfo);
 
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [signedUrl, setSignedUrl] = useState<string | null>(() => 
+    getCachedSignedUrl(fileInfo.filePath)
+  );
+  const [loading, setLoading] = useState(!signedUrl);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check cache first
+    const cached = getCachedSignedUrl(fileInfo.filePath);
+    if (cached) {
+      setSignedUrl(cached);
+      setLoading(false);
+      return;
+    }
+
     async function getSignedUrl() {
       try {
         setLoading(true);
@@ -29,9 +58,10 @@ export function FilePreview({ fileInfo }: { fileInfo: FileInfo }) {
           fileInfo.filePath
         );
 
+        const expirySeconds = 60 * 10; // 10 minutes
         const { data, error: urlError } = await supabase.storage
           .from("application-files")
-          .createSignedUrl(fileInfo.filePath, 60 * 10); // 10 minutes
+          .createSignedUrl(fileInfo.filePath, expirySeconds);
 
         if (urlError) {
           console.error("[file-preview] URL error:", urlError);
@@ -39,8 +69,12 @@ export function FilePreview({ fileInfo }: { fileInfo: FileInfo }) {
           return;
         }
 
-        console.log("[file-preview] Got signed URL:", data?.signedUrl);
-        setSignedUrl(data?.signedUrl || null);
+        const url = data?.signedUrl || null;
+        if (url) {
+          // Cache the signed URL
+          setCachedSignedUrl(fileInfo.filePath, url, expirySeconds);
+          setSignedUrl(url);
+        }
       } catch (err: any) {
         console.error("[file-preview] Unexpected error:", err);
         setError(`Unexpected error: ${err.message}`);
