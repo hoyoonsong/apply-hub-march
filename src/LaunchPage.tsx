@@ -14,7 +14,7 @@ function LaunchPage() {
       {/* Navigation */}
       <nav className="bg-white shadow-sm relative">
         {/* Logo positioned absolutely at top-left corner with responsive sizing */}
-        <div className="absolute top-2 left-2 sm:top-2 sm:left-4 z-10">
+        <div className="absolute top-0 left-2 sm:top-1 sm:left-4 z-10">
           <img
             src="/Omnipply.png"
             alt="Omnipply Logo"

@@ -17,9 +17,9 @@ export default function DashboardHeader({
   tabs = [],
 }: DashboardHeaderProps) {
   return (
-    <nav className="bg-white shadow-sm relative">
-      {/* Logo positioned absolutely at top-left corner with responsive sizing */}
-      <div className="absolute top-1 left-1 sm:top-2 sm:left-4 z-10">
+    <nav className="bg-white border-b border-gray-200 relative">
+      {/* Logo positioned absolutely at top-left corner */}
+      <div className="absolute top-0 left-1 sm:top-1 sm:left-4 z-10">
         <Link to="/" className="flex items-center">
           <img
             src="/Omnipply.png"
@@ -32,16 +32,16 @@ export default function DashboardHeader({
       <div className="py-4 sm:py-12 md:py-16">
         {/* Main header row - tabs (desktop), user info */}
         <div className="flex items-center justify-between">
-          {/* Center - Tabs with responsive positioning (hidden on mobile) */}
+          {/* Center - Tabs with clean styling (hidden on mobile) */}
           {showTabs && tabs.length > 0 && (
             <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 gap-4 lg:gap-5">
               {tabs.map((tab) => (
                 <button
                   key={tab.name}
-                  className={`font-bold py-2.5 px-5 lg:py-3 lg:px-6 rounded-lg transition-all duration-200 text-sm lg:text-base ${
+                  className={`font-semibold py-2.5 px-5 lg:py-3 lg:px-6 rounded-xl transition-all duration-300 text-base lg:text-lg ${
                     activeTab === tab.name
-                      ? "bg-blue-600 text-white shadow-lg"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      ? "bg-[#1F3A52] text-white shadow-lg shadow-[#1F3A52]/40 hover:shadow-xl hover:shadow-[#1F3A52]/50 transform hover:scale-105"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                   onClick={() => onTabChange?.(tab.name)}
                 >
@@ -57,16 +57,16 @@ export default function DashboardHeader({
           </div>
         </div>
 
-        {/* Mobile tabs row - shown only on mobile */}
+        {/* Mobile tabs row - Clean design for mobile */}
         {showTabs && tabs.length > 0 && (
           <div className="md:hidden flex justify-center mt-8 sm:mt-12 gap-1 px-4">
             {tabs.map((tab) => (
               <button
                 key={tab.name}
-                className={`font-bold py-2.5 px-4 rounded-lg transition-all duration-200 text-sm ${
+                className={`font-semibold py-2.5 px-4 rounded-xl transition-all duration-300 text-base ${
                   activeTab === tab.name
-                    ? "bg-blue-600 text-white shadow-lg"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    ? "bg-[#1F3A52] text-white shadow-lg shadow-[#1F3A52]/40 hover:shadow-xl hover:shadow-[#1F3A52]/50 transform hover:scale-105"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
                 onClick={() => onTabChange?.(tab.name)}
               >

@@ -43,7 +43,7 @@ function HeroCarousel({
   if (items.length === 0) return null;
 
   return (
-    <div className="relative bg-white rounded-lg md:rounded-2xl shadow-lg md:shadow-xl overflow-hidden border border-gray-100 md:border-2 md:border-gray-100 mx-1 md:mx-0">
+    <div className="relative bg-white rounded-lg md:rounded-2xl shadow-lg md:shadow-xl overflow-hidden border-2 border-gray-200 mx-1 md:mx-0">
       <div className="relative h-56 md:h-96">
         {items.map((item, index) => (
           <div
@@ -119,7 +119,7 @@ function HeroCarousel({
 
                 <button
                   className={`${
-                    item.button_color || "bg-blue-600 hover:bg-blue-700"
+                    item.button_color || "bg-[#1F3A52] hover:bg-[#1a2f44]"
                   } text-white px-4 md:px-8 py-2 md:py-4 rounded-md md:rounded-xl text-xs md:text-lg font-bold transition-all duration-300 transform hover:scale-105 shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl relative z-10`}
                   onClick={() => onItemClick(item)}
                 >
@@ -165,24 +165,24 @@ function ProgramGrid({
 }) {
   if (items.length === 0) {
     return (
-      <div className="text-center text-gray-500 py-8">
-        Nothing featured yet.
+      <div className="text-center text-gray-500 py-12 bg-white rounded-2xl border border-gray-200">
+        <p className="text-lg">Nothing featured yet.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6">
       {items.map((item) => (
         <div
           key={item.id}
-          className="bg-white rounded-md md:rounded-xl shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 md:hover:-translate-y-2 border border-gray-100 overflow-hidden group flex flex-col"
+          className="bg-white rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-2 border-gray-200 overflow-hidden group flex flex-col"
         >
           <div
-            className={`h-20 md:h-32 flex items-center justify-center ${
+            className={`h-36 md:h-44 flex items-center justify-center relative overflow-hidden ${
               item.card_color?.startsWith("bg-")
                 ? item.card_color
-                : "bg-gradient-to-br from-blue-600 to-blue-800"
+                : "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500"
             }`}
             style={
               !item.card_color?.startsWith("bg-") && item.card_color
@@ -190,74 +190,97 @@ function ProgramGrid({
                 : undefined
             }
           >
-            <h3 className="text-white text-sm md:text-xl font-bold text-center px-2 md:px-4">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/0 to-black/20 group-hover:from-white/5 group-hover:via-white/5 transition-all duration-500"></div>
+            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.4),transparent_50%)]"></div>
+
+            <h3 className="text-white text-lg md:text-xl font-bold text-center px-4 relative z-10 drop-shadow-lg leading-tight">
               {item.title || item.name || "Featured"}
             </h3>
-          </div>
-          <div className="p-2 md:p-4 flex flex-col flex-grow">
-            <div className="flex items-center mb-2 md:mb-3 flex-wrap">
+
+            <div className="absolute top-3 right-3">
               <span
                 className={`${
                   item.target_type === "org"
-                    ? "bg-green-100 text-green-800"
+                    ? "bg-emerald-500/95 backdrop-blur-sm text-white"
                     : item.target_type === "coalition"
-                    ? "bg-purple-100 text-purple-800"
+                    ? "bg-purple-500/95 backdrop-blur-sm text-white"
                     : item.target_type === "program"
-                    ? "bg-blue-100 text-blue-800"
-                    : "bg-gray-100 text-gray-800"
-                } text-xs font-semibold px-2 py-1 rounded-full capitalize w-fit`}
+                    ? "bg-blue-500/95 backdrop-blur-sm text-white"
+                    : "bg-gray-500/95 backdrop-blur-sm text-white"
+                } text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide shadow-lg`}
               >
                 {item.target_type}
               </span>
-              {/* Subtle organization name for programs */}
+            </div>
+          </div>
+
+          <div className="p-5 flex flex-col flex-grow">
+            <div className="flex items-center gap-2 mb-3">
               {item.target_type === "program" && item.organization && (
-                <span className="text-gray-500 text-xs md:text-sm ml-2 md:ml-3 whitespace-nowrap">
-                  by {item.organization}
+                <span className="text-gray-500 text-xs font-medium truncate">
+                  {item.organization}
                 </span>
               )}
             </div>
+
             {item.description && (
-              <p className="text-gray-700 text-sm md:text-base mb-2 md:mb-4 line-clamp-2">
+              <p className="text-gray-700 text-sm mb-4 line-clamp-3 leading-relaxed">
                 <AutoLinkText text={item.description} />
               </p>
             )}
 
-            {/* Spots Information - only for programs */}
             {item.target_type === "program" && item.spotsText && (
-              <div className="mb-2 md:mb-3 text-sm md:text-base font-medium text-blue-600">
-                {item.spotsText}
+              <div className="mb-3 flex items-center gap-1.5">
+                <svg
+                  className="w-4 h-4 text-indigo-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                <span className="text-sm font-semibold text-indigo-600">
+                  {item.spotsText}
+                </span>
               </div>
             )}
 
-            {/* Spacer to push dates to bottom */}
             <div className="flex-grow" />
 
-            {/* Deadline Information - only for programs */}
-            {item.target_type === "program" && (
-              <div className="mb-3 md:mb-4">
-                <div className="flex items-center">
-                  <span className="text-gray-600 text-sm md:text-base font-bold mr-2">
-                    Deadline:
-                  </span>
-                  <span className="text-gray-800 text-sm md:text-base font-bold">
-                    {item.close_at
-                      ? new Date(item.close_at).toLocaleDateString()
-                      : "No deadline"}
-                  </span>
-                </div>
+            {item.target_type === "program" && item.close_at && (
+              <div className="mb-4 flex items-center gap-2 text-xs text-gray-600">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <span className="font-medium">
+                  {new Date(item.close_at).toLocaleDateString()}
+                </span>
               </div>
             )}
 
-            <div className="flex justify-between items-center mt-auto">
-              <button
-                className={`${
-                  item.button_color || "bg-blue-600 hover:bg-blue-700"
-                } text-white px-2 md:px-3 py-1 rounded-md md:rounded-lg text-sm md:text-base font-medium transition-colors`}
-                onClick={() => onItemClick(item)}
-              >
-                {item.button_label || "View"}
-              </button>
-            </div>
+            <button
+              className={`${
+                item.button_color || "bg-[#1F3A52] hover:bg-[#1a2f44]"
+              } text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] w-full`}
+              onClick={() => onItemClick(item)}
+            >
+              {item.button_label || "View Details"}
+            </button>
           </div>
         </div>
       ))}
@@ -306,16 +329,16 @@ function FeaturedPrograms() {
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-12">
       {/* All sections in intermingled order */}
       {sections.map(({ section, items }) => (
-        <section
-          key={section.id}
-          className={section.section_type === "carousel" ? "mb-10" : "mb-12"}
-        >
-          <h2 className="mb-4 text-2xl font-semibold text-gray-900">
-            {section.header}
-          </h2>
+        <section key={section.id} className="space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-6 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full"></div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+              {section.header}
+            </h2>
+          </div>
           {section.section_type === "carousel" ? (
             <HeroCarousel items={items} onItemClick={handlePrimaryClick} />
           ) : (
@@ -340,18 +363,32 @@ const gradients = [
 ];
 
 const tagColors = [
-  "bg-blue-100 text-blue-800",
-  "bg-purple-100 text-purple-800",
-  "bg-green-100 text-green-800",
-  "bg-red-100 text-red-800",
-  "bg-yellow-100 text-yellow-800",
-  "bg-pink-100 text-pink-800",
-  "bg-indigo-100 text-indigo-800",
-  "bg-teal-100 text-teal-800",
+  "bg-blue-500/95 backdrop-blur-sm text-white",
+  "bg-purple-500/95 backdrop-blur-sm text-white",
+  "bg-emerald-500/95 backdrop-blur-sm text-white",
+  "bg-red-500/95 backdrop-blur-sm text-white",
+  "bg-yellow-500/95 backdrop-blur-sm text-white",
+  "bg-pink-500/95 backdrop-blur-sm text-white",
+  "bg-indigo-500/95 backdrop-blur-sm text-white",
+  "bg-teal-500/95 backdrop-blur-sm text-white",
 ];
 
 function getGradientForIndex(index: number) {
   return gradients[index % gradients.length];
+}
+
+function getSolidColorForIndex(index: number) {
+  const solidColors = [
+    "bg-blue-600",
+    "bg-purple-600",
+    "bg-green-600",
+    "bg-red-600",
+    "bg-yellow-600",
+    "bg-pink-600",
+    "bg-indigo-600",
+    "bg-teal-600",
+  ];
+  return solidColors[index % solidColors.length];
 }
 
 function getTagColorForIndex(index: number) {
@@ -428,8 +465,9 @@ function AllOrgs() {
             status: "Active",
             statusColor: "text-green-600",
             gradient: getGradientForIndex(index),
+            solidColor: getSolidColorForIndex(index),
             tagColor: getTagColorForIndex(index),
-            buttonColor: "bg-blue-600 hover:bg-blue-700",
+            buttonColor: "bg-[#1F3A52] hover:bg-[#1a2f44]",
             description:
               org.description || "A great organization on our platform.",
           };
@@ -470,63 +508,71 @@ function AllOrgs() {
   return (
     <div className="w-full px-2 md:px-0">
       {/* Search Section */}
-      <div className="mb-6 md:mb-8">
+      <div className="mb-12 md:mb-16">
         <div className="relative max-w-2xl mx-auto">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <svg
+              className="h-5 w-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
           <input
             type="text"
             placeholder="Search all orgs..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 md:h-14 px-4 md:px-6 text-xs md:text-lg border-2 border-gray-300 rounded-full focus:border-blue-500 focus:outline-none shadow-lg pr-24 md:pr-32 transition-all duration-200 hover:shadow-xl focus:shadow-xl bg-white"
+            className="w-full h-14 pl-12 pr-4 text-base border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
           />
-          <button className="absolute right-1 md:right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-full transition-colors text-xs md:text-sm font-medium h-8 md:h-10">
-            Search
-          </button>
         </div>
       </div>
 
       {/* Programs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
         {filteredCorps.map((corps) => (
           <div
             key={corps.id}
-            className="bg-white rounded-xl md:rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden flex flex-col"
+            className="bg-white rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-2 border-gray-200 overflow-hidden group flex flex-col"
           >
             <div
-              className={`h-32 md:h-48 bg-gradient-to-br ${corps.gradient} flex items-center justify-center`}
+              className={`h-36 md:h-44 ${corps.solidColor} flex items-center justify-center relative overflow-hidden`}
             >
-              <h3 className="text-white text-lg md:text-2xl font-bold text-center px-4 md:px-6">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/0 to-black/20 group-hover:from-white/5 group-hover:via-white/5 transition-all duration-500"></div>
+              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.4),transparent_50%)]"></div>
+
+              <h3 className="text-white text-lg md:text-xl font-bold text-center px-4 relative z-10 drop-shadow-lg leading-tight">
                 {corps.name}
               </h3>
-            </div>
-            <div className="p-4 md:p-6 flex flex-col flex-grow">
-              <div className="flex flex-col md:flex-row md:items-center mb-3 md:mb-4">
+
+              <div className="absolute top-3 right-3">
                 <span
-                  className={`${corps.tagColor} text-xs font-semibold px-2 md:px-3 py-1 rounded-full mb-1 md:mb-0 w-fit`}
+                  className={`${corps.tagColor} text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide shadow-lg backdrop-blur-sm`}
                 >
                   {corps.class}
                 </span>
               </div>
-              <p className="text-gray-700 leading-relaxed mb-4 md:mb-6 text-xs md:text-sm">
+            </div>
+            <div className="p-5 flex flex-col flex-grow">
+              <p className="text-gray-700 text-sm mb-4 line-clamp-3 leading-relaxed">
                 {truncateText(corps.description, 150)}
               </p>
 
-              {/* Spacer to push footer to bottom */}
-              <div className="flex-grow"></div>
+              <div className="flex-grow" />
 
-              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0 mt-auto">
-                <span
-                  className={`${corps.statusColor} font-semibold text-xs md:text-sm`}
-                >
-                  {corps.status}
-                </span>
-                <button
-                  className={`${corps.buttonColor} text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors`}
-                  onClick={() => navigate(`/org/${corps.slug}`)}
-                >
-                  Learn More
-                </button>
-              </div>
+              <button
+                className={`${corps.buttonColor} text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] w-full`}
+                onClick={() => navigate(`/org/${corps.slug}`)}
+              >
+                View Details
+              </button>
             </div>
           </div>
         ))}
@@ -661,8 +707,9 @@ function AllPrograms() {
                 ? "text-green-600"
                 : "text-red-600",
               gradient: getGradientForIndex(index),
+              solidColor: getSolidColorForIndex(index),
               tagColor: getTagColorForIndex(index),
-              buttonColor: "bg-blue-600 hover:bg-blue-700",
+              buttonColor: "bg-[#1F3A52] hover:bg-[#1a2f44]",
               description:
                 program.description || "A great program on our platform.",
               openAt: program.open_at,
@@ -700,43 +747,28 @@ function AllPrograms() {
     setFilteredPrograms(filtered);
   }, [searchTerm, selectedType, programs]);
 
-  if (loading) {
-    return (
-      <div className="w-full px-2 md:px-0">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading programs...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full px-2 md:px-0">
       {/* Search and Filter Section */}
-      <div className="mb-6 md:mb-8">
-        <div className="relative max-w-2xl mx-auto">
-          <div className="flex items-center bg-white border-2 border-gray-300 rounded-full focus-within:border-blue-500 shadow-lg hover:shadow-xl focus-within:shadow-xl transition-all duration-200">
-            {/* Type Filter Dropdown - Compact on mobile */}
+      <div className="mb-12 md:mb-16">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center gap-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-200 transition-all duration-200 p-1">
+            {/* Type Filter Dropdown */}
             <div className="relative">
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="h-12 md:h-14 px-2 md:px-4 text-xs md:text-lg border-0 bg-transparent focus:outline-none cursor-pointer appearance-none pr-6 md:pr-10 text-gray-700 font-medium text-center"
+                className="h-12 px-4 text-base border-0 bg-transparent focus:outline-none cursor-pointer appearance-none pr-8 text-gray-700 font-medium"
               >
-                <option value="all">All</option>
+                <option value="all">All Types</option>
                 <option value="application">Applications</option>
                 <option value="audition">Auditions</option>
                 <option value="scholarship">Scholarships</option>
                 <option value="competition">Competitions</option>
               </select>
-
-              {/* Custom Dropdown Arrow */}
-              <div className="absolute right-1 md:right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
                 <svg
-                  className="w-3 h-3 md:w-4 md:h-4 text-gray-500"
+                  className="w-5 h-5 text-gray-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -752,139 +784,166 @@ function AllPrograms() {
             </div>
 
             {/* Divider */}
-            <div className="w-px h-6 md:h-8 bg-gray-300"></div>
+            <div className="w-px h-8 bg-gray-300"></div>
 
             {/* Search Input */}
-            <input
-              type="text"
-              placeholder="Search programs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 h-12 md:h-14 px-3 md:px-6 text-xs md:text-lg focus:outline-none bg-transparent"
-            />
-
-            {/* Search Button */}
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-8 py-2 md:py-3 rounded-full transition-colors text-xs md:text-sm font-medium h-8 md:h-10 mr-1 md:mr-2">
-              Search
-            </button>
+            <div className="flex-1 relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Search programs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-12 pl-10 pr-4 text-base focus:outline-none bg-transparent"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Programs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {filteredPrograms.map((program) => (
-          <div
-            key={program.id}
-            className={`bg-white rounded-xl md:rounded-2xl shadow-xl transition-all duration-300 transform border border-gray-100 overflow-hidden flex flex-col ${
-              program.status === "Coming Soon"
-                ? "opacity-40 cursor-not-allowed"
-                : "hover:shadow-2xl hover:-translate-y-2"
-            }`}
-          >
-            <div
-              className={`h-32 md:h-48 bg-gradient-to-br ${program.gradient} flex items-center justify-center`}
-            >
-              <h3 className="text-white text-lg md:text-2xl font-bold text-center px-4 md:px-6">
-                {program.name}
-              </h3>
-            </div>
-            <div className="p-4 md:p-6 flex flex-col flex-grow">
-              <div className="flex flex-col md:flex-row md:items-center mb-3 md:mb-4">
-                <span
-                  className={`${program.tagColor} text-xs font-semibold px-2 md:px-3 py-1 rounded-full mb-1 md:mb-0 w-fit`}
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading programs...</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Programs Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+            {filteredPrograms.map((program) => (
+              <div
+                key={program.id}
+                className={`bg-white rounded-2xl shadow-sm transition-all duration-300 transform border-2 border-gray-200 overflow-hidden group flex flex-col ${
+                  program.status === "Coming Soon"
+                    ? "opacity-40 cursor-not-allowed"
+                    : "hover:shadow-2xl hover:-translate-y-2"
+                }`}
+              >
+                <div
+                  className={`h-36 md:h-44 ${program.solidColor} flex items-center justify-center relative overflow-hidden`}
                 >
-                  {program.organization}
-                </span>
-                <span className="text-gray-500 text-xs md:text-sm md:ml-3 capitalize">
-                  {program.type}
-                </span>
-              </div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/0 to-black/20 group-hover:from-white/5 group-hover:via-white/5 transition-all duration-500"></div>
+                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.4),transparent_50%)]"></div>
 
-              {program.description && (
-                <p className="text-gray-700 leading-relaxed mb-3 md:mb-4 text-xs md:text-sm">
-                  <AutoLinkText text={program.description} />
-                </p>
-              )}
+                  <h3 className="text-white text-lg md:text-xl font-bold text-center px-4 relative z-10 drop-shadow-lg leading-tight">
+                    {program.name}
+                  </h3>
 
-              {/* Spots Information */}
-              {program.spotsText && (
-                <div className="mb-3 md:mb-4 text-sm md:text-base font-medium text-blue-600">
-                  {program.spotsText}
+                  <div className="absolute top-3 right-3">
+                    <span
+                      className={`${program.tagColor} text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide shadow-lg backdrop-blur-sm`}
+                    >
+                      {program.organization}
+                    </span>
+                  </div>
                 </div>
-              )}
+                <div className="p-5 flex flex-col flex-grow">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-gray-500 text-xs font-medium truncate capitalize">
+                      {program.type}
+                    </span>
+                  </div>
 
-              {/* Deadline Information */}
-              {(program.openAt || program.closeAt) && (
-                <div className="mb-4 md:mb-6 mt-4 md:mt-6">
-                  {program.openAt && (
-                    <div className="flex items-center mb-2">
-                      <span className="text-gray-600 text-xs md:text-sm font-bold mr-2">
-                        Opens:
-                      </span>
-                      <span className="text-gray-800 text-xs md:text-sm font-bold">
-                        {new Date(program.openAt).toLocaleDateString()}
+                  {program.description && (
+                    <p className="text-gray-700 text-sm mb-4 line-clamp-3 leading-relaxed">
+                      <AutoLinkText text={program.description} />
+                    </p>
+                  )}
+
+                  {/* Spots Information */}
+                  {program.spotsText && (
+                    <div className="mb-3 flex items-center gap-1.5">
+                      <svg
+                        className="w-4 h-4 text-indigo-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                      <span className="text-sm font-semibold text-indigo-600">
+                        {program.spotsText}
                       </span>
                     </div>
                   )}
+
+                  <div className="flex-grow" />
+
+                  {/* Deadline Information */}
                   {program.closeAt && (
-                    <div className="flex items-center">
-                      <span className="text-gray-600 text-xs md:text-sm font-bold mr-2">
-                        Deadline:
-                      </span>
-                      <span className="text-gray-800 text-xs md:text-sm font-bold">
+                    <div className="mb-4 flex items-center gap-2 text-xs text-gray-600">
+                      <svg
+                        className="w-4 h-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <span className="font-medium">
                         {new Date(program.closeAt).toLocaleDateString()}
                       </span>
                     </div>
                   )}
+
+                  <button
+                    className={`${
+                      program.opensSoon
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : program.buttonColor
+                    } text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] w-full`}
+                    onClick={async () => {
+                      if (program.opensSoon) return; // Disable navigation for programs that haven't opened
+                      try {
+                        navigate(`/programs/${program.id}/apply`);
+                      } catch (error) {
+                        console.error("Failed to start application:", error);
+                        alert("Could not start application. Please try again.");
+                      }
+                    }}
+                    disabled={program.opensSoon}
+                  >
+                    View Details
+                  </button>
                 </div>
-              )}
-
-              {/* Spacer to push footer to bottom */}
-              <div className="flex-grow"></div>
-
-              <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0 mt-auto">
-                <span
-                  className={`${
-                    program.status === "Coming Soon" ||
-                    program.status === "Open"
-                      ? `${program.statusColor} font-bold text-sm md:text-base`
-                      : `${program.statusColor} font-semibold text-xs md:text-sm`
-                  }`}
-                >
-                  {program.status}
-                </span>
-                <button
-                  className={`${
-                    program.opensSoon
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : `${program.buttonColor} text-white`
-                  } px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors`}
-                  onClick={async () => {
-                    if (program.opensSoon) return; // Disable navigation for programs that haven't opened
-                    try {
-                      navigate(`/programs/${program.id}/apply`);
-                    } catch (error) {
-                      console.error("Failed to start application:", error);
-                      alert("Could not start application. Please try again.");
-                    }
-                  }}
-                  disabled={program.opensSoon}
-                >
-                  Learn More
-                </button>
               </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {filteredPrograms.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">
-            No programs found matching your criteria.
-          </p>
-        </div>
+          {filteredPrograms.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">
+                No programs found matching your criteria.
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -934,7 +993,7 @@ function Dashboard() {
       />
       <DashboardNavigation />
 
-      <div className="max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-8">
+      <div className="max-w-7xl mx-auto px-2 md:px-4 pt-5 pb-4 md:py-8">
         {/* Page Content */}
         {activeTab === "Featured" && <FeaturedPrograms />}
         {activeTab === "All Orgs" && <AllOrgs />}
