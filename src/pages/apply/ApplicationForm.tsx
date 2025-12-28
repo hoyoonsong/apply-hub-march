@@ -845,6 +845,7 @@ export default function ApplicationForm({
                                     value={fileValue}
                                     onChange={(value) => update(key, value)}
                                     disabled={!isFormEditable || !applicationId}
+                                    applicationStatus={appRow?.status}
                                   />
                                 </div>
                               );

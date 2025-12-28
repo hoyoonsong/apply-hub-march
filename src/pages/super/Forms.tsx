@@ -5,6 +5,7 @@ import {
   type FormSubmission,
   type FormSubmissionStatus,
 } from "../../services/forms";
+import OrgLogo, { batchPreFetchLogos } from "../../components/OrgLogo";
 
 export default function Forms() {
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
@@ -30,6 +31,20 @@ export default function Forms() {
       setError(null);
       const allSubmissions = await listFormSubmissions();
       setSubmissions(allSubmissions);
+
+      // Batch pre-fetch all logo URLs to populate cache
+      const logoUrls = allSubmissions
+        .filter(
+          (s) => s.form_type === "organization_signup" && s.form_data?.logo_url
+        )
+        .map((s) => s.form_data.logo_url as string);
+
+      // Pre-fetch all unique logos in parallel - this populates the OrgLogo cache
+      if (logoUrls.length > 0) {
+        batchPreFetchLogos(logoUrls, 60 * 60).catch(() => {
+          // Silently fail - individual OrgLogo components will handle errors
+        });
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load form submissions"
@@ -151,6 +166,15 @@ export default function Forms() {
 
           {submission.form_type === "organization_signup" && (
             <div className="space-y-1 text-sm text-gray-600">
+              {submission.form_data.logo_url && (
+                <OrgLogo
+                  logoUrl={submission.form_data.logo_url}
+                  orgName={submission.form_data.name || "Organization"}
+                  size="xl"
+                  showDownload={true}
+                  showLabel={true}
+                />
+              )}
               <p>
                 <span className="font-medium">Name:</span>{" "}
                 {submission.form_data.name}
@@ -159,6 +183,12 @@ export default function Forms() {
                 <p>
                   <span className="font-medium">Description:</span>{" "}
                   {submission.form_data.description}
+                </p>
+              )}
+              {submission.form_data.contact_name && (
+                <p>
+                  <span className="font-medium">Contact Name:</span>{" "}
+                  {submission.form_data.contact_name}
                 </p>
               )}
               {submission.form_data.contact_email && (

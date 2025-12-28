@@ -78,8 +78,24 @@ export default function ProfileFileUpload({
     }
   }
 
-  function removeAt(i: number) {
+  async function removeAt(i: number) {
     const arr = [...(Array.isArray(value) ? value : [])];
+    const fileToRemove = arr[i];
+    
+    // Delete the file from storage when removing
+    if (fileToRemove && fileToRemove.filePath) {
+      try {
+        await supabase.storage
+          .from("application-files")
+          .remove([fileToRemove.filePath])
+          .catch(() => {
+            // Ignore errors - file might not exist
+          });
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+    
     arr.splice(i, 1);
     onChange(arr);
   }

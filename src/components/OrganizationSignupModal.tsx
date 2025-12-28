@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import { submitForm } from "../services/forms";
+import { supabase } from "../lib/supabase";
+import { extractFilePath } from "./OrgLogo";
 
 interface OrganizationSignupModalProps {
   open: boolean;
@@ -18,14 +20,109 @@ export default function OrganizationSignupModal({
   const [description, setDescription] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
   const [website, setWebsite] = useState("");
   const [meetingTime, setMeetingTime] = useState("");
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   if (!open) return null;
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      setError("Please upload an image file (JPEG, PNG, GIF, or WebP)");
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Logo file size must be less than 5MB");
+      return;
+    }
+
+    setError(null);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload logo immediately
+    await uploadLogo(file);
+  };
+
+  const uploadLogo = async (file: File) => {
+    try {
+      setUploadingLogo(true);
+      setError(null);
+
+      // Delete old logo if it exists (user might have changed logo multiple times before submitting)
+      if (logoUrl) {
+        const oldFilePath = extractFilePath(logoUrl);
+        if (oldFilePath) {
+          // Silently delete old logo - don't fail if it doesn't exist
+          await supabase.storage
+            .from("application-files")
+            .remove([oldFilePath])
+            .catch(() => {
+              // Ignore errors - file might not exist
+            });
+        }
+      }
+
+      // Create unique file path
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}_${name
+        .trim()
+        .replace(/\s+/g, "_")}_logo.${fileExt}`;
+      const filePath = `organizations/logos/${fileName}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from("application-files")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: true,
+          contentType: file.type || undefined,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("application-files").getPublicUrl(filePath);
+
+      setLogoUrl(publicUrl);
+    } catch (err) {
+      console.error("Error uploading logo:", err);
+      setError(
+        err instanceof Error
+          ? `Failed to upload logo: ${err.message}`
+          : "Failed to upload logo"
+      );
+      setLogoPreview(null);
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoPreview(null);
+    setLogoUrl(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,11 +148,6 @@ export default function OrganizationSignupModal({
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim())) {
       setError("Please enter a valid email address");
-      return;
-    }
-
-    if (!contactPhone.trim()) {
-      setError("Contact phone number is required");
       return;
     }
 
@@ -87,9 +179,9 @@ export default function OrganizationSignupModal({
           description: description.trim() || null,
           contact_name: contactName.trim() || null,
           contact_email: contactEmail.trim() || null,
-          contact_phone: contactPhone.trim() || null,
           website: website.trim() || null,
           meeting_time: meetingTime.trim() || null,
+          logo_url: logoUrl || null,
         },
         user?.id || null
       );
@@ -99,9 +191,10 @@ export default function OrganizationSignupModal({
       setDescription("");
       setContactName("");
       setContactEmail("");
-      setContactPhone("");
       setWebsite("");
       setMeetingTime("");
+      setLogoPreview(null);
+      setLogoUrl(null);
 
       // Call onSuccess callback if provided
       if (onSuccess) {
@@ -131,9 +224,10 @@ export default function OrganizationSignupModal({
       setDescription("");
       setContactName("");
       setContactEmail("");
-      setContactPhone("");
       setWebsite("");
       setMeetingTime("");
+      setLogoPreview(null);
+      setLogoUrl(null);
       setError(null);
       setSuccess(false);
       onClose();
@@ -246,21 +340,49 @@ export default function OrganizationSignupModal({
 
             <div>
               <label
-                htmlFor="contact-phone"
+                htmlFor="logo"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Contact Phone Number <span className="text-red-500">*</span>
+                Organization Logo
               </label>
-              <input
-                id="contact-phone"
-                type="tel"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-                required
-                disabled={submitting}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                placeholder="(555) 123-4567"
-              />
+              {logoPreview ? (
+                <div className="space-y-2">
+                  <div className="relative inline-block">
+                    <img
+                      src={logoPreview}
+                      alt="Logo preview"
+                      className="h-32 w-32 object-contain rounded-lg border border-gray-300"
+                    />
+                    {uploadingLogo && (
+                      <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                        <div className="text-white text-sm">Uploading...</div>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    disabled={submitting || uploadingLogo}
+                    className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50"
+                  >
+                    Remove logo
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    id="logo"
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handleLogoChange}
+                    disabled={submitting || uploadingLogo}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Upload a logo image (JPEG, PNG, GIF, or WebP, max 5MB)
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -333,10 +455,14 @@ export default function OrganizationSignupModal({
               </button>
               <button
                 type="submit"
-                disabled={submitting || !name.trim()}
+                disabled={submitting || uploadingLogo || !name.trim()}
                 className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? "Submitting..." : "Submit"}
+                {submitting
+                  ? "Submitting..."
+                  : uploadingLogo
+                  ? "Uploading logo..."
+                  : "Submit"}
               </button>
             </div>
           </form>

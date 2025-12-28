@@ -13,6 +13,7 @@ export async function superCreateOrgV1(params: {
   p_name: string;
   p_slug: string;
   p_description?: string;
+  p_logo_url?: string;
 }) {
   const { data, error } = await supabase.rpc("super_create_org_v1", params);
   if (error) throw new Error(`Failed to create organization: ${error.message}`);

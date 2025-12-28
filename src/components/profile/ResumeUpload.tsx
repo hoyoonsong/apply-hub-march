@@ -49,6 +49,16 @@ export default function ResumeUpload({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Delete old resume if it exists (profile files - always cleanup)
+      if (currentResume && currentResume.filePath) {
+        await supabase.storage
+          .from("application-files")
+          .remove([currentResume.filePath])
+          .catch(() => {
+            // Ignore errors - file might not exist
+          });
+      }
+
       // Upload file to storage
       const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}_resume.${fileExt}`;
@@ -78,7 +88,20 @@ export default function ResumeUpload({
     }
   };
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
+    // Delete the file from storage when removing
+    if (currentResume && currentResume.filePath) {
+      try {
+        await supabase.storage
+          .from("application-files")
+          .remove([currentResume.filePath])
+          .catch(() => {
+            // Ignore errors - file might not exist
+          });
+      } catch (e) {
+        // Ignore errors
+      }
+    }
     onResumeChange(null);
   };
 

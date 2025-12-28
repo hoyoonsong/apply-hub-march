@@ -19,6 +19,7 @@ export function SimpleFileUpload({
   onChange,
   maxSizeMB = 50,
   disabled = false,
+  applicationStatus,
 }: {
   applicationId: string;
   fieldId: string;
@@ -26,6 +27,7 @@ export function SimpleFileUpload({
   onChange: (value: string) => void;
   maxSizeMB?: number;
   disabled?: boolean;
+  applicationStatus?: "draft" | "submitted" | "reviewing" | "accepted" | "rejected" | "waitlisted";
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -69,6 +71,25 @@ export function SimpleFileUpload({
         alert(`File too large. Max ${maxSizeMB} MB.`);
         setFile(null);
         return;
+      }
+
+      // Delete old file if it exists AND application is in draft status
+      // For submitted applications, keep old files for audit trail
+      if (value && applicationStatus === "draft") {
+        try {
+          const oldFileInfo = JSON.parse(value);
+          if (oldFileInfo && oldFileInfo.filePath) {
+            // Silently delete old file - don't fail if it doesn't exist
+            await supabase.storage
+              .from("application-files")
+              .remove([oldFileInfo.filePath])
+              .catch(() => {
+                // Ignore errors - file might not exist
+              });
+          }
+        } catch (e) {
+          // If value is not valid JSON, ignore
+        }
       }
 
       const filePath = `applications/${applicationId}/${fieldId}/${Date.now()}_${
@@ -201,7 +222,20 @@ export function SimpleFileUpload({
                   </label>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
+                      // Delete the file from storage when removing (only for drafts)
+                      if (applicationStatus === "draft" && currentFile?.filePath) {
+                        try {
+                          await supabase.storage
+                            .from("application-files")
+                            .remove([currentFile.filePath])
+                            .catch(() => {
+                              // Ignore errors - file might not exist
+                            });
+                        } catch (e) {
+                          // Ignore errors
+                        }
+                      }
                       onChange("");
                       setFile(null);
                     }}
