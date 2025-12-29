@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 // Organization cache by slug
 const orgCache = new Map<
   string,
-  { data: { id: string; name: string; slug: string; description: string | null }; timestamp: number }
+  { data: { id: string; name: string; slug: string; description: string | null; logo_url: string | null }; timestamp: number }
 >();
 const ORG_CACHE_TTL = 10 * 60 * 1000; // 10 minutes (org data rarely changes)
 
@@ -13,7 +13,7 @@ const ORG_CACHE_TTL = 10 * 60 * 1000; // 10 minutes (org data rarely changes)
  */
 export async function getOrgBySlugCached(
   slug: string
-): Promise<{ id: string; name: string; slug: string; description: string | null } | null> {
+): Promise<{ id: string; name: string; slug: string; description: string | null; logo_url: string | null } | null> {
   const now = Date.now();
   const cached = orgCache.get(slug);
 
@@ -26,7 +26,7 @@ export async function getOrgBySlugCached(
   try {
     const { data, error } = await supabase
       .from("organizations")
-      .select("id, name, slug, description")
+      .select("id, name, slug, description, logo_url")
       .eq("slug", slug)
       .single();
 
@@ -44,6 +44,7 @@ export async function getOrgBySlugCached(
       name: data.name,
       slug: data.slug,
       description: data.description || null,
+      logo_url: data.logo_url || null,
     };
 
     // Cache the result

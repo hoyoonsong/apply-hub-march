@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import OrgAdminSidebar from "../../components/OrgAdminSidebar";
+import OrgLogo from "../../components/OrgLogo";
 import {
   getCachedProgramReviewForm,
   getProgramReviewFormsBatch,
@@ -18,6 +19,7 @@ export default function OrgApplicationsInbox() {
   const location = useLocation();
   const [orgId, setOrgId] = useState<string | null>(null);
   const [orgName, setOrgName] = useState<string | null>(null);
+  const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
   const [allRows, setAllRows] = useState<ReviewsListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export default function OrgApplicationsInbox() {
         if (org) {
           setOrgId(org.id);
           setOrgName(org.name);
+          setOrgLogoUrl(org.logo_url || null);
         }
       } catch (error) {
         console.error("Error loading organization:", error);
@@ -402,15 +405,25 @@ export default function OrgApplicationsInbox() {
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
           <div className="px-8 py-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">
-                {orgName
-                  ? `${orgName} - Applications Inbox`
-                  : "Applications Inbox"}
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Review and manage submitted applications for this organization
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  {orgName
+                    ? `${orgName} - Applications Inbox`
+                    : "Applications Inbox"}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  Review and manage submitted applications for this organization
+                </p>
+              </div>
+              {orgLogoUrl && orgName && (
+                <OrgLogo
+                  logoUrl={orgLogoUrl}
+                  orgName={orgName}
+                  size="lg"
+                  className="flex-shrink-0 scale-[1.15]"
+                />
+              )}
             </div>
           </div>
         </div>

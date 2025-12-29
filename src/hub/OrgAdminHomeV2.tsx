@@ -9,6 +9,7 @@ import {
 import { supabase } from "../lib/supabase";
 import AutoLinkText from "../components/AutoLinkText";
 import OrgAdminSidebar from "../components/OrgAdminSidebar";
+import OrgLogo from "../components/OrgLogo";
 import { assignOrgAdminAsReviewer } from "../lib/orgAdminReviewers";
 import { deduplicateRequest, createRpcKey } from "../lib/requestDeduplication";
 import {
@@ -30,6 +31,7 @@ export default function OrgAdminHomeV2() {
 
   const [orgId, setOrgId] = useState<string | null>(null);
   const [orgName, setOrgName] = useState<string | null>(null);
+  const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -142,6 +144,7 @@ export default function OrgAdminHomeV2() {
         if (org && mounted) {
           setOrgId(org.id);
           setOrgName(org.name);
+          setOrgLogoUrl(org.logo_url || null);
         }
 
         // Get the current user
@@ -199,6 +202,7 @@ export default function OrgAdminHomeV2() {
         if (!mounted) return;
         setOrgId(org.id);
         setOrgName(org.name);
+        setOrgLogoUrl(org.logo_url || null);
 
         // 2) list programs
         const rows = await adminListPrograms(org.id, true); // Always get all programs including deleted
@@ -358,6 +362,14 @@ export default function OrgAdminHomeV2() {
               </h1>
               <p className="mt-1 text-sm text-gray-500">Admin Dashboard</p>
             </div>
+            {orgLogoUrl && orgName && (
+              <OrgLogo
+                logoUrl={orgLogoUrl}
+                orgName={orgName}
+                size="lg"
+                className="flex-shrink-0 scale-[1.15]"
+              />
+            )}
           </div>
         </div>
 

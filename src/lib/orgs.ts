@@ -7,6 +7,7 @@ export type Org = {
   name: string;
   slug: string;
   description?: string | null;
+  logo_url?: string | null;
 };
 
 export async function getOrgBySlug(slug: string): Promise<Org | null> {

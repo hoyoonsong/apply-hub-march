@@ -9,6 +9,7 @@ import { isBeforeOpenDate, isPastDeadline } from "./lib/deadlineUtils";
 // import { startOrGetApplication } from "./lib/rpc";
 import { useFeaturedSections } from "./hooks/useFeaturedSections.ts";
 import AutoLinkText from "./components/AutoLinkText";
+import OrgLogo from "./components/OrgLogo";
 
 // Utility function to truncate text to approximately 200 characters
 function truncateText(text: string, maxLength: number = 200): string {
@@ -461,6 +462,7 @@ function AllOrgs() {
             id: org.id,
             name: org.name,
             slug: org.slug,
+            logo_url: org.logo_url || null,
             class: coalitionDisplay, // Use coalition name(s) instead of "Organization"
             status: "Active",
             statusColor: "text-green-600",
@@ -548,11 +550,28 @@ function AllOrgs() {
               <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/0 to-black/20 group-hover:from-white/5 group-hover:via-white/5 transition-all duration-500"></div>
               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.4),transparent_50%)]"></div>
 
-              <h3 className="text-white text-lg md:text-xl font-bold text-center px-4 relative z-10 drop-shadow-lg leading-tight">
-                {corps.name}
-              </h3>
+              {corps.logo_url && (
+                <div className="absolute top-3 left-3 z-20">
+                  <OrgLogo
+                    logoUrl={corps.logo_url}
+                    orgName={corps.name}
+                    size="md"
+                    className="scale-[1.15]"
+                  />
+                </div>
+              )}
 
-              <div className="absolute top-3 right-3">
+              <div
+                className={`relative z-10 flex items-center justify-center w-full ${
+                  corps.logo_url ? "pl-20 pr-20" : "px-4"
+                }`}
+              >
+                <h3 className="text-white text-lg md:text-xl font-bold text-center drop-shadow-lg leading-tight max-w-full">
+                  {corps.name}
+                </h3>
+              </div>
+
+              <div className="absolute top-3 right-3 z-20">
                 <span
                   className={`${corps.tagColor} text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide shadow-lg backdrop-blur-sm`}
                 >
@@ -604,6 +623,7 @@ function AllPrograms() {
               id,
               name,
               slug,
+              logo_url,
               coalition_memberships(
                 coalition_id,
                 coalitions(
@@ -695,6 +715,7 @@ function AllPrograms() {
               type: program.type,
               organization: org?.name || "Unknown Organization",
               organizationSlug: org?.slug,
+              organizationLogoUrl: org?.logo_url || null,
               class: coalitionDisplay,
               status: opensSoon
                 ? "Coming Soon"
@@ -841,11 +862,28 @@ function AllPrograms() {
                   <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/0 to-black/20 group-hover:from-white/5 group-hover:via-white/5 transition-all duration-500"></div>
                   <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.4),transparent_50%)]"></div>
 
-                  <h3 className="text-white text-lg md:text-xl font-bold text-center px-4 relative z-10 drop-shadow-lg leading-tight">
-                    {program.name}
-                  </h3>
+                  {program.organizationLogoUrl && (
+                    <div className="absolute top-3 left-3 z-20">
+                      <OrgLogo
+                        logoUrl={program.organizationLogoUrl}
+                        orgName={program.organization}
+                        size="md"
+                        className="scale-[1.15]"
+                      />
+                    </div>
+                  )}
 
-                  <div className="absolute top-3 right-3">
+                  <div
+                    className={`relative z-10 flex items-center justify-center w-full ${
+                      program.organizationLogoUrl ? "pl-20 pr-20" : "px-4"
+                    }`}
+                  >
+                    <h3 className="text-white text-lg md:text-xl font-bold text-center drop-shadow-lg leading-tight max-w-full">
+                      {program.name}
+                    </h3>
+                  </div>
+
+                  <div className="absolute top-3 right-3 z-20">
                     <span
                       className={`${program.tagColor} text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide shadow-lg backdrop-blur-sm`}
                     >

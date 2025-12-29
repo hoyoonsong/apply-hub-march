@@ -351,13 +351,23 @@ export default function OrgSettings() {
 
       <div className="flex-1 flex flex-col">
         <div className="bg-white border-b border-gray-200 px-8 py-6">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Organization Settings
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Manage your organization details
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                Organization Settings
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Manage your organization details
+              </p>
+            </div>
+            {org.logo_url && (
+              <OrgLogo
+                logoUrl={org.logo_url}
+                orgName={org.name}
+                size="lg"
+                className="flex-shrink-0 scale-[1.15]"
+              />
+            )}
           </div>
         </div>
 

@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
 import AutoLinkText from "../../components/AutoLinkText";
 import { useUnreadNotifications } from "../../hooks/useUnreadNotifications";
+import OrgLogo from "../../components/OrgLogo";
 
 type ResultsRow = {
   application_id: string;
@@ -29,6 +30,8 @@ type ResultsRow = {
   claim_deadline?: string | null;
   any_publication_claimed_at?: string | null;
   any_publication_declined_at?: string | null;
+  organization_name: string;
+  organization_logo_url?: string | null;
 };
 
 type ApplicationRow = {
@@ -664,6 +667,32 @@ export default function MySubmissionsPage() {
                               Published:{" "}
                               {new Date(r.published_at).toLocaleString()}
                             </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {r.organization_logo_url && (
+                              <>
+                                <OrgLogo
+                                  logoUrl={r.organization_logo_url}
+                                  orgName={r.organization_name}
+                                  size="lg"
+                                  className="flex-shrink-0 hidden md:block"
+                                />
+                                <OrgLogo
+                                  logoUrl={r.organization_logo_url}
+                                  orgName={r.organization_name}
+                                  size="lg"
+                                  className="flex-shrink-0 block md:hidden"
+                                />
+                              </>
+                            )}
+                            <span className="text-xs md:text-sm font-medium text-gray-700 whitespace-nowrap hidden md:block">
+                              {r.organization_name}
+                            </span>
+                            {!r.organization_logo_url && (
+                              <span className="text-xs md:text-sm font-medium text-gray-700 whitespace-nowrap block md:hidden">
+                                {r.organization_name}
+                              </span>
+                            )}
                           </div>
                         </div>
 

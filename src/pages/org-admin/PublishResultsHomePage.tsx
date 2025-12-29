@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import OrgAdminSidebar from "../../components/OrgAdminSidebar";
+import OrgLogo from "../../components/OrgLogo";
 import { getOrgBySlug } from "../../lib/orgs";
 
 type Program = {
@@ -16,6 +17,7 @@ export default function PublishResultsHomePage() {
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const location = useLocation();
   const [orgName, setOrgName] = useState<string | null>(null);
+  const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,6 +30,7 @@ export default function PublishResultsHomePage() {
         const org = await getOrgBySlug(orgSlug || "");
         if (!org) return;
         setOrgName(org.name);
+        setOrgLogoUrl(org.logo_url || null);
 
         // Get programs with finalized and published counts
         // Order by most recently updated first (same as OrgAdminPrograms)
@@ -161,13 +164,23 @@ export default function PublishResultsHomePage() {
       <div className="flex-1 flex flex-col">
         <div className="bg-white border-b border-gray-200">
           <div className="px-8 py-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">
-                {orgName ? `${orgName} - Publish Results` : "Publish Results"}
-              </h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Select a program to publish review results to applicants
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  {orgName ? `${orgName} - Publish Results` : "Publish Results"}
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  Select a program to publish review results to applicants
+                </p>
+              </div>
+              {orgLogoUrl && orgName && (
+                <OrgLogo
+                  logoUrl={orgLogoUrl}
+                  orgName={orgName}
+                  size="lg"
+                  className="flex-shrink-0 scale-[1.15]"
+                />
+              )}
             </div>
           </div>
         </div>

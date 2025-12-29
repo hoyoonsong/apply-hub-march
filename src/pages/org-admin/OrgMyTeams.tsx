@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
 import { findUserByEmail } from "../../lib/programAssignments";
 import OrgAdminSidebar from "../../components/OrgAdminSidebar";
+import OrgLogo from "../../components/OrgLogo";
 import AdvertiseFormModal from "../../components/AdvertiseFormModal";
 import { orgCreateProgramDraft } from "../../lib/programs";
 import {
@@ -29,6 +30,7 @@ interface Organization {
   id: string;
   name: string;
   slug: string;
+  logo_url?: string | null;
 }
 
 type CreateState = {
@@ -1072,14 +1074,24 @@ export default function OrgMyTeams() {
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
           <div className="px-8 py-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">
-                {org?.name ? `${org.name} - My Teams` : "My Teams"}
-              </h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Build your team of reviewers and admins for {org?.name}. Add
-                people here so you can easily assign them to programs.
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  {org?.name ? `${org.name} - My Teams` : "My Teams"}
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  Build your team of reviewers and admins for {org?.name}. Add
+                  people here so you can easily assign them to programs.
+                </p>
+              </div>
+              {org?.logo_url && org?.name && (
+                <OrgLogo
+                  logoUrl={org.logo_url}
+                  orgName={org.name}
+                  size="lg"
+                  className="flex-shrink-0 scale-[1.15]"
+                />
+              )}
             </div>
           </div>
         </div>

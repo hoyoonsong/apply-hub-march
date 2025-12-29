@@ -338,11 +338,11 @@ export default function OrgLogo({
           <span className="text-xs text-gray-400">No logo</span>
         </div>
       ) : (
-        <div className={`${sizeClasses[size]} flex items-center justify-center`}>
+        <div className={`${sizeClasses[size]} bg-white rounded-lg border border-gray-300 flex items-center justify-center p-1`}>
           <img
             src={signedUrl}
             alt={`${orgName} logo`}
-            className={`max-h-full max-w-full h-auto w-auto object-contain rounded-lg border border-gray-300`}
+            className={`max-h-full max-w-full h-auto w-auto object-contain`}
             style={{
               maxHeight: sizePixels[size],
               maxWidth: sizePixels[size],

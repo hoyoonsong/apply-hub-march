@@ -10,6 +10,7 @@ import ApplicationPreview from "../../components/ApplicationPreview";
 import ProgramReviewerFormCard from "../../components/ProgramReviewerFormCard";
 import { orgUpdateProgramDraft } from "../../lib/programs";
 import AutoLinkText from "../../components/AutoLinkText";
+import OrgLogo from "../../components/OrgLogo";
 import {
   DndContext,
   closestCenter,
@@ -43,7 +44,7 @@ type Program = {
   type?: "audition" | "scholarship" | "application" | "competition" | null;
 };
 
-type Org = { id: string; slug: string; name: string };
+type Org = { id: string; slug: string; name: string; logo_url?: string | null };
 
 // Sortable Field Component
 function SortableField({
@@ -872,6 +873,14 @@ export default function OrgProgramBuilder() {
               )}
             </div>
             <div className="flex items-center gap-4">
+              {org?.logo_url && org?.name && (
+                <OrgLogo
+                  logoUrl={org.logo_url}
+                  orgName={org.name}
+                  size="lg"
+                  className="flex-shrink-0 scale-[1.15]"
+                />
+              )}
               <button
                 onClick={async () => {
                   // Sync all state with current program when opening modal
