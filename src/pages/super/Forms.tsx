@@ -6,6 +6,8 @@ import {
   type FormSubmissionStatus,
 } from "../../services/forms";
 import OrgLogo, { batchPreFetchLogos } from "../../components/OrgLogo";
+import { generateUniqueSlug, slugify } from "../../lib/slugUtils";
+import { supabase } from "../../lib/supabase";
 
 export default function Forms() {
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
@@ -24,6 +26,11 @@ export default function Forms() {
     useState<FormSubmissionStatus>("pending");
   const [processing, setProcessing] = useState(false);
   const [showApproved, setShowApproved] = useState(false);
+  const [createOrgSubmission, setCreateOrgSubmission] =
+    useState<FormSubmission | null>(null);
+  const [orgSlug, setOrgSlug] = useState("");
+  const [generatingSlug, setGeneratingSlug] = useState(false);
+  const [creatingOrg, setCreatingOrg] = useState(false);
 
   const loadSubmissions = async () => {
     try {
@@ -87,6 +94,148 @@ export default function Forms() {
       );
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleOpenCreateOrg = async (submission: FormSubmission) => {
+    setCreateOrgSubmission(submission);
+    setError(null);
+    setSuccess(null);
+
+    // Generate unique slug from org name
+    const orgName = submission.form_data?.name || "";
+    if (orgName) {
+      try {
+        setGeneratingSlug(true);
+        const uniqueSlug = await generateUniqueSlug(orgName);
+        setOrgSlug(uniqueSlug);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to generate slug"
+        );
+        // Fallback to basic slugify if generation fails
+        setOrgSlug(slugify(orgName));
+      } finally {
+        setGeneratingSlug(false);
+      }
+    } else {
+      setOrgSlug("");
+    }
+  };
+
+  const handleCreateOrg = async () => {
+    if (!createOrgSubmission || !orgSlug.trim()) {
+      setError("Slug is required");
+      return;
+    }
+
+    const orgName = createOrgSubmission.form_data?.name || "";
+    if (!orgName.trim()) {
+      setError("Organization name is required");
+      return;
+    }
+
+    try {
+      setCreatingOrg(true);
+      setError(null);
+      setSuccess(null);
+
+      // Validate slug format
+      const slugRegex = /^[a-z0-9_-]+$/;
+      if (!slugRegex.test(orgSlug.trim())) {
+        setError(
+          "Slug can only contain lowercase letters, numbers, hyphens, and underscores"
+        );
+        setCreatingOrg(false);
+        return;
+      }
+
+      // Create the organization directly (superadmin can bypass RLS)
+      const { data: newOrg, error: createError } = await supabase
+        .from("organizations")
+        .insert({
+          name: orgName.trim(),
+          slug: orgSlug.trim(),
+          description: createOrgSubmission.form_data?.description || null,
+          logo_url: createOrgSubmission.form_data?.logo_url || null,
+        })
+        .select()
+        .single();
+
+      if (createError || !newOrg) {
+        throw new Error(
+          createError?.message || "Failed to create organization"
+        );
+      }
+
+      // Try to assign contact email as org admin
+      const contactEmail = createOrgSubmission.form_data?.contact_email;
+      const contactName = createOrgSubmission.form_data?.contact_name;
+      let adminAssigned = false;
+      let adminError: string | null = null;
+
+      if (contactEmail && newOrg?.id) {
+        try {
+          const { data: adminResult, error: adminRpcError } =
+            await supabase.rpc("org_add_org_admin", {
+              p_org_id: newOrg.id,
+              p_user_email: contactEmail.trim(),
+              p_user_name: contactName?.trim() || null,
+            });
+
+          if (adminRpcError) {
+            adminError = adminRpcError.message;
+          } else if (adminResult && !adminResult.success) {
+            adminError = adminResult.error || "Failed to add org admin";
+          } else {
+            adminAssigned = true;
+          }
+        } catch (err) {
+          adminError =
+            err instanceof Error ? err.message : "Failed to assign org admin";
+        }
+      }
+
+      // Set success message
+      if (adminAssigned) {
+        setSuccess(
+          `Organization created successfully! ${contactEmail} has been assigned as an org admin.`
+        );
+      } else if (adminError) {
+        setSuccess(
+          `Organization created successfully! However, we couldn't assign ${contactEmail} as an org admin: ${adminError}. You can add them manually later.`
+        );
+      } else if (!contactEmail) {
+        setSuccess(
+          "Organization created successfully! No contact email provided, so no admin was assigned."
+        );
+      } else {
+        setSuccess("Organization created successfully!");
+      }
+
+      // Auto-approve the submission since org was created
+      if (createOrgSubmission) {
+        try {
+          await updateFormSubmission(createOrgSubmission.id, {
+            status: "approved",
+            notes: "Organization created from this submission",
+          });
+        } catch (err) {
+          console.error("Failed to auto-approve submission:", err);
+          // Don't fail the whole operation if approval fails
+        }
+      }
+
+      // Close modal and reload submissions
+      setCreateOrgSubmission(null);
+      setOrgSlug("");
+      await loadSubmissions();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to create organization"
+      );
+    } finally {
+      setCreatingOrg(false);
     }
   };
 
@@ -309,6 +458,30 @@ export default function Forms() {
         </div>
 
         <div className="ml-4 flex gap-2">
+          {submission.form_type === "organization_signup" && (
+            <>
+              {submission.status === "approved" ||
+              (submission.notes &&
+                submission.notes
+                  .toLowerCase()
+                  .includes("organization created")) ? (
+                <button
+                  disabled
+                  className="px-3 py-1.5 text-sm font-medium text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed"
+                  title="Organization already created from this submission"
+                >
+                  Org Created
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleOpenCreateOrg(submission)}
+                  className="px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 rounded-lg"
+                >
+                  Create Org
+                </button>
+              )}
+            </>
+          )}
           <button
             onClick={() => {
               setSelectedSubmission(submission);
@@ -490,6 +663,144 @@ export default function Forms() {
           </div>
         )}
       </div>
+
+      {/* Create Org Modal */}
+      {createOrgSubmission && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                setCreateOrgSubmission(null);
+                setOrgSlug("");
+                setError(null);
+              }}
+              className="absolute right-3 top-3 rounded p-1 text-gray-400 hover:bg-gray-100"
+            >
+              ✕
+            </button>
+
+            <h2 className="mb-4 text-2xl font-semibold text-gray-900">
+              Create Organization
+            </h2>
+
+            <div className="space-y-4 mb-6">
+              {createOrgSubmission.form_data?.logo_url && (
+                <div className="mb-4">
+                  <OrgLogo
+                    logoUrl={createOrgSubmission.form_data.logo_url}
+                    orgName={
+                      createOrgSubmission.form_data.name || "Organization"
+                    }
+                    size="xl"
+                    showDownload={false}
+                    showLabel={false}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Organization Name
+                </label>
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                  {createOrgSubmission.form_data?.name || "—"}
+                </p>
+              </div>
+
+              {createOrgSubmission.form_data?.description && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                    {createOrgSubmission.form_data.description}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Slug <span className="text-red-500">*</span>
+                </label>
+                {generatingSlug ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    Generating unique slug...
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={orgSlug}
+                    onChange={(e) => setOrgSlug(e.target.value.toLowerCase())}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    placeholder="organization-slug"
+                    required
+                  />
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  Review and edit the slug if needed. Only lowercase letters,
+                  numbers, hyphens, and underscores are allowed.
+                </p>
+              </div>
+
+              {createOrgSubmission.form_data?.contact_email && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Contact Email
+                  </label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                    <a
+                      href={`mailto:${createOrgSubmission.form_data.contact_email}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      {createOrgSubmission.form_data.contact_email}
+                    </a>
+                  </p>
+                </div>
+              )}
+
+              {createOrgSubmission.form_data?.website && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Website
+                  </label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                    <a
+                      href={createOrgSubmission.form_data.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {createOrgSubmission.form_data.website}
+                    </a>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setCreateOrgSubmission(null);
+                  setOrgSlug("");
+                  setError(null);
+                }}
+                disabled={creatingOrg}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateOrg}
+                disabled={creatingOrg || generatingSlug || !orgSlug.trim()}
+                className="flex-1 rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {creatingOrg ? "Creating..." : "Create Organization"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Review Modal */}
       {selectedSubmission && (

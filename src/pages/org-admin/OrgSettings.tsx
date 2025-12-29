@@ -4,6 +4,7 @@ import { invalidateOrgCache } from "../../lib/orgCache";
 import { supabase } from "../../lib/supabase";
 import OrgAdminSidebar from "../../components/OrgAdminSidebar";
 import OrgLogo, { extractFilePath } from "../../components/OrgLogo";
+import ImageCropper from "../../components/ImageCropper";
 
 interface Organization {
   id: string;
@@ -30,6 +31,8 @@ export default function OrgSettings() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
   // Load organization data
   useEffect(() => {
@@ -103,18 +106,30 @@ export default function OrgSettings() {
 
     setError(null);
 
-    // Create preview
+    // Create preview and show cropper
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const imageUrl = reader.result as string;
+      setImageToCrop(imageUrl);
+      setShowCropper(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    setShowCropper(false);
+    // Create preview from cropped blob
     const reader = new FileReader();
     reader.onloadend = () => {
       setLogoPreview(reader.result as string);
     };
-    reader.readAsDataURL(file);
-
-    // Upload logo immediately
-    await uploadLogo(file);
+    reader.readAsDataURL(croppedImageBlob);
+    
+    // Upload the cropped image
+    await uploadLogo(croppedImageBlob);
   };
 
-  const uploadLogo = async (file: File) => {
+  const uploadLogo = async (file: File | Blob) => {
     try {
       setUploadingLogo(true);
       setError(null);
@@ -137,16 +152,18 @@ export default function OrgSettings() {
       }
 
       // Create unique file path
-      const fileExt = file.name.split(".").pop();
+      // For cropped images (blobs), use PNG format
+      const fileExt = file instanceof File ? file.name.split(".").pop() : "png";
       const fileName = `${Date.now()}_${name.trim().replace(/\s+/g, "_") || org?.name.trim().replace(/\s+/g, "_") || "org"}_logo.${fileExt}`;
 
       // Upload to public logos bucket
+      const contentType = file instanceof File ? file.type : "image/png";
       const { error: uploadError } = await supabase.storage
         .from("Logos")
         .upload(fileName, file, {
           cacheControl: "3600",
           upsert: true,
-          contentType: file.type || undefined,
+          contentType: contentType,
         });
 
       if (uploadError) {
@@ -441,7 +458,7 @@ export default function OrgSettings() {
                             <img
                               src={logoPreview}
                               alt="Logo preview"
-                              className="h-32 w-32 object-contain rounded-lg border border-gray-300"
+                              className="h-32 w-32 object-contain rounded-full border border-gray-300"
                             />
                           ) : logoUrl ? (
                             <OrgLogo
@@ -582,6 +599,20 @@ export default function OrgSettings() {
           </div>
         </div>
       </div>
+
+      {/* Image Cropper Modal */}
+      {showCropper && imageToCrop && (
+        <ImageCropper
+          image={imageToCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={() => {
+            setShowCropper(false);
+            setImageToCrop(null);
+          }}
+          aspectRatio={1}
+          circularCrop={true}
+        />
+      )}
     </div>
   );
 }

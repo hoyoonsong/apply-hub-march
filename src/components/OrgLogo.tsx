@@ -321,28 +321,28 @@ export default function OrgLogo({
     <>
       {!logoUrl || !logoUrl.trim() ? (
         <div
-          className={`${sizeClasses[size]} bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center`}
+          className={`${sizeClasses[size]} bg-gray-100 rounded-full border border-gray-300 flex items-center justify-center`}
         >
           <span className="text-xs text-gray-400">No logo</span>
         </div>
       ) : loading ? (
         <div
-          className={`${sizeClasses[size]} bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center`}
+          className={`${sizeClasses[size]} bg-gray-100 rounded-full border border-gray-300 flex items-center justify-center`}
         >
           <div className="text-xs text-gray-500">Loading...</div>
         </div>
       ) : !signedUrl ? (
         <div
-          className={`${sizeClasses[size]} bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center`}
+          className={`${sizeClasses[size]} bg-gray-100 rounded-full border border-gray-300 flex items-center justify-center`}
         >
           <span className="text-xs text-gray-400">No logo</span>
         </div>
       ) : (
-        <div className={`${sizeClasses[size]} bg-white rounded-lg border border-gray-300 flex items-center justify-center p-1`}>
+        <div className={`${sizeClasses[size]} bg-white rounded-full border border-gray-300 flex items-center justify-center p-1 overflow-hidden`}>
           <img
             src={signedUrl}
             alt={`${orgName} logo`}
-            className={`max-h-full max-w-full h-auto w-auto object-contain`}
+            className={`max-h-full max-w-full h-auto w-auto object-contain rounded-full`}
             style={{
               maxHeight: sizePixels[size],
               maxWidth: sizePixels[size],
@@ -377,7 +377,7 @@ export default function OrgLogo({
                 console.error("[OrgLogo] Image failed to load:", currentUrl);
                 const container = target.parentElement;
                 if (container) {
-                  container.innerHTML = `<div class="${sizeClasses[size]} bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center"><span class="text-xs text-gray-400">No logo</span></div>`;
+                  container.innerHTML = `<div class="${sizeClasses[size]} bg-gray-100 rounded-full border border-gray-300 flex items-center justify-center"><span class="text-xs text-gray-400">No logo</span></div>`;
                 }
               }
             }}

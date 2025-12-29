@@ -9,6 +9,7 @@ import {
 } from "../../services/super";
 import { supabase } from "../../lib/supabase";
 import OrgLogo, { extractFilePath } from "../../components/OrgLogo";
+import ImageCropper from "../../components/ImageCropper";
 
 interface Organization {
   id: string;
@@ -35,6 +36,8 @@ export default function Orgs() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Edit state
@@ -118,18 +121,39 @@ export default function Orgs() {
 
     setError(null);
 
-    // Create preview
+    // Create preview and show cropper
     const reader = new FileReader();
     reader.onloadend = () => {
-      setLogoPreview(reader.result as string);
+      const imageUrl = reader.result as string;
+      setImageToCrop(imageUrl);
+      setIsEditMode(false);
+      setShowCropper(true);
     };
     reader.readAsDataURL(file);
-
-    // Upload logo immediately
-    await uploadLogo(file);
   };
 
-  const uploadLogo = async (file: File) => {
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    setShowCropper(false);
+    // Create preview from cropped blob
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (isEditMode) {
+        setEditLogoPreview(reader.result as string);
+      } else {
+        setLogoPreview(reader.result as string);
+      }
+    };
+    reader.readAsDataURL(croppedImageBlob);
+    
+    // Upload the cropped image
+    if (isEditMode) {
+      await uploadEditLogo(croppedImageBlob);
+    } else {
+      await uploadLogo(croppedImageBlob);
+    }
+  };
+
+  const uploadLogo = async (file: File | Blob) => {
     try {
       setUploadingLogo(true);
       setError(null);
@@ -153,7 +177,8 @@ export default function Orgs() {
       }
 
       // Create unique file path (no subfolder needed - bucket is just for logos)
-      const fileExt = file.name.split(".").pop();
+      // For cropped images (blobs), use PNG format
+      const fileExt = file instanceof File ? file.name.split(".").pop() : "png";
       const fileName = `${Date.now()}_${name.trim().replace(/\s+/g, "_") || "org"}_logo.${fileExt}`;
 
       // Upload to new public logos bucket
@@ -303,18 +328,18 @@ export default function Orgs() {
 
     setError(null);
 
-    // Create preview
+    // Create preview and show cropper
     const reader = new FileReader();
     reader.onloadend = () => {
-      setEditLogoPreview(reader.result as string);
+      const imageUrl = reader.result as string;
+      setImageToCrop(imageUrl);
+      setIsEditMode(true);
+      setShowCropper(true);
     };
     reader.readAsDataURL(file);
-
-    // Upload logo immediately
-    await uploadEditLogo(file);
   };
 
-  const uploadEditLogo = async (file: File) => {
+  const uploadEditLogo = async (file: File | Blob) => {
     try {
       setUploadingEditLogo(true);
       setError(null);
@@ -344,16 +369,18 @@ export default function Orgs() {
       }
 
       // Create unique file path (no subfolder needed - bucket is just for logos)
-      const fileExt = file.name.split(".").pop();
+      // For cropped images (blobs), use PNG format
+      const fileExt = file instanceof File ? file.name.split(".").pop() : "png";
       const fileName = `${Date.now()}_${editName.trim().replace(/\s+/g, "_") || editingOrg?.name.trim().replace(/\s+/g, "_") || "org"}_logo.${fileExt}`;
 
       // Upload to new public logos bucket
+      const contentType = file instanceof File ? file.type : "image/png";
       const { error: uploadError } = await supabase.storage
         .from("Logos")
         .upload(fileName, file, {
           cacheControl: "3600",
           upsert: true,
-          contentType: file.type || undefined,
+          contentType: contentType,
         });
 
       if (uploadError) {
@@ -585,7 +612,7 @@ export default function Orgs() {
                     <img
                       src={logoPreview}
                       alt="Logo preview"
-                      className="h-32 w-32 object-contain rounded-lg border border-gray-300"
+                      className="h-32 w-32 object-contain rounded-full border border-gray-300"
                     />
                     {uploadingLogo && (
                       <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
@@ -694,7 +721,7 @@ export default function Orgs() {
                           <img
                             src={editLogoPreview}
                             alt="Logo preview"
-                            className="h-32 w-32 object-contain rounded-lg border border-gray-300"
+                            className="h-32 w-32 object-contain rounded-full border border-gray-300"
                           />
                         ) : editLogoUrl ? (
                           <OrgLogo
@@ -936,6 +963,21 @@ export default function Orgs() {
           )}
         </div>
       </div>
+
+      {/* Image Cropper Modal */}
+      {showCropper && imageToCrop && (
+        <ImageCropper
+          image={imageToCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={() => {
+            setShowCropper(false);
+            setImageToCrop(null);
+            setIsEditMode(false);
+          }}
+          aspectRatio={1}
+          circularCrop={true}
+        />
+      )}
     </div>
   );
 }

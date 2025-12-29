@@ -3,6 +3,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { submitForm } from "../services/forms";
 import { supabase } from "../lib/supabase";
 import { extractFilePath } from "./OrgLogo";
+import ImageCropper from "./ImageCropper";
 
 interface OrganizationSignupModalProps {
   open: boolean;
@@ -28,6 +29,8 @@ export default function OrganizationSignupModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -50,18 +53,30 @@ export default function OrganizationSignupModal({
 
     setError(null);
 
-    // Create preview
+    // Create preview and show cropper
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const imageUrl = reader.result as string;
+      setImageToCrop(imageUrl);
+      setShowCropper(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    setShowCropper(false);
+    // Create preview from cropped blob
     const reader = new FileReader();
     reader.onloadend = () => {
       setLogoPreview(reader.result as string);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(croppedImageBlob);
 
-    // Upload logo immediately
-    await uploadLogo(file);
+    // Upload the cropped image
+    await uploadLogo(croppedImageBlob);
   };
 
-  const uploadLogo = async (file: File) => {
+  const uploadLogo = async (file: File | Blob) => {
     try {
       setUploadingLogo(true);
       setError(null);
@@ -90,18 +105,20 @@ export default function OrganizationSignupModal({
       }
 
       // Create unique file path (no subfolder needed - bucket is just for logos)
-      const fileExt = file.name.split(".").pop();
+      // For cropped images (blobs), use PNG format
+      const fileExt = file instanceof File ? file.name.split(".").pop() : "png";
       const fileName = `${Date.now()}_${name
         .trim()
         .replace(/\s+/g, "_")}_logo.${fileExt}`;
 
       // Upload to new public logos bucket
+      const contentType = file instanceof File ? file.type : "image/png";
       const { error: uploadError } = await supabase.storage
         .from("Logos")
         .upload(fileName, file, {
           cacheControl: "3600",
           upsert: true,
-          contentType: file.type || undefined,
+          contentType: contentType,
         });
 
       if (uploadError) {
@@ -359,7 +376,7 @@ export default function OrganizationSignupModal({
                     <img
                       src={logoPreview}
                       alt="Logo preview"
-                      className="h-32 w-32 object-contain rounded-lg border border-gray-300"
+                      className="h-32 w-32 object-contain rounded-full border border-gray-300"
                     />
                     {uploadingLogo && (
                       <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
@@ -476,6 +493,20 @@ export default function OrganizationSignupModal({
           </form>
         )}
       </div>
+
+      {/* Image Cropper Modal */}
+      {showCropper && imageToCrop && (
+        <ImageCropper
+          image={imageToCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={() => {
+            setShowCropper(false);
+            setImageToCrop(null);
+          }}
+          aspectRatio={1}
+          circularCrop={true}
+        />
+      )}
     </div>
   );
 }
