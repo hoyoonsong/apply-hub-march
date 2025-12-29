@@ -45,6 +45,7 @@ import AllReviewsPage from "./pages/review/AllReviewsPage";
 import OrgApplicationsInbox from "./pages/org-admin/OrgApplicationsInbox";
 import OrgManageReviewers from "./pages/org-admin/OrgManageReviewers";
 import OrgMyTeams from "./pages/org-admin/OrgMyTeams";
+import OrgSettings from "./pages/org-admin/OrgSettings";
 import PublishResultsPage from "./pages/org-admin/PublishResultsPage";
 import PublishResultsHomePage from "./pages/org-admin/PublishResultsHomePage";
 import MySubmissionsPage from "./pages/applicant/MySubmissionsPage";
@@ -229,6 +230,16 @@ export default function App() {
                   <ProtectedRoute>
                     <ProtectedOrgAdminRoute>
                       <PublishResultsPage />
+                    </ProtectedOrgAdminRoute>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/org/:orgSlug/admin/settings"
+                element={
+                  <ProtectedRoute>
+                    <ProtectedOrgAdminRoute>
+                      <OrgSettings />
                     </ProtectedOrgAdminRoute>
                   </ProtectedRoute>
                 }

@@ -1032,10 +1032,7 @@ export default function OrgMyTeams() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex">
-        <OrgAdminSidebar
-          currentPath={location.pathname}
-          orgId={org?.id || null}
-        />
+        <OrgAdminSidebar currentPath={location.pathname} />
         <div className="flex-1 flex flex-col">
           <div className="bg-white border-b border-gray-200">
             <div className="px-8 py-6">
@@ -1070,12 +1067,7 @@ export default function OrgMyTeams() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <OrgAdminSidebar
-        currentPath={location.pathname}
-        orgId={org?.id || null}
-        onCreateNew={() => setShowCreateModal(true)}
-        onAdvertise={() => setShowAdvertiseModal(true)}
-      />
+      <OrgAdminSidebar currentPath={location.pathname} />
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="bg-white border-b border-gray-200">

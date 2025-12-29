@@ -1,22 +1,28 @@
 import { Link, useParams } from "react-router-dom";
-
 import { useNavigate } from "react-router-dom";
+import { useOrgAdminModals } from "../contexts/OrgAdminModalContext";
+import CreateProgramModal from "./CreateProgramModal";
+import AdvertiseFormModal from "./AdvertiseFormModal";
 
 interface OrgAdminSidebarProps {
-  onCreateNew?: () => void;
-  onAdvertise?: () => void;
-  orgId?: string | null;
   currentPath?: string;
 }
 
 export default function OrgAdminSidebar({
-  onCreateNew,
-  onAdvertise,
-  orgId,
   currentPath,
 }: OrgAdminSidebarProps) {
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const navigate = useNavigate();
+  const {
+    showCreateModal,
+    showAdvertiseModal,
+    closeCreateModal,
+    closeAdvertiseModal,
+    isCreateModalOpen,
+    isAdvertiseModalOpen,
+    orgId,
+    orgName,
+  } = useOrgAdminModals();
 
   const isActive = (path: string) => {
     if (!currentPath) return false;
@@ -26,22 +32,6 @@ export default function OrgAdminSidebar({
     
     // Exact match only - each page should only highlight when on that exact page
     return normalizedCurrent === normalizedPath;
-  };
-
-  const handleCreateNew = () => {
-    if (onCreateNew) {
-      onCreateNew();
-    } else if (orgSlug) {
-      navigate(`/org/${orgSlug}/admin`);
-    }
-  };
-
-  const handleAdvertise = () => {
-    if (onAdvertise) {
-      onAdvertise();
-    } else if (orgSlug) {
-      navigate(`/org/${orgSlug}/admin`);
-    }
   };
 
   return (
@@ -70,7 +60,7 @@ export default function OrgAdminSidebar({
       <nav className="flex-1 p-2">
         <div className="space-y-1">
           <button
-            onClick={handleCreateNew}
+            onClick={showCreateModal}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium"
           >
             <svg
@@ -184,7 +174,14 @@ export default function OrgAdminSidebar({
               </Link>
             </>
           )}
-          <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors cursor-not-allowed opacity-60">
+          <Link
+            to={`/org/${orgSlug}/admin/settings`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+              isActive(`/org/${orgSlug}/admin/settings`)
+                ? "bg-indigo-50 text-indigo-700 font-medium"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
             <svg
               className="w-5 h-5"
               fill="none"
@@ -205,9 +202,9 @@ export default function OrgAdminSidebar({
               />
             </svg>
             Organization Settings
-          </div>
+          </Link>
           <button
-            onClick={handleAdvertise}
+            onClick={showAdvertiseModal}
             disabled={!orgId}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -228,6 +225,21 @@ export default function OrgAdminSidebar({
           </button>
         </div>
       </nav>
+
+      {/* Modals - rendered here so they're available on all pages */}
+      <CreateProgramModal
+        open={isCreateModalOpen}
+        onClose={closeCreateModal}
+        orgId={orgId}
+        orgSlug={orgSlug || null}
+      />
+      <AdvertiseFormModal
+        open={isAdvertiseModalOpen}
+        onClose={closeAdvertiseModal}
+        orgId={orgId}
+        orgName={orgName}
+        orgSlug={orgSlug || null}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { Navigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { deduplicateRequest, createRpcKey } from "../../lib/requestDeduplication";
+import { OrgAdminModalProvider } from "../../contexts/OrgAdminModalContext";
 
 export default function ProtectedOrgAdminRoute({
   children,
@@ -27,5 +28,7 @@ export default function ProtectedOrgAdminRoute({
   if (ok === null)
     return <div className="p-6 text-gray-500">Checking access…</div>;
   if (!ok) return <Navigate to="/unauthorized" replace />;
-  return children;
+  
+  // Wrap children with modal provider so modals are available on all org admin pages
+  return <OrgAdminModalProvider>{children}</OrgAdminModalProvider>;
 }
