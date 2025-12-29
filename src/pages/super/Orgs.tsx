@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   listOrgs,
@@ -46,27 +46,39 @@ export default function Orgs() {
   const [editLogoUrl, setEditLogoUrl] = useState<string | null>(null);
   const [uploadingEditLogo, setUploadingEditLogo] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const loadingRef = useRef(false); // Prevent duplicate concurrent loads
 
   const loadData = async () => {
+    // Prevent duplicate calls from React StrictMode
+    if (loadingRef.current) {
+      return;
+    }
+    loadingRef.current = true;
     try {
       setLoading(true);
       
-      // Query organizations directly to ensure we get logo_url
-      const { data: allOrgs, error } = await supabase
-        .from("organizations")
-        .select("id, name, slug, description, logo_url, created_at, deleted_at")
-        .order("created_at", { ascending: false });
+      // Query active and deleted organizations in parallel for better performance
+      const [activeResult, deletedResult] = await Promise.all([
+        supabase
+          .from("organizations")
+          .select("id, name, slug, description, logo_url, created_at, deleted_at")
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("organizations")
+          .select("id, name, slug, description, logo_url, created_at, deleted_at")
+          .not("deleted_at", "is", null)
+          .order("created_at", { ascending: false }),
+      ]);
 
-      if (error) throw error;
+      if (activeResult.error) throw activeResult.error;
+      if (deletedResult.error) throw deletedResult.error;
 
-      // Split client-side into active and deleted
-      const activeOrgs = (allOrgs || []).filter(
-        (org: Organization) => org.deleted_at === null
-      );
-      const deletedOrgs = (allOrgs || []).filter(
-        (org: Organization) => org.deleted_at !== null
-      );
+      const activeOrgs = (activeResult.data || []) as Organization[];
+      const deletedOrgs = (deletedResult.data || []) as Organization[];
 
+      // Logos are now public, so we can use the URLs directly from the database
+      // No need to pre-fetch signed URLs - public URLs work immediately
       setOrgs(activeOrgs);
       setDeletedOrgs(deletedOrgs);
     } catch (err) {
@@ -79,6 +91,7 @@ export default function Orgs() {
       }
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   };
 
@@ -125,25 +138,28 @@ export default function Orgs() {
       if (logoUrl) {
         const oldFilePath = extractFilePath(logoUrl);
         if (oldFilePath) {
+          // All logos are now in the Logos bucket
+          const bucketName = 'Logos';
+          const filePath = oldFilePath;
+          
           // Silently delete old logo - don't fail if it doesn't exist
           await supabase.storage
-            .from("application-files")
-            .remove([oldFilePath])
+            .from(bucketName)
+            .remove([filePath])
             .catch(() => {
               // Ignore errors - file might not exist
             });
         }
       }
 
-      // Create unique file path
+      // Create unique file path (no subfolder needed - bucket is just for logos)
       const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}_${name.trim().replace(/\s+/g, "_") || "org"}_logo.${fileExt}`;
-      const filePath = `organizations/logos/${fileName}`;
 
-      // Upload to storage
+      // Upload to new public logos bucket
       const { error: uploadError } = await supabase.storage
-        .from("application-files")
-        .upload(filePath, file, {
+        .from("Logos")
+        .upload(fileName, file, {
           cacheControl: "3600",
           upsert: true,
           contentType: file.type || undefined,
@@ -153,10 +169,10 @@ export default function Orgs() {
         throw uploadError;
       }
 
-      // Get public URL
+      // Get public URL from new public bucket
       const {
         data: { publicUrl },
-      } = supabase.storage.from("application-files").getPublicUrl(filePath);
+      } = supabase.storage.from("Logos").getPublicUrl(fileName);
 
       setLogoUrl(publicUrl);
     } catch (err) {
@@ -308,25 +324,33 @@ export default function Orgs() {
       if (oldLogoUrl) {
         const oldFilePath = extractFilePath(oldLogoUrl);
         if (oldFilePath) {
+          // All logos are now in the Logos bucket
+          // If extractFilePath returns null, the URL is invalid (old bucket format)
+          if (!oldFilePath) {
+            // Old URL format - skip deletion (old bucket no longer exists)
+            return;
+          }
+          const bucketName = 'Logos';
+          const filePath = oldFilePath;
+          
           // Silently delete old logo - don't fail if it doesn't exist
           await supabase.storage
-            .from("application-files")
-            .remove([oldFilePath])
+            .from(bucketName)
+            .remove([filePath])
             .catch(() => {
               // Ignore errors - file might not exist
             });
         }
       }
 
-      // Create unique file path
+      // Create unique file path (no subfolder needed - bucket is just for logos)
       const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}_${editName.trim().replace(/\s+/g, "_") || editingOrg?.name.trim().replace(/\s+/g, "_") || "org"}_logo.${fileExt}`;
-      const filePath = `organizations/logos/${fileName}`;
 
-      // Upload to storage
+      // Upload to new public logos bucket
       const { error: uploadError } = await supabase.storage
-        .from("application-files")
-        .upload(filePath, file, {
+        .from("Logos")
+        .upload(fileName, file, {
           cacheControl: "3600",
           upsert: true,
           contentType: file.type || undefined,
@@ -336,10 +360,10 @@ export default function Orgs() {
         throw uploadError;
       }
 
-      // Get public URL
+      // Get public URL from new public bucket
       const {
         data: { publicUrl },
-      } = supabase.storage.from("application-files").getPublicUrl(filePath);
+      } = supabase.storage.from("Logos").getPublicUrl(fileName);
 
       setEditLogoUrl(publicUrl);
     } catch (err) {
@@ -374,10 +398,14 @@ export default function Orgs() {
       if (oldLogoUrl && !newLogoUrl) {
         const oldFilePath = extractFilePath(oldLogoUrl);
         if (oldFilePath) {
+          // All logos are now in the Logos bucket
+          const bucketName = 'Logos';
+          const filePath = oldFilePath;
+          
           // Silently delete old logo - don't fail if it doesn't exist
           await supabase.storage
-            .from("application-files")
-            .remove([oldFilePath])
+            .from(bucketName)
+            .remove([filePath])
             .catch(() => {
               // Ignore errors - file might not exist
             });

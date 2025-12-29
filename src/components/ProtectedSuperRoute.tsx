@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getCachedProfile } from "../lib/profileCache";
@@ -10,8 +10,16 @@ export default function ProtectedSuperRoute({
 }) {
   const [loading, setLoading] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const checkingRef = useRef(false); // Prevent duplicate concurrent checks
 
   useEffect(() => {
+    // Prevent duplicate calls from React StrictMode
+    if (checkingRef.current) {
+      return;
+    }
+
+    checkingRef.current = true;
+
     const checkSuperAdmin = async () => {
       try {
         const {
@@ -20,6 +28,7 @@ export default function ProtectedSuperRoute({
         if (!session?.user) {
           setIsSuperAdmin(false);
           setLoading(false);
+          checkingRef.current = false;
           return;
         }
 
@@ -55,6 +64,7 @@ export default function ProtectedSuperRoute({
         setIsSuperAdmin(false);
       } finally {
         setLoading(false);
+        checkingRef.current = false;
       }
     };
 

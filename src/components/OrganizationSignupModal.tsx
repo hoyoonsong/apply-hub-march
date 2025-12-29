@@ -70,27 +70,35 @@ export default function OrganizationSignupModal({
       if (logoUrl) {
         const oldFilePath = extractFilePath(logoUrl);
         if (oldFilePath) {
+          // All logos are now in the Logos bucket
+          // If extractFilePath returns null, the URL is invalid (old bucket format)
+          if (!oldFilePath) {
+            // Old URL format - skip deletion (old bucket no longer exists)
+            return;
+          }
+          const bucketName = "Logos";
+          const filePath = oldFilePath;
+
           // Silently delete old logo - don't fail if it doesn't exist
           await supabase.storage
-            .from("application-files")
-            .remove([oldFilePath])
+            .from(bucketName)
+            .remove([filePath])
             .catch(() => {
               // Ignore errors - file might not exist
             });
         }
       }
 
-      // Create unique file path
+      // Create unique file path (no subfolder needed - bucket is just for logos)
       const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}_${name
         .trim()
         .replace(/\s+/g, "_")}_logo.${fileExt}`;
-      const filePath = `organizations/logos/${fileName}`;
 
-      // Upload to storage
+      // Upload to new public logos bucket
       const { error: uploadError } = await supabase.storage
-        .from("application-files")
-        .upload(filePath, file, {
+        .from("Logos")
+        .upload(fileName, file, {
           cacheControl: "3600",
           upsert: true,
           contentType: file.type || undefined,
@@ -100,10 +108,10 @@ export default function OrganizationSignupModal({
         throw uploadError;
       }
 
-      // Get public URL
+      // Get public URL from new public bucket
       const {
         data: { publicUrl },
-      } = supabase.storage.from("application-files").getPublicUrl(filePath);
+      } = supabase.storage.from("Logos").getPublicUrl(fileName);
 
       setLogoUrl(publicUrl);
     } catch (err) {

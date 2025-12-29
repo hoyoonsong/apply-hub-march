@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
 import { loadCapabilities, type Capabilities } from "../lib/capabilities";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -18,8 +18,9 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [loading, setLoading] = useState(true);
+  const loadingRef = useRef(false); // Prevent duplicate concurrent loads
 
-  // Load capabilities when user is available
+  // Load capabilities when user is available (skip on super admin routes)
   useEffect(() => {
     if (!user) {
       // Clear capabilities when user logs out
@@ -28,7 +29,22 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Skip capabilities loading on super admin routes
+    // Check pathname inside effect since we're outside Router context
+    const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+    if (pathname.startsWith("/super")) {
+      setCapabilities(null);
+      setLoading(false);
+      return;
+    }
+
+    // Prevent duplicate concurrent loads
+    if (loadingRef.current) {
+      return;
+    }
+
     let mounted = true;
+    loadingRef.current = true;
     setLoading(true);
 
     const loadCaps = async () => {
@@ -46,6 +62,7 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           setLoading(false);
         }
+        loadingRef.current = false;
       }
     };
 
@@ -61,7 +78,12 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     const handleVisibilityChange = async () => {
-      if (!document.hidden && user) {
+      // Skip if on super admin route
+      if (document.hidden || window.location.pathname.startsWith("/super")) {
+        return;
+      }
+      
+      if (user) {
         try {
           const caps = await loadCapabilities();
           setCapabilities(caps);
