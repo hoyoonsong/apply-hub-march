@@ -5,6 +5,8 @@ import { supabase } from "../lib/supabase";
 const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
 // Track pending requests to deduplicate concurrent calls
 const pendingRequests = new Map<string, Promise<string | null>>();
+// Track files that don't exist to avoid repeated failed requests
+const missingFiles = new Set<string>();
 
 // Extract file path from public URL
 // Only handles new Logos bucket (old bucket has been removed)
@@ -32,7 +34,12 @@ function isPublicUrl(url: string): boolean {
     // Public URLs from Supabase storage have this pattern
     const isPublic = urlObj.pathname.includes("/storage/v1/object/public/");
     if (!isPublic) {
-      console.log("[OrgLogo] URL is not public:", url, "pathname:", urlObj.pathname);
+      console.log(
+        "[OrgLogo] URL is not public:",
+        url,
+        "pathname:",
+        urlObj.pathname
+      );
     }
     return isPublic;
   } catch (err) {
@@ -52,7 +59,7 @@ async function getSignedUrl(
   }
 
   // All logos are now in the Logos bucket
-  const bucketName = 'Logos';
+  const bucketName = "Logos";
   const actualFilePath = filePath;
 
   // Check cache first
@@ -71,18 +78,37 @@ async function getSignedUrl(
   // Create a new request and store it as pending
   const requestPromise = (async () => {
     try {
-      console.log("[OrgLogo] Calling createSignedUrl for:", actualFilePath, "in bucket:", bucketName);
+      console.log(
+        "[OrgLogo] Calling createSignedUrl for:",
+        actualFilePath,
+        "in bucket:",
+        bucketName
+      );
       const { data, error } = await supabase.storage
         .from(bucketName)
         .createSignedUrl(actualFilePath, expirySeconds);
 
       if (error) {
-        console.error("[OrgLogo] createSignedUrl error:", error);
+        // If file doesn't exist, mark it as missing to avoid repeated requests
+        if (
+          error.message?.includes("not found") ||
+          error.message?.includes("Object not found")
+        ) {
+          console.log(
+            "[OrgLogo] File not found, marking as missing:",
+            actualFilePath
+          );
+          missingFiles.add(actualFilePath);
+        } else {
+          console.error("[OrgLogo] createSignedUrl error:", error);
+        }
         throw error;
       }
 
       if (data?.signedUrl) {
         console.log("[OrgLogo] Successfully created signed URL");
+        // Remove from missing files if it was previously marked as missing
+        missingFiles.delete(actualFilePath);
         // Cache the URL (expire 5 minutes before actual expiry for safety)
         signedUrlCache.set(actualFilePath, {
           url: data.signedUrl,
@@ -114,13 +140,15 @@ export async function batchPreFetchLogos(
   logoUrls: string[],
   expirySeconds: number = 60 * 60
 ): Promise<void> {
-  const uniqueUrls = Array.from(new Set(logoUrls.filter(url => url && url.trim())));
+  const uniqueUrls = Array.from(
+    new Set(logoUrls.filter((url) => url && url.trim()))
+  );
   if (uniqueUrls.length === 0) return;
 
   // Get file paths and check cache
   const now = Date.now();
   const toFetch: string[] = [];
-  
+
   uniqueUrls.forEach((logoUrl) => {
     // Skip public URLs - they can be used directly, no API call needed!
     if (isPublicUrl(logoUrl)) {
@@ -223,8 +251,11 @@ export default function OrgLogo({
 
     async function loadSignedUrl() {
       try {
+        // TypeScript guard: logoUrl is already checked above, but we need to assert it here
+        if (!logoUrl) return;
+
         const filePath = extractFilePath(logoUrl);
-        
+
         if (!filePath) {
           // Can't extract path, try using URL directly anyway
           if (!cancelled) {
@@ -234,9 +265,25 @@ export default function OrgLogo({
           return;
         }
 
+        // Check if file is known to be missing
+        if (missingFiles.has(filePath)) {
+          console.log(
+            "[OrgLogo] File is known to be missing, skipping:",
+            filePath
+          );
+          if (!cancelled) {
+            setSignedUrl(null);
+            setLoading(false);
+          }
+          return;
+        }
+
         // Since logos are public, use the public URL directly (no API call!)
         if (isPublicUrl(logoUrl)) {
-          console.log("[OrgLogo] Using public URL directly (no API call):", logoUrl);
+          console.log(
+            "[OrgLogo] Using public URL directly (no API call):",
+            logoUrl
+          );
           if (!cancelled) {
             setSignedUrl(logoUrl);
             setLoading(false);
@@ -247,11 +294,11 @@ export default function OrgLogo({
         // Not a public URL, create signed URL
         console.log("[OrgLogo] Creating signed URL for:", filePath);
         setLoading(true);
-        
+
         const url = await getSignedUrl(logoUrl, 60 * 60);
-        
+
         if (cancelled) return;
-        
+
         if (url) {
           setSignedUrl(url);
         } else {
@@ -278,7 +325,7 @@ export default function OrgLogo({
 
   const handleDownload = async () => {
     if (!logoUrl) return;
-    
+
     try {
       const filePath = extractFilePath(logoUrl);
       if (!filePath) {
@@ -287,7 +334,7 @@ export default function OrgLogo({
       }
 
       // All logos are now in the Logos bucket
-      const bucketName = 'Logos';
+      const bucketName = "Logos";
       const actualFilePath = filePath;
 
       const { data, error } = await supabase.storage
@@ -305,7 +352,9 @@ export default function OrgLogo({
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${orgName.replace(/\s+/g, "_")}_logo.${filePath.split(".").pop()}`;
+        a.download = `${orgName.replace(/\s+/g, "_")}_logo.${filePath
+          .split(".")
+          .pop()}`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -338,7 +387,9 @@ export default function OrgLogo({
           <span className="text-xs text-gray-400">No logo</span>
         </div>
       ) : (
-        <div className={`${sizeClasses[size]} bg-white rounded-full border border-gray-300 flex items-center justify-center p-1 overflow-hidden`}>
+        <div
+          className={`${sizeClasses[size]} bg-white rounded-full border border-gray-300 flex items-center justify-center p-1 overflow-hidden`}
+        >
           <img
             src={signedUrl}
             alt={`${orgName} logo`}
@@ -350,31 +401,55 @@ export default function OrgLogo({
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               const currentUrl = target.src;
-              
-              // If public URL failed, try creating a signed URL as fallback
+
+              // If public URL failed, try creating a signed URL as fallback (only if not already marked as missing)
               if (isPublicUrl(currentUrl) && logoUrl) {
-                console.log("[OrgLogo] Public URL failed, falling back to signed URL");
                 const filePath = extractFilePath(logoUrl);
-                if (filePath) {
+                if (filePath && !missingFiles.has(filePath)) {
+                  console.log(
+                    "[OrgLogo] Public URL failed, falling back to signed URL"
+                  );
                   // Create signed URL as fallback
                   getSignedUrl(logoUrl, 60 * 60)
-                    .then(fallbackUrl => {
+                    .then((fallbackUrl) => {
                       if (fallbackUrl && fallbackUrl !== currentUrl) {
                         console.log("[OrgLogo] Using signed URL fallback");
                         target.src = fallbackUrl;
                         return; // Don't show error, try signed URL instead
                       }
+                      // If signed URL also failed, mark as missing and show error
+                      if (filePath) {
+                        missingFiles.add(filePath);
+                      }
                       showError();
                     })
-                    .catch(() => showError());
+                    .catch((err) => {
+                      // If error is "not found", mark file as missing
+                      if (
+                        filePath &&
+                        (err?.message?.includes("not found") ||
+                          err?.message?.includes("Object not found"))
+                      ) {
+                        missingFiles.add(filePath);
+                      }
+                      showError();
+                    });
+                  return;
+                } else if (filePath && missingFiles.has(filePath)) {
+                  // File is already known to be missing, skip retry
+                  showError();
                   return;
                 }
               }
-              
+
               showError();
-              
+
               function showError() {
-                console.error("[OrgLogo] Image failed to load:", currentUrl);
+                // Only log error if not a known missing file (to reduce console noise)
+                const filePath = extractFilePath(logoUrl || "");
+                if (!filePath || !missingFiles.has(filePath)) {
+                  console.log("[OrgLogo] Image failed to load:", currentUrl);
+                }
                 const container = target.parentElement;
                 if (container) {
                   container.innerHTML = `<div class="${sizeClasses[size]} bg-gray-100 rounded-full border border-gray-300 flex items-center justify-center"><span class="text-xs text-gray-400">No logo</span></div>`;
@@ -393,9 +468,7 @@ export default function OrgLogo({
   if (showLabel || showDownload) {
     return (
       <div className={`mb-3 ${className}`}>
-        {showLabel && (
-          <span className="font-medium block mb-1">Logo:</span>
-        )}
+        {showLabel && <span className="font-medium block mb-1">Logo:</span>}
         <div className="flex items-start gap-3">
           {logoContent}
           {showDownload && logoUrl && signedUrl && (
@@ -427,4 +500,3 @@ export default function OrgLogo({
 
   return <div className={className}>{logoContent}</div>;
 }
-

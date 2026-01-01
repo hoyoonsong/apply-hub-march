@@ -8,6 +8,7 @@ import {
 import OrgLogo, { batchPreFetchLogos } from "../../components/OrgLogo";
 import { generateUniqueSlug, slugify } from "../../lib/slugUtils";
 import { supabase } from "../../lib/supabase";
+import type { FeaturedSection } from "../../types/featured";
 
 export default function Forms() {
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
@@ -31,6 +32,17 @@ export default function Forms() {
   const [orgSlug, setOrgSlug] = useState("");
   const [generatingSlug, setGeneratingSlug] = useState(false);
   const [creatingOrg, setCreatingOrg] = useState(false);
+
+  // Add to Featured states
+  const [addToFeaturedSubmission, setAddToFeaturedSubmission] =
+    useState<FormSubmission | null>(null);
+  const [sections, setSections] = useState<FeaturedSection[]>([]);
+  const [selectedSectionId, setSelectedSectionId] = useState<string>("");
+  const [cardColor, setCardColor] = useState<string>("");
+  const [startAt, setStartAt] = useState<string>("");
+  const [endAt, setEndAt] = useState<string>("");
+  const [addingToFeatured, setAddingToFeatured] = useState(false);
+  const [targetId, setTargetId] = useState<string | null>(null);
 
   const loadSubmissions = async () => {
     try {
@@ -64,6 +76,35 @@ export default function Forms() {
   useEffect(() => {
     loadSubmissions();
   }, []);
+
+  // Load featured sections when opening add to featured modal
+  const loadFeaturedSections = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("featured_sections")
+        .select(
+          "id, section_type, header, slug, sort_index, active, created_at"
+        )
+        .eq("active", true)
+        .order("sort_index", { ascending: true });
+
+      if (error) throw error;
+      const sectionsData = data || [];
+      setSections(sectionsData);
+      if (sectionsData.length > 0) {
+        setSelectedSectionId(sectionsData[0].id);
+      } else {
+        setError(
+          "No active featured sections found. Please create a section in Featured Manager first."
+        );
+        setAddToFeaturedSubmission(null);
+      }
+    } catch (err) {
+      console.error("Failed to load featured sections:", err);
+      setError("Failed to load featured sections");
+      setAddToFeaturedSubmission(null);
+    }
+  };
 
   useEffect(() => {
     if (filterStatus === "approved") {
@@ -120,6 +161,184 @@ export default function Forms() {
       }
     } else {
       setOrgSlug("");
+    }
+  };
+
+  const handleOpenAddToFeatured = async (submission: FormSubmission) => {
+    setAddToFeaturedSubmission(submission);
+    setError(null);
+    setSuccess(null);
+    setCardColor("");
+    setStartAt("");
+    setEndAt("");
+    setSelectedSectionId("");
+
+    // Load sections
+    await loadFeaturedSections();
+
+    // Convert show_from and hide_after to datetime-local format
+    // Extract date portion first to avoid timezone issues (matching display logic)
+    const formData = submission.form_data;
+    if (formData?.show_from) {
+      const dateStr = formData.show_from;
+      // Extract date portion (YYYY-MM-DD) to avoid timezone conversion
+      const dateOnly = dateStr.split("T")[0];
+      const [year, month, day] = dateOnly.split("-");
+      // Extract time portion if it exists, otherwise default to 00:00
+      const timePart = dateStr.includes("T")
+        ? dateStr.split("T")[1]
+        : "00:00:00";
+      const [hours, minutes] = timePart.split(":").slice(0, 2);
+      setStartAt(`${year}-${month}-${day}T${hours}:${minutes}`);
+    }
+    if (formData?.hide_after) {
+      const dateStr = formData.hide_after;
+      // Extract date portion (YYYY-MM-DD) to avoid timezone conversion
+      const dateOnly = dateStr.split("T")[0];
+      const [year, month, day] = dateOnly.split("-");
+      // Extract time portion if it exists, otherwise default to 00:00
+      const timePart = dateStr.includes("T")
+        ? dateStr.split("T")[1]
+        : "00:00:00";
+      const [hours, minutes] = timePart.split(":").slice(0, 2);
+      setEndAt(`${year}-${month}-${day}T${hours}:${minutes}`);
+    }
+
+    // Get target_id based on target_type
+    try {
+      if (formData?.target_type === "org") {
+        // Get org ID from organization_id or organization_slug
+        if (formData.organization_id) {
+          setTargetId(formData.organization_id);
+        } else if (formData.organization_slug) {
+          const { data: orgData, error: orgError } = await supabase
+            .from("organizations")
+            .select("id")
+            .eq("slug", formData.organization_slug)
+            .single();
+          if (orgError || !orgData) {
+            throw new Error("Failed to find organization");
+          }
+          setTargetId(orgData.id);
+        } else {
+          throw new Error("Organization ID or slug is required");
+        }
+      } else if (formData?.target_type === "program") {
+        // Get program ID
+        if (formData.program_id) {
+          setTargetId(formData.program_id);
+        } else {
+          throw new Error("Program ID is required");
+        }
+      } else {
+        throw new Error("Invalid target type");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to determine target ID"
+      );
+      setAddToFeaturedSubmission(null);
+    }
+  };
+
+  const toIsoOrNull = (v?: string) => (v ? new Date(v).toISOString() : null);
+
+  const handleAddToFeatured = async () => {
+    if (!addToFeaturedSubmission || !selectedSectionId || !targetId) {
+      setError("Missing required information");
+      return;
+    }
+
+    try {
+      setAddingToFeatured(true);
+      setError(null);
+      setSuccess(null);
+
+      // Get the selected section to determine placement
+      const selectedSection = sections.find((s) => s.id === selectedSectionId);
+      if (!selectedSection) {
+        throw new Error("Selected section not found");
+      }
+
+      // Get current max sort_index for this section
+      const { data: existingItems, error: itemsError } = await supabase
+        .from("featured")
+        .select("sort_index")
+        .eq("section_id", selectedSectionId)
+        .order("sort_index", { ascending: false })
+        .limit(1);
+
+      if (itemsError) {
+        console.error("Failed to get existing items:", itemsError);
+        // Continue with 0 as fallback
+      }
+
+      const nextIndex =
+        existingItems && existingItems.length > 0
+          ? (existingItems[0].sort_index ?? -1) + 1
+          : 0;
+
+      // Validate dates
+      if (startAt && endAt && new Date(endAt) < new Date(startAt)) {
+        throw new Error("End time must be after start time");
+      }
+
+      const formData = addToFeaturedSubmission.form_data;
+      const targetType =
+        formData?.target_type === "program" ? "program" : "org";
+      const title =
+        formData?.target_type === "program"
+          ? formData.program_name || "Program"
+          : formData?.organization_name || "Organization";
+
+      // Create featured item
+      const { error: insertError } = await supabase.from("featured").upsert(
+        {
+          placement: selectedSection.section_type,
+          section_id: selectedSectionId,
+          target_type: targetType,
+          target_id: targetId,
+          sort_index: nextIndex,
+          title: title,
+          card_color: cardColor?.trim() || null,
+          starts_at: toIsoOrNull(startAt),
+          ends_at: toIsoOrNull(endAt),
+          active: true,
+        },
+        {
+          onConflict: "section_id,target_type,target_id",
+        }
+      );
+
+      if (insertError) {
+        throw new Error(insertError.message || "Failed to add to featured");
+      }
+
+      setSuccess("Successfully added to featured page!");
+
+      // Auto-approve the submission
+      if (addToFeaturedSubmission) {
+        try {
+          await updateFormSubmission(addToFeaturedSubmission.id, {
+            status: "approved",
+            notes: "Added to featured page from this submission",
+          });
+        } catch (err) {
+          console.error("Failed to auto-approve submission:", err);
+          // Don't fail the whole operation if approval fails
+        }
+      }
+
+      // Close modal and reload submissions
+      setAddToFeaturedSubmission(null);
+      setTargetId(null);
+      await loadSubmissions();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to add to featured"
+      );
+    } finally {
+      setAddingToFeatured(false);
     }
   };
 
@@ -478,6 +697,30 @@ export default function Forms() {
                   className="px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 rounded-lg"
                 >
                   Create Org
+                </button>
+              )}
+            </>
+          )}
+          {submission.form_type === "advertise" && (
+            <>
+              {submission.status === "approved" ||
+              (submission.notes &&
+                submission.notes
+                  .toLowerCase()
+                  .includes("added to featured")) ? (
+                <button
+                  disabled
+                  className="px-3 py-1.5 text-sm font-medium text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed"
+                  title="Already added to featured page"
+                >
+                  Added to Featured
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleOpenAddToFeatured(submission)}
+                  className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg"
+                >
+                  Add to Featured
                 </button>
               )}
             </>
@@ -902,6 +1145,198 @@ export default function Forms() {
                 className="flex-1 rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 disabled:opacity-50"
               >
                 {processing ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add to Featured Modal */}
+      {addToFeaturedSubmission && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                setAddToFeaturedSubmission(null);
+                setSelectedSectionId("");
+                setCardColor("");
+                setStartAt("");
+                setEndAt("");
+                setTargetId(null);
+                setError(null);
+              }}
+              className="absolute right-3 top-3 rounded p-1 text-gray-400 hover:bg-gray-100"
+            >
+              ✕
+            </button>
+
+            <h2 className="mb-4 text-2xl font-semibold text-gray-900">
+              Add to Featured Page
+            </h2>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Target
+                </label>
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                  {addToFeaturedSubmission.form_data?.target_type === "program"
+                    ? "Program"
+                    : "Organization"}
+                  {": "}
+                  {addToFeaturedSubmission.form_data?.target_type === "program"
+                    ? addToFeaturedSubmission.form_data?.program_name ||
+                      "Unknown Program"
+                    : addToFeaturedSubmission.form_data?.organization_name ||
+                      "Unknown Organization"}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Section <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedSectionId}
+                  onChange={(e) => setSelectedSectionId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  required
+                >
+                  <option value="">Select a section...</option>
+                  {sections.map((section) => (
+                    <option key={section.id} value={section.id}>
+                      {section.header} ({section.section_type})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Choose which section to add this item to
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Card Color
+                </label>
+                <select
+                  value={cardColor}
+                  onChange={(e) => setCardColor(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">Default (Blue gradient)</option>
+                  <option value="bg-red-600">Red</option>
+                  <option value="bg-orange-600">Orange</option>
+                  <option value="bg-amber-600">Amber</option>
+                  <option value="bg-yellow-600">Yellow</option>
+                  <option value="bg-lime-600">Lime</option>
+                  <option value="bg-green-600">Green</option>
+                  <option value="bg-emerald-600">Emerald</option>
+                  <option value="bg-teal-600">Teal</option>
+                  <option value="bg-cyan-600">Cyan</option>
+                  <option value="bg-sky-600">Sky</option>
+                  <option value="bg-blue-600">Blue</option>
+                  <option value="bg-indigo-600">Indigo</option>
+                  <option value="bg-violet-600">Violet</option>
+                  <option value="bg-purple-600">Purple</option>
+                  <option value="bg-fuchsia-600">Fuchsia</option>
+                  <option value="bg-pink-600">Pink</option>
+                  <option value="bg-rose-600">Rose</option>
+                  <option value="bg-slate-600">Slate</option>
+                  <option value="bg-gray-600">Gray</option>
+                  <option value="bg-zinc-600">Zinc</option>
+                  <option value="bg-neutral-600">Neutral</option>
+                  <option value="bg-stone-600">Stone</option>
+                </select>
+                {cardColor && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Preview:</span>
+                    <span
+                      className={`inline-block h-4 w-10 rounded ${
+                        cardColor.startsWith("bg-")
+                          ? cardColor
+                          : "bg-gradient-to-br from-blue-600 to-blue-800"
+                      }`}
+                      style={
+                        !cardColor.startsWith("bg-")
+                          ? { backgroundColor: cardColor }
+                          : undefined
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Show from
+                </label>
+                <input
+                  type="datetime-local"
+                  value={startAt}
+                  onChange={(e) => setStartAt(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Leave blank to show immediately
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hide after
+                </label>
+                <input
+                  type="datetime-local"
+                  value={endAt}
+                  onChange={(e) => setEndAt(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Leave blank to never auto-hide
+                </p>
+              </div>
+
+              {addToFeaturedSubmission.form_data?.notes && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes from Submission
+                  </label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                    {addToFeaturedSubmission.form_data.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setAddToFeaturedSubmission(null);
+                  setSelectedSectionId("");
+                  setCardColor("");
+                  setStartAt("");
+                  setEndAt("");
+                  setTargetId(null);
+                  setError(null);
+                }}
+                disabled={addingToFeatured}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddToFeatured}
+                disabled={
+                  addingToFeatured ||
+                  !selectedSectionId ||
+                  !targetId ||
+                  Boolean(
+                    startAt && endAt && new Date(endAt) < new Date(startAt)
+                  )
+                }
+                className="flex-1 rounded-lg bg-purple-600 px-4 py-2 font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
+              >
+                {addingToFeatured ? "Adding..." : "Add to Featured"}
               </button>
             </div>
           </div>
